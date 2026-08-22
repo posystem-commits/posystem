@@ -3,6 +3,10 @@ import bcrypt from "bcryptjs";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { signAdminToken, adminCookieOptions } from "@/lib/adminAuth";
 
+// See app/api/pos/[tenantId]/status/route.js for why this opts out of Next's default fetch
+// caching — a stale cached read here could validate a password against an old password_hash.
+export const dynamic = "force-dynamic";
+
 export async function POST(req) {
   const body = await req.json().catch(() => null);
   const email = body?.email?.trim().toLowerCase();

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireActiveTenant } from "@/lib/requireActiveTenant";
 
+// See app/api/pos/[tenantId]/status/route.js for why this opts out of Next's default fetch
+// caching — requireActiveTenant's read must reflect the tenant's current status, not a cached one.
+export const dynamic = "force-dynamic";
+
 // Proxies the in-app help chatbot to the Claude API. The original prototype (src/pos.jsx) called
 // api.anthropic.com directly from the browser — that only ever worked inside the Claude-artifact
 // sandbox, which injects the auth for you. A real deployment needs a server-side API key (never

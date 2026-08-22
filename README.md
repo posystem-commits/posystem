@@ -1,21 +1,19 @@
 # POS Admin
 
 Multi-tenant admin backend for the POS system: activate/pause restaurant customers, track a
-manual `paid_until` date, and send automatic 7/3/1-day expiry reminder emails. Built with
-Next.js (App Router, deployed on Vercel) + Supabase (Postgres, service-role access, cron).
+manual `paid_until` date, and warn each restaurant in their own POS terminal 7/3/1 days before
+access lapses. Built with Next.js (App Router, deployed on Vercel) + Supabase (Postgres,
+service-role access).
 
 ## What's here
 
-- `db/schema.sql` — `admins`, `tenants`, `reminder_log` (the admin side), plus `tenant_pos_kv` (the
-  POS side — see below).
+- `db/schema.sql` — `admins`, `tenants` (the admin side), plus `tenant_pos_kv` (the POS side —
+  see below).
 - `app/api/admin/*` — admin-only API routes (login, tenant CRUD, reminders-due-today), gated by
   `middleware.js` checking a signed session cookie.
-- `app/api/cron/reminders` — the daily sweep that emails tenants hitting a 7/3/1-day mark.
-  Triggered by Vercel Cron (`vercel.json`) or Supabase `pg_cron` (see the commented block at the
-  bottom of `db/schema.sql`), guarded by a `CRON_SECRET` bearer token.
 - `app/admin/*` — the dashboard pages (login, customer list, customer detail, reminders preview).
-- `lib/requireActiveTenant.js` — the server-side access gate, now actually called by every
-  tenant-facing POS route below (previously just a standalone helper with no callers).
+- `lib/requireActiveTenant.js` — the server-side access gate, called by every tenant-facing POS
+  route below.
 - **`src/pos.jsx` is migrated onto this backend.** It no longer uses the Claude-artifact-only
   `window.storage` API — every call site goes through `lib/tenantStorage.js`, a same-shaped client
   shim that talks to `app/api/pos/[tenantId]/storage/*` (a tenant-scoped key/value store,
@@ -28,11 +26,34 @@ Next.js (App Router, deployed on Vercel) + Supabase (Postgres, service-role acce
   - `receipts:*` and the customer directory were originally written `shared=false` (device-local,
     never synced) — almost certainly a bug carried over from single-browser testing, since
     "Register totals (all staff)" only makes sense if every terminal sees the same receipts. The
-    shim now treats them as shared/server-backed like everything else; see the comment in
-    `db/schema.sql` above `tenant_pos_kv`.
+    shim now treats them as shared/server-backed like everything else.
   - The in-app help chatbot no longer calls `api.anthropic.com` straight from the browser (that
     only ever worked inside the Claude-artifact sandbox) — it now goes through
     `app/api/pos/[tenantId]/help`, a small server-side proxy holding the real API key.
+- **The 7/3/1-day expiry reminder is a popup inside each tenant's own POS terminal**, not an
+  email. `app/api/pos/[tenantId]/status` reports the tenant's live `status`/`paid_until`; the
+  terminal computes days-remaining itself and shows a dismissible popup when it lands on 7, 3, or
+  1 — dismissal is scoped to that specific `(paid_until, days_remaining)` pair in `localStorage`,
+  so it reappears on the next threshold and re-arms automatically if you extend their date. There
+  is no server-dispatched email/cron for this (an earlier pass built one via Resend; it was
+  removed in favor of the popup, which is what the actual users — restaurant staff — see every
+  day, rather than an inbox they may not check).
+
+## A real bug worth knowing about
+
+While building the popup, `/api/pos/[tenantId]/status` was observed serving a tenant's
+`paid_until` from the very first request after a server start, forever — completely ignoring
+later updates, confirmed via a direct call to Supabase's REST API showing the fresh value while
+this app's own route kept returning stale data. Root cause: Next.js's App Router patches the
+global `fetch` and caches GET results by default, and that applies to any fetch a library makes
+internally — including the ones `@supabase/supabase-js` makes — not just fetches a route calls
+directly. Per-route `export const dynamic = "force-dynamic"` (present on every route here as
+belt-and-suspenders) did **not** reliably fix it on its own. The actual fix lives in
+`lib/supabaseAdmin.js`, which passes a custom `fetch` to `createClient()` that forces
+`cache: "no-store"` on every request the client makes, at the client level rather than trusting
+per-route config. If you add new Supabase-backed routes elsewhere in this codebase (or copy this
+pattern into a different project), make sure whatever Supabase client you're using has the same
+guard — it's easy to silently reintroduce this.
 
 ## What's not here yet
 
@@ -58,22 +79,19 @@ Next.js (App Router, deployed on Vercel) + Supabase (Postgres, service-role acce
    node scripts/hash-password.js "your-password-here"
    ```
    Then in the Supabase table editor, insert a row into `admins` with your email and the printed
-   hash as `password_hash`.
+   hash as `password_hash` — or use `node --env-file=.env.local scripts/create-admin.js "email" "password"`
+   once `.env.local` is filled in (below), which does the insert for you via the service-role key.
 3. **Copy `.env.example` to `.env.local`** and fill in:
    - `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` — Project Settings → API.
    - `ADMIN_JWT_SECRET` — any long random string (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
-   - `RESEND_API_KEY` / `REMINDER_FROM_EMAIL` — from [resend.com](https://resend.com); a verified
-     sending domain is required before Resend will actually deliver.
-   - `CRON_SECRET` — any long random string; set the same value in Vercel's project env vars once
-     deployed (Vercel automatically sends it as `Authorization: Bearer <CRON_SECRET>` when the
-     cron job fires).
+   - `ANTHROPIC_API_KEY` (optional) — powers the in-app help chatbot; leave blank to disable it.
 4. **Run it locally:**
    ```bash
    npm run dev
    ```
    Visit `http://localhost:3000/admin/login`.
 5. **Deploy to Vercel:** connect the repo, set the same env vars in the Vercel project settings,
-   deploy. `vercel.json` registers the daily cron hit to `/api/cron/reminders` automatically.
+   deploy.
 
 ## Manual payment workflow
 
@@ -82,6 +100,4 @@ Next.js (App Router, deployed on Vercel) + Supabase (Postgres, service-role acce
    shortcut that adds from today or from their current `paid_until`, whichever is later).
 3. Optionally add a note for your own record-keeping.
 4. Save. Enforcement (their POS terminal at `/t/<tenantId>` starts 403ing on their very next
-   request) and reminders both key off that one date automatically from here — extending
-   `paid_until` re-arms the 7/3/1-day reminders under the new cycle without any manual reset, since
-   `reminder_log` is keyed on `(tenant_id, paid_until, type)`.
+   request) and the 7/3/1-day renewal popup both key off that one date automatically from here.

@@ -465,6 +465,12 @@ const STRINGS = {
     notice_logoInvalidType: "That file doesn't look like an image",
     notice_logoTooLarge: "Logo file is too large — please use one under 700KB",
     notice_logoUpdated: "Logo updated",
+
+    renewalNoticeTitle: "Time to renew",
+    renewalNoticeBody_1: "Access expires tomorrow ({{date}}). Contact your provider to keep the POS running without interruption.",
+    renewalNoticeBody_3: "Access expires in 3 days ({{date}}). Contact your provider to keep the POS running without interruption.",
+    renewalNoticeBody_7: "Access expires in 7 days ({{date}}). Contact your provider to keep the POS running without interruption.",
+    renewalNoticeDismiss: "Got it",
   },
   ar: {
     appSubtitle: "محطة الطلبات",
@@ -903,6 +909,12 @@ const STRINGS = {
     notice_logoInvalidType: "هذا الملف لا يبدو صورة",
     notice_logoTooLarge: "حجم ملف الشعار كبير جدًا — يرجى استخدام ملف أصغر من 700 كيلوبايت",
     notice_logoUpdated: "تم تحديث الشعار",
+
+    renewalNoticeTitle: "حان وقت التجديد",
+    renewalNoticeBody_1: "ينتهي الوصول غدًا ({{date}}). تواصل مع مزوّد الخدمة للحفاظ على استمرار عمل نقطة البيع دون انقطاع.",
+    renewalNoticeBody_3: "ينتهي الوصول خلال 3 أيام ({{date}}). تواصل مع مزوّد الخدمة للحفاظ على استمرار عمل نقطة البيع دون انقطاع.",
+    renewalNoticeBody_7: "ينتهي الوصول خلال 7 أيام ({{date}}). تواصل مع مزوّد الخدمة للحفاظ على استمرار عمل نقطة البيع دون انقطاع.",
+    renewalNoticeDismiss: "حسنًا",
   },
 };
 
@@ -1198,6 +1210,8 @@ const restockAmountFor = (unit) => (FINE_UNITS.includes(unit) ? 1 : 10);
 
 function POSPrototype({ tenantId }) {
   const storage = useMemo(() => createTenantStorage(tenantId), [tenantId]);
+  const [tenantStatus, setTenantStatus] = useState(null); // { status, paid_until, days_remaining, restaurant_name } | null while loading
+  const [renewalNoticeDismissed, setRenewalNoticeDismissed] = useState(false);
   const [view, setView] = useState("order"); // "order" | "menu" | "stock" | "receipts" | "customers" | "shift"
   const [active, setActive] = useState("Mains");
   const [categories, setCategories] = useState(Object.keys(INITIAL_MENU));
@@ -1370,6 +1384,49 @@ function POSPrototype({ tenantId }) {
     d.setHours(0, 0, 0, 0);
     return d.toISOString();
   };
+
+  // Fetches this tenant's own subscription state so the terminal can show its own renewal popup
+  // (7/3/1 days before paid_until) instead of that being a server-dispatched email — see
+  // app/api/pos/[tenantId]/status. Re-checked periodically (not just on mount) so a terminal left
+  // open overnight picks up a freshly-crossed threshold, or a payment that just got recorded,
+  // without needing a manual refresh.
+  useEffect(() => {
+    if (!tenantId) return;
+    let cancelled = false;
+    const loadStatus = async () => {
+      try {
+        const res = await fetch(`/api/pos/${encodeURIComponent(tenantId)}/status`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (!cancelled) setTenantStatus(data);
+      } catch (e) {
+        // a transient failure here just means the popup can't show this tick — not worth
+        // surfacing as an error to staff mid-shift over a subscription-status check
+      }
+    };
+    loadStatus();
+    const interval = setInterval(loadStatus, 30 * 60 * 1000); // every 30 minutes
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [tenantId]);
+  // Dismissing only suppresses THIS specific day's popup (keyed by paid_until + days_remaining,
+  // mirroring how the old server-side reminder_log kept 7/3/1 independent) — extending paid_until
+  // naturally re-arms it under the new cycle since the key changes, no manual reset needed.
+  useEffect(() => {
+    if (!tenantStatus || !tenantId) return;
+    const key = `renewal-notice-dismissed-${tenantId}-${tenantStatus.paid_until}-${tenantStatus.days_remaining}`;
+    setRenewalNoticeDismissed(typeof window !== "undefined" && window.localStorage.getItem(key) === "1");
+  }, [tenantId, tenantStatus?.paid_until, tenantStatus?.days_remaining]);
+  const dismissRenewalNotice = () => {
+    if (!tenantStatus || !tenantId) return;
+    const key = `renewal-notice-dismissed-${tenantId}-${tenantStatus.paid_until}-${tenantStatus.days_remaining}`;
+    if (typeof window !== "undefined") window.localStorage.setItem(key, "1");
+    setRenewalNoticeDismissed(true);
+  };
+  const showRenewalNotice =
+    tenantStatus?.status === "active" && [7, 3, 1].includes(tenantStatus.days_remaining) && !renewalNoticeDismissed;
 
   useEffect(() => {
     (async () => {
@@ -4948,6 +5005,19 @@ function POSPrototype({ tenantId }) {
               <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 18 }}>{t("noSalesThisShift")}</div>
             )}
             <button onClick={finishClockOut} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("done")}</button>
+          </div>
+        </div>
+      )}
+
+      {showRenewalNotice && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 20 }} onClick={dismissRenewalNotice}>
+          <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 28, width: "100%", maxWidth: 380, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#F3DAD6", color: COLORS.red, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, margin: "0 auto 14px" }}>!</div>
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t("renewalNoticeTitle")}</div>
+            <div style={{ fontSize: 13.5, color: COLORS.charcoalSoft, lineHeight: 1.5, marginBottom: 22 }}>
+              {t(`renewalNoticeBody_${tenantStatus.days_remaining}`, { date: tenantStatus.paid_until })}
+            </div>
+            <button onClick={dismissRenewalNotice} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("renewalNoticeDismiss")}</button>
           </div>
         </div>
       )}

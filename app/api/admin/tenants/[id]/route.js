@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+// See app/api/pos/[tenantId]/status/route.js for why every route reading live data opts out of
+// Next's default fetch caching this way.
+export const dynamic = "force-dynamic";
+
 const EDITABLE_FIELDS = [
   "restaurant_name",
   "contact_name",

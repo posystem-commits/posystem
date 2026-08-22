@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireActiveTenant } from "@/lib/requireActiveTenant";
 
+// See app/api/pos/[tenantId]/status/route.js for why every route here opts out of Next's
+// default fetch caching — reads must always reflect the latest write.
+export const dynamic = "force-dynamic";
+
 // Mirrors window.storage.get(key) — see lib/tenantStorage.js for the client shim that calls this.
 export async function GET(req, { params }) {
   const gate = await requireActiveTenant(params.tenantId);

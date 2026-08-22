@@ -29,16 +29,6 @@ create table if not exists tenants (
 create index if not exists tenants_status_idx on tenants (status);
 create index if not exists tenants_paid_until_idx on tenants (paid_until);
 
--- Prevents sending the same reminder twice, while still re-arming after you extend someone's date.
-create table if not exists reminder_log (
-  id             uuid primary key default gen_random_uuid(),
-  tenant_id      uuid not null references tenants(id) on delete cascade,
-  paid_until     date not null,
-  reminder_type  text not null check (reminder_type in ('7_day', '3_day', '1_day')),
-  sent_at        timestamptz default now(),
-  unique (tenant_id, paid_until, reminder_type)
-);
-
 -- Keeps updated_at current on every tenant edit, so the admin list can show "last changed".
 create or replace function set_updated_at()
 returns trigger as $$
@@ -96,21 +86,7 @@ create trigger tenant_pos_kv_set_updated_at
   for each row
   execute function set_updated_at();
 
--- Optional: pg_cron setup for the daily reminder sweep, as an alternative to Vercel Cron hitting
--- /api/cron/reminders. Requires the pg_cron extension (available on Supabase's paid plans; on the
--- free tier, use Vercel Cron instead — see vercel.json). Uses Supabase's `net` extension to make
--- an outbound HTTP call from Postgres itself.
---
--- create extension if not exists pg_cron;
--- create extension if not exists pg_net;
---
--- select cron.schedule(
---   'send-due-reminders',
---   '0 8 * * *', -- 08:00 UTC daily — adjust to your timezone
---   $$
---   select net.http_post(
---     url := 'https://<your-vercel-app>.vercel.app/api/cron/reminders',
---     headers := jsonb_build_object('Authorization', 'Bearer <CRON_SECRET>')
---   );
---   $$
--- );
+-- Note on reminders: there's no reminder_log / cron table here. The 7/3/1-day expiry reminder is
+-- a popup shown directly in each tenant's own POS terminal (app/api/pos/[tenantId]/status,
+-- computed live from tenants.paid_until) rather than a server-dispatched email, so there's no
+-- "did we send this yet" state to persist — the terminal just checks its own status on load.
