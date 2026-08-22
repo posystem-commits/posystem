@@ -3309,6 +3309,25 @@ function POSPrototype({ tenantId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loginPin]);
 
+  // Lets the PIN screen also be typed on a physical keyboard, not just tapped on the on-screen
+  // pad — there's no real <input> behind those digit buttons (by design, so nothing shows in
+  // autofill/password managers), so keystrokes need to be captured directly. Mirrors the button
+  // handlers exactly: digits append (up to 4), Backspace removes the last one. Only listens while
+  // this specific screen (an employee selected, PIN not yet entered) is actually showing.
+  useEffect(() => {
+    if (!loginSelectedId) return;
+    const onKeyDown = (e) => {
+      if (e.key >= "0" && e.key <= "9") {
+        setLoginError(false);
+        setLoginPin((p) => (p.length < 4 ? p + e.key : p));
+      } else if (e.key === "Backspace") {
+        setLoginPin((p) => p.slice(0, -1));
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [loginSelectedId]);
+
   // Built once per render and dropped into whichever screen is currently showing (login gate or
   // the main app) — a floating help button plus a slide-up chat panel, backed by a real call to
   // Claude with a system prompt describing this specific app.
