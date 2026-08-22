@@ -32,7 +32,7 @@ export async function POST(req, { params }) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
+      model: (process.env.ANTHROPIC_MODEL || "claude-sonnet-5").trim(),
       max_tokens: 600,
       system: body.system,
       messages: body.messages,

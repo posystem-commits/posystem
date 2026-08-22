@@ -15,9 +15,6 @@ export async function POST(req, { params }) {
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "Menu scanning isn't configured on this server yet." }, { status: 503 });
-  if (req.headers.get("x-debug-key-fingerprint") === "1") {
-    return NextResponse.json({ length: apiKey.length, last6: apiKey.slice(-6), model: process.env.ANTHROPIC_MODEL || "(unset, using default)" });
-  }
 
   const body = await req.json().catch(() => null);
   const dataUrl = body?.image;
@@ -53,7 +50,7 @@ Respond with ONLY a JSON array, no other text, no markdown code fences:
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
+      model: (process.env.ANTHROPIC_MODEL || "claude-sonnet-5").trim(),
       max_tokens: 4096,
       messages: [
         {
