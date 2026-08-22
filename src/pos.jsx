@@ -3867,6 +3867,12 @@ function POSPrototype({ tenantId }) {
     return (
       <div dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: COLORS.ink, minHeight: "100vh", color: COLORS.paper, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
         <style>{FONTS}</style>
+        <style>{`
+          button { transition: filter .12s ease, background .15s ease, border-color .15s ease, transform .08s ease; }
+          button:not(:disabled):hover { filter: brightness(1.14); }
+          button:not(:disabled):active { transform: scale(0.97); }
+          input:focus { outline: none; border-color: ${theme.secondary} !important; box-shadow: 0 0 0 3px ${theme.secondary}33; }
+        `}</style>
         <div style={{ width: "100%", maxWidth: 380 }}>
           <div style={{ textAlign: "center", marginBottom: 28 }}>
             {logoUrl && <img src={logoUrl} alt={restaurantName} style={{ height: 44, width: "auto", maxWidth: 160, objectFit: "contain", margin: "0 auto 10px", display: "block" }} />}
@@ -3980,6 +3986,10 @@ function POSPrototype({ tenantId }) {
         .stock-input::-webkit-inner-spin-button { opacity: 1; }
         .field { background: #FFFFFF; border: 1px solid #3A404C; border-radius: 7px; padding: 9px 12px; color: #111111; font-size: 13px; font-family: ${isRtl ? "'Tajawal', sans-serif" : "'Inter', sans-serif"}; }
         .field::placeholder { color: #6B6F78; }
+        .field:focus { outline: none; border-color: ${theme.primary}; box-shadow: 0 0 0 3px ${theme.primary}33; }
+        button { transition: filter .12s ease, background .15s ease, border-color .15s ease, transform .08s ease; }
+        button:not(:disabled):hover { filter: brightness(1.14); }
+        button:not(:disabled):active { transform: scale(0.98); }
       `}</style>
 
       {/* Header */}
@@ -5992,6 +6002,14 @@ function CustomerMenuView({ tableId, tenantId }) {
   return (
     <div dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: COLORS.ink, minHeight: "100vh", color: COLORS.paper, paddingBottom: cartCount > 0 ? 90 : 0 }}>
       <style>{FONTS}</style>
+      <style>{`
+        button { transition: filter .12s ease, background .15s ease, border-color .15s ease, transform .08s ease; }
+        button:not(:disabled):hover { filter: brightness(1.14); }
+        button:not(:disabled):active { transform: scale(0.98); }
+        select:focus, input:focus { outline: none; border-color: ${theme.secondary} !important; box-shadow: 0 0 0 3px ${theme.secondary}33; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #3A404C; border-radius: 3px; }
+      `}</style>
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "32px 20px 60px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
           {logoUrl && <img src={logoUrl} alt={restaurantName} style={{ height: 40, width: "auto", maxWidth: 140, objectFit: "contain", borderRadius: 4 }} />}

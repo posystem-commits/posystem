@@ -3,15 +3,44 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import AdminNav from "@/components/AdminNav";
+import { COLORS, FONT_SERIF, RADIUS, SHADOW } from "@/lib/theme";
 
-const inputStyle = { width: "100%", boxSizing: "border-box", padding: "9px 12px", border: "1px solid #DCD5C4", borderRadius: 7, fontSize: 13.5 };
-const labelStyle = { display: "block", fontSize: 11.5, color: "#6B685F", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.4 };
+const inputStyle = { width: "100%", boxSizing: "border-box", padding: "10px 12px", border: `1px solid ${COLORS.line}`, borderRadius: RADIUS.sm, fontSize: 13.5, fontFamily: "inherit" };
+const labelStyle = { display: "block", fontSize: 11.5, color: COLORS.charcoalSoft, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 500 };
 
 // The POS terminal route (app/t/[tenantId]/page.jsx) works for any tenant id already in the
 // database — no separate provisioning step, so this link is live the instant the tenant exists.
 function posLink(tenantId) {
   if (typeof window === "undefined") return "";
   return `${window.location.origin}/t/${tenantId}`;
+}
+
+function SegmentedControl({ options, value, onChange }) {
+  return (
+    <div style={{ display: "flex", gap: 6 }}>
+      {options.map(({ key, label }) => (
+        <button
+          key={key}
+          onClick={() => onChange(key)}
+          style={{
+            flex: 1,
+            padding: "9px 0",
+            borderRadius: RADIUS.sm,
+            border: `1px solid ${value === key ? COLORS.burgundy : COLORS.line}`,
+            background: value === key ? COLORS.burgundy : "transparent",
+            color: value === key ? "#fff" : COLORS.ink,
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: "pointer",
+            textTransform: "capitalize",
+            transition: "background 0.15s ease, border-color 0.15s ease",
+          }}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export default function TenantDetailPage() {
@@ -99,7 +128,7 @@ export default function TenantDetailPage() {
     return (
       <div>
         <AdminNav />
-        <div style={{ maxWidth: 640, margin: "40px auto", padding: "0 24px", fontSize: 13, color: "#A6534A" }}>{error}</div>
+        <div style={{ maxWidth: 640, margin: "40px auto", padding: "0 24px", fontSize: 13, color: COLORS.red }}>{error}</div>
       </div>
     );
   }
@@ -108,7 +137,7 @@ export default function TenantDetailPage() {
     return (
       <div>
         <AdminNav />
-        <div style={{ maxWidth: 640, margin: "40px auto", padding: "0 24px", fontSize: 13, color: "#6B685F" }}>Loading…</div>
+        <div style={{ maxWidth: 640, margin: "40px auto", padding: "0 24px", fontSize: 13, color: COLORS.charcoalSoft }}>Loading…</div>
       </div>
     );
   }
@@ -116,21 +145,21 @@ export default function TenantDetailPage() {
   return (
     <div>
       <AdminNav />
-      <div style={{ maxWidth: 640, margin: "0 auto", padding: "28px 24px" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, marginTop: 0, marginBottom: 12 }}>{tenant.restaurant_name}</h1>
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: "32px 24px" }}>
+        <h1 style={{ fontFamily: FONT_SERIF, fontSize: 22, fontWeight: 600, marginTop: 0, marginBottom: 14, color: COLORS.ink }}>{tenant.restaurant_name}</h1>
 
-        <div style={{ background: "#fff", border: "1px solid #DCD5C4", borderRadius: 10, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ background: COLORS.card, border: `1px solid ${COLORS.line}`, borderRadius: RADIUS.lg, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 11, color: "#8A8580", textTransform: "uppercase", letterSpacing: 0.4 }}>POS link</span>
           <code style={{ fontSize: 12, color: "#4A4A45", flex: 1, minWidth: 200, wordBreak: "break-all" }}>{posLink(id)}</code>
-          <button onClick={copyLink} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #DCD5C4", background: "transparent", cursor: "pointer", flexShrink: 0 }}>
+          <button onClick={copyLink} style={{ fontSize: 12, padding: "6px 12px", borderRadius: RADIUS.sm, border: `1px solid ${COLORS.line}`, background: "transparent", cursor: "pointer", flexShrink: 0, color: COLORS.ink }}>
             {linkCopied ? "Copied!" : "Copy"}
           </button>
-          <a href={posLink(id)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #7C2D3B", color: "#7C2D3B", textDecoration: "none", flexShrink: 0 }}>
+          <a href={posLink(id)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, padding: "6px 12px", borderRadius: RADIUS.sm, border: `1px solid ${COLORS.burgundy}`, color: COLORS.burgundy, textDecoration: "none", flexShrink: 0 }}>
             Open POS terminal
           </a>
         </div>
 
-        <div style={{ background: "#fff", border: "1px solid #DCD5C4", borderRadius: 10, padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ background: COLORS.card, border: `1px solid ${COLORS.line}`, borderRadius: RADIUS.lg, padding: 24, display: "flex", flexDirection: "column", gap: 18, boxShadow: SHADOW.card }}>
           <div>
             <label style={labelStyle}>Restaurant name</label>
             <input style={inputStyle} value={tenant.restaurant_name || ""} onChange={(e) => update("restaurant_name", e.target.value)} />
@@ -150,68 +179,35 @@ export default function TenantDetailPage() {
           <div>
             <label style={labelStyle}>Contact email</label>
             <input style={inputStyle} type="email" value={tenant.contact_email || ""} onChange={(e) => update("contact_email", e.target.value)} />
-            <div style={{ fontSize: 11, color: "#8A8580", marginTop: 4 }}>Just for your own records — the 7/3/1-day renewal notice shows up in their POS terminal, not by email.</div>
+            <div style={{ fontSize: 11, color: "#8A8580", marginTop: 5 }}>Just for your own records — the 7/3/1-day renewal notice shows up in their POS terminal, not by email.</div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
               <label style={labelStyle}>Status</label>
-              <div style={{ display: "flex", gap: 6 }}>
-                {["active", "paused"].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => update("status", s)}
-                    style={{
-                      flex: 1,
-                      padding: "9px 0",
-                      borderRadius: 7,
-                      border: `1px solid ${tenant.status === s ? "#7C2D3B" : "#DCD5C4"}`,
-                      background: tenant.status === s ? "#7C2D3B" : "transparent",
-                      color: tenant.status === s ? "#fff" : "#4A4A45",
-                      fontSize: 13,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {s === "active" ? "Active" : "Paused"}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                options={[{ key: "active", label: "Active" }, { key: "paused", label: "Paused" }]}
+                value={tenant.status}
+                onChange={(v) => update("status", v)}
+              />
             </div>
             <div>
               <label style={labelStyle}>Paid until</label>
               <input style={inputStyle} type="date" value={tenant.paid_until || ""} onChange={(e) => update("paid_until", e.target.value)} />
             </div>
           </div>
-          <button onClick={extend30Days} style={{ alignSelf: "flex-start", fontSize: 12, color: "#7C2D3B", background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: -8 }}>
+          <button onClick={extend30Days} style={{ alignSelf: "flex-start", fontSize: 12, color: COLORS.burgundy, fontWeight: 500, background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: -10 }}>
             + Extend 30 days from today (or from current paid-until, if later)
           </button>
 
           <div>
             <label style={labelStyle}>Package</label>
-            <div style={{ display: "flex", gap: 6 }}>
-              {["basic", "standard", "premium"].map((pkg) => (
-                <button
-                  key={pkg}
-                  onClick={() => update("package", pkg)}
-                  style={{
-                    flex: 1,
-                    padding: "9px 0",
-                    borderRadius: 7,
-                    border: `1px solid ${tenant.package === pkg ? "#7C2D3B" : "#DCD5C4"}`,
-                    background: tenant.package === pkg ? "#7C2D3B" : "transparent",
-                    color: tenant.package === pkg ? "#fff" : "#4A4A45",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    textTransform: "capitalize",
-                  }}
-                >
-                  {pkg}
-                </button>
-              ))}
-            </div>
-            <div style={{ fontSize: 11, color: "#8A8580", marginTop: 4 }}>
+            <SegmentedControl
+              options={[{ key: "basic", label: "basic" }, { key: "standard", label: "standard" }, { key: "premium", label: "premium" }]}
+              value={tenant.package}
+              onChange={(v) => update("package", v)}
+            />
+            <div style={{ fontSize: 11, color: "#8A8580", marginTop: 5 }}>
               Controls which features show up in their POS terminal — define what's in each package under Packages.
             </div>
           </div>
@@ -226,16 +222,16 @@ export default function TenantDetailPage() {
             />
           </div>
 
-          {error && <div style={{ fontSize: 13, color: "#A6534A" }}>{error}</div>}
+          {error && <div style={{ fontSize: 13, color: COLORS.red }}>{error}</div>}
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-            <button onClick={remove} style={{ fontSize: 12.5, color: "#A6534A", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4, paddingTop: 14, borderTop: `1px solid ${COLORS.lineSoft}` }}>
+            <button onClick={remove} style={{ fontSize: 12.5, color: COLORS.red, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
               Remove customer
             </button>
             <button
               onClick={save}
               disabled={saving}
-              style={{ padding: "10px 20px", borderRadius: 7, border: "none", background: "#7C2D3B", color: "#fff", fontSize: 13.5, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}
+              style={{ padding: "10px 20px", borderRadius: RADIUS.sm, border: "none", background: COLORS.burgundy, color: "#fff", fontSize: 13.5, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}
             >
               {saving ? "Saving…" : savedFlash ? "Saved ✓" : "Save changes"}
             </button>

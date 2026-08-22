@@ -1,3 +1,5 @@
+import { FONT_IMPORT_URL, FONT_SANS, COLORS } from "@/lib/theme";
+
 export const metadata = {
   title: "POS Admin",
   description: "Multi-tenant POS admin dashboard",
@@ -6,7 +8,12 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif", background: "#F5F3EE", color: "#20242B" }}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href={FONT_IMPORT_URL} />
+      </head>
+      <body style={{ margin: 0, fontFamily: FONT_SANS, background: COLORS.cream, color: COLORS.ink }}>
         {children}
       </body>
     </html>

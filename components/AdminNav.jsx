@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { COLORS, FONT_SERIF } from "@/lib/theme";
 
 const LINKS = [
   { href: "/admin", label: "Customers" },
@@ -12,6 +14,7 @@ const LINKS = [
 export default function AdminNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const [logoutHover, setLogoutHover] = useState(false);
 
   const logout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -20,10 +23,27 @@ export default function AdminNav() {
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 28px", borderBottom: "1px solid #DCD5C4", background: "#fff", flexWrap: "wrap", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-        <span style={{ fontWeight: 700, fontSize: 15, color: "#7C2D3B" }}>POS Admin</span>
-        <div style={{ display: "flex", gap: 4 }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "15px 28px",
+        borderBottom: `1px solid ${COLORS.line}`,
+        background: COLORS.card,
+        boxShadow: "0 1px 0 rgba(32,36,43,0.03)",
+        flexWrap: "wrap",
+        gap: 12,
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
+        <span style={{ fontFamily: FONT_SERIF, fontWeight: 600, fontSize: 17, color: COLORS.burgundy, letterSpacing: 0.2 }}>
+          POS Admin
+        </span>
+        <div style={{ display: "flex", gap: 2 }}>
           {LINKS.map((link) => {
             const active = pathname === link.href;
             return (
@@ -36,8 +56,15 @@ export default function AdminNav() {
                   fontSize: 13.5,
                   fontWeight: 500,
                   textDecoration: "none",
-                  color: active ? "#fff" : "#4A4A45",
-                  background: active ? "#7C2D3B" : "transparent",
+                  color: active ? "#fff" : COLORS.ink,
+                  background: active ? COLORS.burgundy : "transparent",
+                  transition: "background 0.15s ease, color 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (!active) e.currentTarget.style.background = COLORS.cream;
+                }}
+                onMouseLeave={(e) => {
+                  if (!active) e.currentTarget.style.background = "transparent";
                 }}
               >
                 {link.label}
@@ -48,7 +75,18 @@ export default function AdminNav() {
       </div>
       <button
         onClick={logout}
-        style={{ padding: "7px 14px", borderRadius: 7, border: "1px solid #DCD5C4", background: "transparent", color: "#4A4A45", fontSize: 13, cursor: "pointer" }}
+        onMouseEnter={() => setLogoutHover(true)}
+        onMouseLeave={() => setLogoutHover(false)}
+        style={{
+          padding: "7px 14px",
+          borderRadius: 7,
+          border: `1px solid ${logoutHover ? COLORS.charcoalSoft : COLORS.line}`,
+          background: "transparent",
+          color: COLORS.ink,
+          fontSize: 13,
+          cursor: "pointer",
+          transition: "border-color 0.15s ease",
+        }}
       >
         Log out
       </button>
