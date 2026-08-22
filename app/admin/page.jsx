@@ -12,6 +12,14 @@ function statusBadge(tenant) {
   return { text: "Active", bg: "#DCEAD8", fg: "#3D6B3D" };
 }
 
+// The POS terminal route (app/t/[tenantId]/page.jsx) works for any tenant id already in the
+// database — there's no separate "provisioning" step, so a restaurant's terminal exists the
+// instant they're added below. This just builds the shareable link to it.
+function posLink(tenantId) {
+  if (typeof window === "undefined") return "";
+  return `${window.location.origin}/t/${tenantId}`;
+}
+
 const emptyForm = { restaurant_name: "", contact_name: "", contact_email: "", contact_phone: "", paid_until: "", notes: "" };
 
 export default function AdminTenantsPage() {
@@ -20,6 +28,8 @@ export default function AdminTenantsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+  const [justAdded, setJustAdded] = useState(null); // the tenant object just created, shown in a banner with its link
 
   const load = async () => {
     setError("");
@@ -48,6 +58,17 @@ export default function AdminTenantsPage() {
     if (!res.ok) load(); // revert to server truth on failure
   };
 
+  const copyLink = async (tenantId) => {
+    try {
+      await navigator.clipboard.writeText(posLink(tenantId));
+      setCopiedId(tenantId);
+      setTimeout(() => setCopiedId((id) => (id === tenantId ? null : id)), 2000);
+    } catch (e) {
+      // clipboard API can be blocked (permissions, non-HTTPS); the link is still visible to
+      // select and copy manually in the just-added banner / tenant detail page
+    }
+  };
+
   const addTenant = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -62,6 +83,7 @@ export default function AdminTenantsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to add customer");
       setForm(emptyForm);
       setShowAdd(false);
+      setJustAdded(data.tenant);
       load();
     } catch (e) {
       setError(e.message);
@@ -86,6 +108,31 @@ export default function AdminTenantsPage() {
 
         {error && <div style={{ fontSize: 13, color: "#A6534A", marginBottom: 16 }}>{error}</div>}
 
+        {justAdded && (
+          <div style={{ background: "#DCEAD8", border: "1px solid #B9D6B4", borderRadius: 10, padding: "16px 18px", marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: "#2F4A2F" }}>
+                {justAdded.restaurant_name} added — their POS terminal is ready.
+              </div>
+              <button onClick={() => setJustAdded(null)} style={{ background: "none", border: "none", color: "#2F4A2F", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+            </div>
+            <div style={{ fontSize: 12, color: "#3D5A3D", marginTop: 4, marginBottom: 10 }}>
+              Send them this link to bookmark on their POS device (staff still clock in with their own name + PIN once they open it):
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <code style={{ background: "#fff", border: "1px solid #B9D6B4", borderRadius: 6, padding: "7px 10px", fontSize: 12, flex: 1, minWidth: 200, wordBreak: "break-all" }}>
+                {posLink(justAdded.id)}
+              </code>
+              <button onClick={() => copyLink(justAdded.id)} style={{ padding: "7px 12px", borderRadius: 6, border: "none", background: "#3D6B3D", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                {copiedId === justAdded.id ? "Copied!" : "Copy link"}
+              </button>
+              <a href={posLink(justAdded.id)} target="_blank" rel="noopener noreferrer" style={{ padding: "7px 12px", borderRadius: 6, border: "1px solid #3D6B3D", color: "#3D6B3D", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                Open
+              </a>
+            </div>
+          </div>
+        )}
+
         {showAdd && (
           <form onSubmit={addTenant} style={{ background: "#fff", border: "1px solid #DCD5C4", borderRadius: 10, padding: 20, marginBottom: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <input required placeholder="Restaurant name" value={form.restaurant_name} onChange={(e) => setForm((f) => ({ ...f, restaurant_name: e.target.value }))} style={inputStyle} />
@@ -109,27 +156,39 @@ export default function AdminTenantsPage() {
             {tenants.map((tenant) => {
               const badge = statusBadge(tenant);
               return (
-                <div key={tenant.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", border: "1px solid #DCD5C4", borderRadius: 10, padding: "14px 18px", flexWrap: "wrap", gap: 10 }}>
-                  <div>
-                    <Link href={`/admin/tenants/${tenant.id}`} style={{ fontSize: 14.5, fontWeight: 600, color: "#20242B", textDecoration: "none" }}>
-                      {tenant.restaurant_name}
-                    </Link>
-                    <div style={{ fontSize: 12, color: "#6B685F", marginTop: 3 }}>
-                      {tenant.contact_name || tenant.contact_email || tenant.contact_phone || "No contact on file"}
+                <div key={tenant.id} style={{ background: "#fff", border: "1px solid #DCD5C4", borderRadius: 10, padding: "14px 18px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                    <div>
+                      <Link href={`/admin/tenants/${tenant.id}`} style={{ fontSize: 14.5, fontWeight: 600, color: "#20242B", textDecoration: "none" }}>
+                        {tenant.restaurant_name}
+                      </Link>
+                      <div style={{ fontSize: 12, color: "#6B685F", marginTop: 3 }}>
+                        {tenant.contact_name || tenant.contact_email || tenant.contact_phone || "No contact on file"}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 10px", borderRadius: 999, background: badge.bg, color: badge.fg }}>{badge.text}</span>
+                      <span style={{ fontSize: 12.5, color: "#6B685F", fontFamily: "monospace" }}>paid until {tenant.paid_until}</span>
+                      <button
+                        onClick={() => toggleStatus(tenant)}
+                        style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #DCD5C4", background: "transparent", cursor: "pointer" }}
+                      >
+                        {tenant.status === "active" ? "Pause" : "Activate"}
+                      </button>
+                      <Link href={`/admin/tenants/${tenant.id}`} style={{ fontSize: 12, color: "#7C2D3B" }}>
+                        Edit
+                      </Link>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 10px", borderRadius: 999, background: badge.bg, color: badge.fg }}>{badge.text}</span>
-                    <span style={{ fontSize: 12.5, color: "#6B685F", fontFamily: "monospace" }}>paid until {tenant.paid_until}</span>
-                    <button
-                      onClick={() => toggleStatus(tenant)}
-                      style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #DCD5C4", background: "transparent", cursor: "pointer" }}
-                    >
-                      {tenant.status === "active" ? "Pause" : "Activate"}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid #F0EDE4", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11, color: "#8A8580", textTransform: "uppercase", letterSpacing: 0.4 }}>POS link</span>
+                    <code style={{ fontSize: 11.5, color: "#6B685F", flex: 1, minWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{posLink(tenant.id)}</code>
+                    <button onClick={() => copyLink(tenant.id)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: "1px solid #DCD5C4", background: "transparent", cursor: "pointer", flexShrink: 0 }}>
+                      {copiedId === tenant.id ? "Copied!" : "Copy"}
                     </button>
-                    <Link href={`/admin/tenants/${tenant.id}`} style={{ fontSize: 12, color: "#7C2D3B" }}>
-                      Edit
-                    </Link>
+                    <a href={posLink(tenant.id)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: "1px solid #7C2D3B", color: "#7C2D3B", textDecoration: "none", flexShrink: 0 }}>
+                      Open
+                    </a>
                   </div>
                 </div>
               );
