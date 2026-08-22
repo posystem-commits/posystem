@@ -214,6 +214,14 @@ const STRINGS = {
     openTicket: "Open ticket",
     clearTable: "Clear table",
     confirm_clearTable: "Clear this table's order? Any unsaved items will be lost.",
+    markAsPaid: "Mark as paid",
+    billRequestedBadge: "Bill requested · {{method}}",
+    confirmPaymentTitle: "Confirm payment for {{table}}",
+    confirmPaymentBody: "Total due:",
+    confirmPaymentButton: "Confirm payment & close bill",
+    notice_tableEmpty: "This table has no open items to charge",
+    notice_paymentConfirmed: "Payment confirmed — {{table}} is now available",
+    paymentMethodLabel: "Payment method",
     qrCode: "QR code",
     qrModalTitle: "Scan to view menu",
     qrLinkNote: "This link only works once the app is deployed publicly — it won't resolve from this chat preview.",
@@ -227,6 +235,14 @@ const STRINGS = {
     itemNotAvailable: "Not available",
     liveMenuNote: "Menu and prices update live.",
     tableLabelOnReceipt: "Table: {{table}}",
+    requestBillButton: "Request the bill",
+    checkoutModalTitle: "Your bill",
+    checkoutModalNote: "Reflects items your server has confirmed so far — anything you just sent may take a moment to show up here.",
+    checkoutEmptyItems: "Nothing on your table's bill yet — ask your server, or place an order first.",
+    checkoutRequestButton: "Request bill",
+    checkoutRequestedTitle: "Bill requested",
+    checkoutRequestedBody: "Your server will bring your bill shortly.",
+    checkoutRequestFailed: "Couldn't request the bill — check your connection and try again.",
 
     addToOrder: "Add",
     yourOrder: "Your order",
@@ -666,6 +682,14 @@ const STRINGS = {
     openTicket: "فتح الفاتورة",
     clearTable: "إفراغ الطاولة",
     confirm_clearTable: "إفراغ طلب هذه الطاولة؟ ستُفقد أي أصناف لم تُحفظ.",
+    markAsPaid: "تحديد كمدفوع",
+    billRequestedBadge: "تم طلب الحساب · {{method}}",
+    confirmPaymentTitle: "تأكيد الدفع لـ {{table}}",
+    confirmPaymentBody: "المبلغ المستحق:",
+    confirmPaymentButton: "تأكيد الدفع وإغلاق الحساب",
+    notice_tableEmpty: "لا توجد أصناف مفتوحة على هذه الطاولة",
+    notice_paymentConfirmed: "تم تأكيد الدفع — {{table}} متاحة الآن",
+    paymentMethodLabel: "طريقة الدفع",
     qrCode: "رمز QR",
     qrModalTitle: "امسح لعرض القائمة",
     qrLinkNote: "يعمل هذا الرابط فقط بعد نشر التطبيق للعامة — لن يعمل من معاينة هذه المحادثة.",
@@ -679,6 +703,14 @@ const STRINGS = {
     itemNotAvailable: "غير متوفر",
     liveMenuNote: "تُحدَّث القائمة والأسعار مباشرة.",
     tableLabelOnReceipt: "الطاولة: {{table}}",
+    requestBillButton: "طلب الحساب",
+    checkoutModalTitle: "حسابك",
+    checkoutModalNote: "يعكس الأصناف التي أكّدها النادل حتى الآن — أي طلب أرسلته للتو قد يستغرق لحظة ليظهر هنا.",
+    checkoutEmptyItems: "لا يوجد شيء على حساب طاولتك بعد — اسأل النادل، أو أرسل طلبًا أولاً.",
+    checkoutRequestButton: "طلب الحساب",
+    checkoutRequestedTitle: "تم طلب الحساب",
+    checkoutRequestedBody: "سيحضر لك النادل الحساب قريبًا.",
+    checkoutRequestFailed: "تعذّر طلب الحساب — تحقق من اتصالك وحاول مرة أخرى.",
 
     addToOrder: "إضافة",
     yourOrder: "طلبك",
@@ -1886,6 +1918,168 @@ function POSPrototype({ tenantId }) {
   };
   const updateTableName = (id, name) => {
     setTableNames((prev) => ({ ...prev, [id]: name }));
+  };
+
+  // Keeps a shared, cross-device copy of each table's current running order — the "one invoice
+  // per table" a customer's QR checkout request reads (see CustomerMenuView) to show their bill
+  // total, and what "Mark as paid" below falls back to if this terminal's own local draft was
+  // lost to a refresh or was never loaded here (built up on a different terminal instead).
+  // Merges rather than overwrites so a customer's in-flight checkout request isn't clobbered by
+  // an unrelated item edit landing at the same time.
+  const persistTableTab = async (tableId, items) => {
+    if (tableId === null || tableId === undefined) return; // takeaway/delivery isn't a "table"
+    const key = `table-tab:${tableId}`;
+    if (!items || items.length === 0) {
+      await storage.delete(key);
+      return;
+    }
+    let existing = {};
+    try {
+      const res = await storage.get(key);
+      existing = res?.value ? JSON.parse(res.value) : {};
+    } catch (e) {
+      // proceed without the existing checkout-request fields — worst case a concurrent request
+      // gets briefly overwritten here and re-synced on its own next write
+    }
+    await storage.set(key, JSON.stringify({ ...existing, items, updatedAt: new Date().toISOString() }));
+  };
+  // Fires on every cart edit for whichever table is currently open in the Order screen — covers
+  // switching tables, confirming a pending QR order, clearing a table, and finishing a sale
+  // (cart resets to []), all without needing a separate call at each of those sites.
+  useEffect(() => {
+    persistTableTab(activeTableId, cart);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, activeTableId]);
+
+  // Bill requests a customer submits from their table's QR page (see CustomerMenuView's
+  // requestCheckout) — polled the same way pending-orders is, since this is the one piece of
+  // table-tab data that genuinely needs to be "live" across devices for staff to notice promptly.
+  const [checkoutRequests, setCheckoutRequests] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    const loadRequests = async () => {
+      try {
+        const result = await storage.get("checkout-requests", true);
+        if (cancelled) return;
+        setCheckoutRequests(result?.value ? JSON.parse(result.value) : []);
+      } catch (e) {
+        // leave whatever was there before — a transient failure shouldn't wipe the list
+      }
+    };
+    loadRequests();
+    const interval = setInterval(loadRequests, 8000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+  const checkoutRequestForTable = (id) => checkoutRequests.find((r) => r.tableId === id);
+  const clearCheckoutRequest = async (tableId) => {
+    let latest;
+    try {
+      const result = await storage.get("checkout-requests", true);
+      latest = result?.value ? JSON.parse(result.value) : [];
+    } catch (e) {
+      latest = checkoutRequests;
+    }
+    const next = latest.filter((r) => r.tableId !== tableId);
+    setCheckoutRequests(next);
+    await syncSet("checkout-requests", JSON.stringify(next), true, t("syncLabelOrders"));
+  };
+
+  const [payTableModal, setPayTableModal] = useState(null); // { tableId, items, paymentMethod } | null
+  // "Mark as paid" in the Tables tab — reads the table's SHARED tab (not just this terminal's
+  // local draft) so it works correctly even after a refresh, or for a table this terminal never
+  // actively opened. Falls back to the local draft only if the shared read itself fails.
+  const openPayTableModal = async (tableId) => {
+    let items = [];
+    try {
+      const res = await storage.get(`table-tab:${tableId}`);
+      const parsed = res?.value ? JSON.parse(res.value) : null;
+      items = parsed?.items || [];
+    } catch (e) {
+      items = tableId === activeTableId ? cart : tableDrafts[tableId]?.cart || [];
+    }
+    if (items.length === 0) {
+      flashNotice(t("notice_tableEmpty"));
+      return;
+    }
+    // The payment method the customer picked when requesting checkout lives in the separate
+    // checkout-requests list (see requestCheckout in CustomerMenuView), not on the table-tab
+    // entry itself — checkoutRequests is already polled, so this is just a lookup.
+    const requestedPaymentMethod = checkoutRequestForTable(tableId)?.paymentMethod || null;
+    setPayTableModal({ tableId, items, paymentMethod: requestedPaymentMethod || "cash" });
+  };
+  // Finalizes a table's bill directly from the Tables tab — the same shape of work saveOrder()
+  // does for the actively-open table, but sourced from the table's tab (shared or local) rather
+  // than requiring staff to switch to that table in the Order screen first.
+  const confirmTablePayment = async () => {
+    if (!payTableModal) return;
+    const { tableId, items, paymentMethod } = payTableModal;
+
+    items.forEach((cartItem) => {
+      const menuItem = Object.values(menu).flat().find((m) => m.id === cartItem.id);
+      (menuItem?.recipe || []).forEach((r) => updateIngredientStock(r.ingredientId, -r.qty * cartItem.qty));
+    });
+
+    const itemsSubtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+    const svcAmt = Math.round(itemsSubtotal * (servicePercent / 100) * 100) / 100;
+    const vtAmt = Math.round((itemsSubtotal + svcAmt) * (vatPercent / 100) * 100) / 100;
+    const grandTotal = itemsSubtotal + svcAmt + vtAmt;
+    const ticketForThisTable = tableId === activeTableId ? ticketNo : tableDrafts[tableId]?.ticketNo || issueTicketNumber();
+
+    const receipt = {
+      id: `${ticketForThisTable}-${Date.now()}`,
+      ticketNo: ticketForThisTable,
+      timestamp: new Date().toISOString(),
+      table: tableLabel(tableId),
+      servedBy: currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null,
+      items: items.map((c) => {
+        const menuItem = Object.values(menu).flat().find((m) => m.id === c.id);
+        return { id: c.id, name: c.name, qty: c.qty, price: c.price, note: c.note || "", recipeSnapshot: menuItem?.recipe || [] };
+      }),
+      subtotal: itemsSubtotal,
+      discount: null,
+      discountAmount: 0,
+      serviceRate: servicePercent,
+      serviceAmount: svcAmt,
+      vatRate: vatPercent,
+      vatAmount: vtAmt,
+      deliveryFee: 0,
+      deliveryMethod: null,
+      deliveryZoneLabel: "",
+      total: grandTotal,
+      splitCount: null,
+      paymentMethod,
+      customer: null,
+      eta: "",
+      status: "completed",
+      fulfillmentStatus: "placed",
+      whatsappLog: [],
+    };
+
+    await appendReceipt(thisMonthKey(), receipt);
+    await persistTableTab(tableId, []);
+    await clearCheckoutRequest(tableId);
+
+    if (tableId === activeTableId) {
+      const fresh = blankDraft();
+      setCart(fresh.cart);
+      setTicketNo(fresh.ticketNo);
+      setDiscount(fresh.discount);
+      setSplitCount(fresh.splitCount);
+      setDeliveryFee(fresh.deliveryFee);
+      setDeliveryMethod(fresh.deliveryMethod);
+      setDeliveryZoneLabel(fresh.deliveryZoneLabel);
+      setPaymentMethod(fresh.paymentMethod);
+      setSaved(false);
+      setTableDrafts((prev) => ({ ...prev, [tableId]: fresh }));
+    } else {
+      setTableDrafts((prev) => ({ ...prev, [tableId]: blankDraft() }));
+    }
+
+    flashNotice(t("notice_paymentConfirmed", { table: tableLabel(tableId) }));
+    setPayTableModal(null);
   };
 
   // Removes an order from the shared pending-orders list. Re-reads the list right before writing
@@ -4778,11 +4972,12 @@ function POSPrototype({ tenantId }) {
                   );
                 })()}
                 {tableIds.map((id) => {
-                  const occupied = tableItemCount(id) > 0;
+                  const checkoutReq = checkoutRequestForTable(id);
+                  const occupied = tableItemCount(id) > 0 || !!checkoutReq;
                   const isActive = activeTableId === id;
                   const pendingHere = pendingOrdersForTable(id);
                   return (
-                    <div key={id} style={{ background: COLORS.inkSoft, border: `1px solid ${pendingHere.length > 0 ? "#C9A24A" : isActive ? theme.secondary : "#363C47"}`, borderRadius: 10, padding: 14 }}>
+                    <div key={id} style={{ background: COLORS.inkSoft, border: `1px solid ${pendingHere.length > 0 ? "#C9A24A" : checkoutReq ? "#8EB8D6" : isActive ? theme.secondary : "#363C47"}`, borderRadius: 10, padding: 14 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                         <input
                           type="text"
@@ -4801,6 +4996,12 @@ function POSPrototype({ tenantId }) {
                           {t("newOrderBadge")}
                         </div>
                       )}
+                      {checkoutReq && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "#8EB8D6", marginBottom: 8 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#8EB8D6", display: "inline-block" }} />
+                          {t("billRequestedBadge", { method: t(`payment_${checkoutReq.paymentMethod}`) })}
+                        </div>
+                      )}
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {pendingHere.length > 0 ? (
                           <button
@@ -4815,6 +5016,14 @@ function POSPrototype({ tenantId }) {
                             style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}
                           >
                             {t("openTicket")}
+                          </button>
+                        )}
+                        {occupied && (
+                          <button
+                            onClick={() => openPayTableModal(id)}
+                            style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #8EB8D6", background: "rgba(142,184,214,0.15)", color: "#8EB8D6", cursor: "pointer", fontWeight: 600 }}
+                          >
+                            {t("markAsPaid")}
                           </button>
                         )}
                         <button
@@ -4952,6 +5161,54 @@ function POSPrototype({ tenantId }) {
           </div>
         </div>
       )}
+
+      {payTableModal && (() => {
+        const modalSubtotal = payTableModal.items.reduce((s, it) => s + it.price * it.qty, 0);
+        const modalService = Math.round(modalSubtotal * (servicePercent / 100) * 100) / 100;
+        const modalVat = Math.round((modalSubtotal + modalService) * (vatPercent / 100) * 100) / 100;
+        const modalTotal = modalSubtotal + modalService + modalVat;
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setPayTableModal(null)}>
+            <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 24, width: "100%", maxWidth: 380, maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 17, fontWeight: 600, marginBottom: 14 }}>
+                {t("confirmPaymentTitle", { table: tableLabel(payTableModal.tableId) })}
+              </div>
+              {payTableModal.items.map((it, idx) => (
+                <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                  <span>{it.qty}&times; {it.name}</span>
+                  <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(it.price * it.qty)}</span>
+                </div>
+              ))}
+              <div style={{ borderTop: "1px dashed #D8D0BE", marginTop: 10, paddingTop: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("subtotal")}</span><span>{money(modalSubtotal)}</span></div>
+                {servicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("serviceCharge")} ({servicePercent}%)</span><span>{money(modalService)}</span></div>}
+                {vatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("vat")} ({vatPercent}%)</span><span>{money(modalVat)}</span></div>}
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, marginTop: 4 }}>
+                  <span>{t("confirmPaymentBody")}</span><span>{money(modalTotal)}</span>
+                </div>
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {PAYMENT_METHODS.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setPayTableModal((p) => ({ ...p, paymentMethod: m.id }))}
+                      style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: `1px solid ${payTableModal.paymentMethod === m.id ? theme.secondary : "#DCD5C4"}`, background: payTableModal.paymentMethod === m.id ? "rgba(176,141,87,0.18)" : "transparent", color: payTableModal.paymentMethod === m.id ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                    >
+                      {t(`payment_${m.id}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+                <button onClick={() => setPayTableModal(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("cancel")}</button>
+                <button onClick={confirmTablePayment} style={{ flex: 2, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("confirmPaymentButton")}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {view === "staff" && (
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 780 }}>
@@ -5301,7 +5558,16 @@ function CustomerMenuView({ tableId, tenantId }) {
   const [menu, setMenu] = useState({});
   const [availability, setAvailability] = useState({}); // { [itemId]: true|false } — boolean only, never raw stock
   const [deliveryZones, setDeliveryZones] = useState([]);
+  const [vatPercent, setVatPercent] = useState(0);
+  const [servicePercent, setServicePercent] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false); // the "Request the bill" modal, table QR view only
+  const [checkoutMethod, setCheckoutMethod] = useState("cash");
+  const [checkoutTab, setCheckoutTab] = useState(null); // { items } | null — this table's confirmed running order, fetched on demand
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
+  const [checkoutRequested, setCheckoutRequested] = useState(false);
+  const [checkoutError, setCheckoutError] = useState(false);
   const [cart, setCart] = useState({}); // { [itemId]: { qty, note } }
   const [editingNoteItemId, setEditingNoteItemId] = useState(null);
   const [deliveryMethodChoice, setDeliveryMethodChoice] = useState(null); // "pickup" | "delivery" | null
@@ -5341,11 +5607,12 @@ function CustomerMenuView({ tableId, tenantId }) {
     let cancelled = false;
     const load = async () => {
       try {
-        const [brandRes, menuRes, availRes, zonesRes] = await Promise.all([
+        const [brandRes, menuRes, availRes, zonesRes, taxRes] = await Promise.all([
           getSharedWithRetry(storage, "restaurant-branding").catch(() => null),
           getSharedWithRetry(storage, "menu-config").catch(() => null),
           getSharedWithRetry(storage, "menu-availability").catch(() => null),
           isGeneralLink ? getSharedWithRetry(storage, "delivery-zones-config").catch(() => null) : Promise.resolve(null),
+          getSharedWithRetry(storage, "tax-config").catch(() => null),
         ]);
         if (cancelled) return;
         if (brandRes?.value) {
@@ -5369,6 +5636,11 @@ function CustomerMenuView({ tableId, tenantId }) {
         }
         if (availRes?.value) setAvailability(JSON.parse(availRes.value));
         if (zonesRes?.value) setDeliveryZones(JSON.parse(zonesRes.value));
+        if (taxRes?.value) {
+          const parsed = JSON.parse(taxRes.value);
+          setVatPercent(Number(parsed.vatPercent) || 0);
+          setServicePercent(Number(parsed.servicePercent) || 0);
+        }
       } catch (e) {
         // fall back to whatever defaults are already set
       } finally {
@@ -5416,7 +5688,11 @@ function CustomerMenuView({ tableId, tenantId }) {
 
   const selectedZone = deliveryZones.find((z) => z.id === selectedZoneId) || null;
   const deliveryFeeAmount = deliveryMethodChoice === "delivery" && selectedZone ? Number(selectedZone.fee) || 0 : 0;
-  const orderTotal = cartTotal + deliveryFeeAmount;
+  // Same math as the POS terminal (see the equivalent computation in POSPrototype) — service on
+  // the item subtotal, VAT on top of that; delivery fee is added after, untaxed.
+  const serviceAmt = Math.round(cartTotal * (servicePercent / 100) * 100) / 100;
+  const vatAmt = Math.round((cartTotal + serviceAmt) * (vatPercent / 100) * 100) / 100;
+  const orderTotal = cartTotal + serviceAmt + vatAmt + deliveryFeeAmount;
 
   const submitOrder = async () => {
     if (cartCount === 0) return;
@@ -5460,6 +5736,50 @@ function CustomerMenuView({ tableId, tenantId }) {
   const flashChoiceError = () => {
     setZoneChoiceError(true);
     setTimeout(() => setZoneChoiceError(false), 2500);
+  };
+
+  // "Request the bill" — reads the table's shared, cross-device running tab (see
+  // persistTableTab in POSPrototype, which is what actually populates "table-tab:<id>" as staff
+  // confirm items onto the table) so the total shown here matches what the POS terminal will
+  // actually charge, VAT/service included. Only reflects items staff have already confirmed —
+  // anything still sitting unreviewed in "pending-orders" isn't billable yet, so it's excluded
+  // from this total; that's accurate, not a bug, but worth the note below in case a customer
+  // wonders why a just-submitted order isn't reflected immediately.
+  const openCheckout = async () => {
+    setCheckoutOpen(true);
+    setCheckoutRequested(false);
+    setCheckoutLoading(true);
+    try {
+      const res = await storage.get(`table-tab:${tableId}`);
+      const parsed = res?.value ? JSON.parse(res.value) : null;
+      setCheckoutTab({ items: parsed?.items || [] });
+    } catch (e) {
+      setCheckoutTab({ items: [] });
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+  const checkoutItems = checkoutTab?.items || [];
+  const checkoutSubtotal = checkoutItems.reduce((s, it) => s + it.price * it.qty, 0);
+  const checkoutService = Math.round(checkoutSubtotal * (servicePercent / 100) * 100) / 100;
+  const checkoutVat = Math.round((checkoutSubtotal + checkoutService) * (vatPercent / 100) * 100) / 100;
+  const checkoutTotal = checkoutSubtotal + checkoutService + checkoutVat;
+
+  const submitCheckoutRequest = async () => {
+    setCheckoutSubmitting(true);
+    setCheckoutError(false);
+    try {
+      const existing = await storage.get("checkout-requests").catch(() => null);
+      const list = existing?.value ? JSON.parse(existing.value) : [];
+      const next = [...list.filter((r) => r.tableId !== tableId), { id: `co_${Date.now()}`, tableId, paymentMethod: checkoutMethod, requestedAt: new Date().toISOString() }];
+      const ok = await storage.set("checkout-requests", JSON.stringify(next));
+      if (!ok) throw new Error("failed");
+      setCheckoutRequested(true);
+    } catch (e) {
+      setCheckoutError(true);
+    } finally {
+      setCheckoutSubmitting(false);
+    }
   };
 
   return (
@@ -5525,10 +5845,18 @@ function CustomerMenuView({ tableId, tenantId }) {
         )}
 
         <div style={{ fontSize: 12.5, color: "#8A8F99", marginBottom: 6 }}>{t("customerMenuHint")}</div>
-        <div style={{ fontSize: 11, color: "#6E7580", marginBottom: 28, paddingBottom: 20, borderBottom: "1px solid #333945", display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ fontSize: 11, color: "#6E7580", marginBottom: !isGeneralLink ? 14 : 28, paddingBottom: !isGeneralLink ? 0 : 20, borderBottom: !isGeneralLink ? "none" : "1px solid #333945", display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#6FA86F", display: "inline-block" }} />
           {t("liveMenuNote")}
         </div>
+        {!isGeneralLink && (
+          <button
+            onClick={openCheckout}
+            style={{ display: "block", width: "100%", marginBottom: 28, padding: "12px 0", borderRadius: 8, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
+          >
+            {t("requestBillButton")}
+          </button>
+        )}
 
         {!loaded ? (
           <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loading")}</div>
@@ -5612,11 +5940,12 @@ function CustomerMenuView({ tableId, tenantId }) {
           <div style={{ maxWidth: 640, margin: "0 auto" }}>
             {sendError && <div style={{ fontSize: 11.5, color: "#E3A79C", marginBottom: 8 }}>{t("notice_orderSendFailed")}</div>}
             {!isOnline && !sendError && <div style={{ fontSize: 11.5, color: "#E3A79C", marginBottom: 8 }}>{t("offlineOrderingHint")}</div>}
-            {deliveryFeeAmount > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#9CA1AC", marginBottom: 4 }}>
-                <span>{t("deliveryFeeLineLabel")}</span><span>{money(deliveryFeeAmount)}</span>
-              </div>
-            )}
+            <div style={{ fontSize: 11.5, color: "#9CA1AC", marginBottom: 4 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("subtotal")}</span><span>{money(cartTotal)}</span></div>
+              {servicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("serviceCharge")} ({servicePercent}%)</span><span>{money(serviceAmt)}</span></div>}
+              {vatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("vat")} ({vatPercent}%)</span><span>{money(vatAmt)}</span></div>}
+              {deliveryFeeAmount > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryFeeLineLabel")}</span><span>{money(deliveryFeeAmount)}</span></div>}
+            </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
               <div>
                 <div style={{ fontSize: 12, color: "#9CA1AC" }}>{cartCount === 1 ? t("itemCount", { n: cartCount }) : t("itemCount_plural", { n: cartCount })} &middot; {t("orderTotal")}</div>
@@ -5640,6 +5969,72 @@ function CustomerMenuView({ tableId, tenantId }) {
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 600, marginBottom: 8 }}>{t("orderSentTitle")}</div>
             <div style={{ fontSize: 13, color: COLORS.charcoalSoft, marginBottom: 20, lineHeight: 1.5 }}>{t("orderSentSubtitle")}</div>
             <button onClick={() => setJustSent(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("orderSentOk")}</button>
+          </div>
+        </div>
+      )}
+
+      {checkoutOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setCheckoutOpen(false)}>
+          <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 26, width: "100%", maxWidth: 380, maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+            {checkoutRequested ? (
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 600, marginBottom: 8 }}>{t("checkoutRequestedTitle")}</div>
+                <div style={{ fontSize: 13, color: COLORS.charcoalSoft, marginBottom: 6, lineHeight: 1.5 }}>{t("checkoutRequestedBody")}</div>
+                <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 22, margin: "14px 0" }}>{money(checkoutTotal)}</div>
+                <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 20 }}>{t(`payment_${checkoutMethod}`)}</div>
+                <button onClick={() => setCheckoutOpen(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("orderSentOk")}</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 600, marginBottom: 4 }}>{t("checkoutModalTitle")}</div>
+                <div style={{ fontSize: 11.5, color: COLORS.charcoalSoft, marginBottom: 16, lineHeight: 1.4 }}>{t("checkoutModalNote")}</div>
+                {checkoutLoading ? (
+                  <div style={{ fontSize: 13, color: COLORS.charcoalSoft, padding: "12px 0" }}>{t("loading")}</div>
+                ) : checkoutItems.length === 0 ? (
+                  <div style={{ fontSize: 13, color: COLORS.charcoalSoft, padding: "12px 0" }}>{t("checkoutEmptyItems")}</div>
+                ) : (
+                  <>
+                    {checkoutItems.map((it, idx) => (
+                      <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                        <span>{it.qty}&times; {it.name}</span>
+                        <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(it.price * it.qty)}</span>
+                      </div>
+                    ))}
+                    <div style={{ borderTop: "1px dashed #D8D0BE", marginTop: 10, paddingTop: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("subtotal")}</span><span>{money(checkoutSubtotal)}</span></div>
+                      {servicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("serviceCharge")} ({servicePercent}%)</span><span>{money(checkoutService)}</span></div>}
+                      {vatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("vat")} ({vatPercent}%)</span><span>{money(checkoutVat)}</span></div>}
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 17, fontWeight: 700, marginTop: 4 }}>
+                        <span>{t("total")}</span><span>{money(checkoutTotal)}</span>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {PAYMENT_METHODS.map((m) => (
+                          <button
+                            key={m.id}
+                            onClick={() => setCheckoutMethod(m.id)}
+                            style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: `1px solid ${checkoutMethod === m.id ? theme.secondary : "#DCD5C4"}`, background: checkoutMethod === m.id ? "rgba(176,141,87,0.18)" : "transparent", color: checkoutMethod === m.id ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                          >
+                            {t(`payment_${m.id}`)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {checkoutError && <div style={{ fontSize: 11.5, color: "#A6534A", marginTop: 12 }}>{t("checkoutRequestFailed")}</div>}
+                    <button
+                      onClick={submitCheckoutRequest}
+                      disabled={checkoutSubmitting}
+                      style={{ width: "100%", marginTop: 16, padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: checkoutSubmitting ? "default" : "pointer", opacity: checkoutSubmitting ? 0.7 : 1 }}
+                    >
+                      {t("checkoutRequestButton")}
+                    </button>
+                  </>
+                )}
+                <button onClick={() => setCheckoutOpen(false)} style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "none", background: "transparent", color: COLORS.charcoalSoft, fontSize: 12.5, cursor: "pointer", marginTop: 8 }}>{t("close")}</button>
+              </>
+            )}
           </div>
         </div>
       )}
