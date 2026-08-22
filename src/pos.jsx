@@ -194,6 +194,14 @@ const STRINGS = {
     secondaryColorHint: "Used for accents, links, and highlighted badges.",
     previewLabel: "Preview",
 
+    taxesTitle: "Taxes & service charge",
+    taxesHint: "Applied automatically to every order — set either to 0 to leave it off.",
+    vatPercentLabel: "VAT %",
+    servicePercentLabel: "Service charge %",
+    taxesOrderNote: "Service charge is calculated on the subtotal after any discount; VAT is calculated on top of that (subtotal − discount + service).",
+    serviceCharge: "Service charge",
+    vat: "VAT",
+
     tab_tables: "Tables",
     tablesTitle: "Tables",
     tablesSubtitle: "Set up your dining tables, see which are occupied, and print a QR code linking to each table's menu.",
@@ -637,6 +645,14 @@ const STRINGS = {
     primaryColorHint: "يُستخدم للأزرار والتبويب النشط والإجراءات الرئيسية.",
     secondaryColorHint: "يُستخدم للمسات المميزة والروابط والشارات البارزة.",
     previewLabel: "معاينة",
+
+    taxesTitle: "الضرائب ورسوم الخدمة",
+    taxesHint: "تُطبَّق تلقائيًا على كل طلب — اجعل القيمة 0 لإيقاف أي منهما.",
+    vatPercentLabel: "ضريبة القيمة المضافة %",
+    servicePercentLabel: "رسوم الخدمة %",
+    taxesOrderNote: "تُحسب رسوم الخدمة على الإجمالي الفرعي بعد أي خصم؛ وتُحسب ضريبة القيمة المضافة فوق ذلك (الإجمالي الفرعي − الخصم + رسوم الخدمة).",
+    serviceCharge: "رسوم الخدمة",
+    vat: "ضريبة القيمة المضافة",
 
     tab_tables: "الطاولات",
     tablesTitle: "الطاولات",
@@ -1368,6 +1384,10 @@ function POSPrototype({ tenantId }) {
   const [secondaryColor, setSecondaryColor] = useState(COLORS.brass);
   const [brandingLoaded, setBrandingLoaded] = useState(false);
 
+  const [vatPercent, setVatPercent] = useState(0);
+  const [servicePercent, setServicePercent] = useState(0);
+  const [taxConfigLoaded, setTaxConfigLoaded] = useState(false);
+
   // Menu/category editor state
   const [newCategoryName, setNewCategoryName] = useState("");
   const [itemEditor, setItemEditor] = useState(null); // { mode, category, id, name, tag, price, recipe }
@@ -1526,6 +1546,21 @@ function POSPrototype({ tenantId }) {
     })();
 
     (async () => {
+      try {
+        const result = await getSharedWithRetry(storage, "tax-config");
+        const parsed = result?.value ? JSON.parse(result.value) : null;
+        if (parsed) {
+          setVatPercent(Number(parsed.vatPercent) || 0);
+          setServicePercent(Number(parsed.servicePercent) || 0);
+        }
+      } catch (e) {
+        // fall back to 0%/0% already set
+      } finally {
+        setTaxConfigLoaded(true);
+      }
+    })();
+
+    (async () => {
       // Menu/categories/ingredients are shared so they (a) actually persist across reloads for
       // the operator — previously they only lived in memory and reset on every refresh — and
       // (b) are visible to a customer's phone after scanning a table's QR code.
@@ -1643,6 +1678,10 @@ function POSPrototype({ tenantId }) {
     if (!tablesLoaded) return;
     syncSet("tables-config", JSON.stringify({ count: tableCount, names: tableNames }), true, t("syncLabelTables"));
   }, [tableCount, tableNames, tablesLoaded]);
+  useEffect(() => {
+    if (!taxConfigLoaded) return;
+    syncSet("tax-config", JSON.stringify({ vatPercent, servicePercent }), true, t("syncLabelSettings"));
+  }, [vatPercent, servicePercent, taxConfigLoaded]);
   // Publishes ONLY a per-item true/false availability flag to shared storage — never the
   // underlying ingredient names, quantities, or stock counts. This is what the public online-
   // ordering link (and table QR menus) read to show "Available"/"Not available" per dish, without
@@ -2411,7 +2450,14 @@ function POSPrototype({ tenantId }) {
     return Math.min(baseSubtotal, v);
   };
   const discAmt = discountAmount(subtotal, discount);
-  const total = subtotal - discAmt + (deliveryFee || 0);
+  // Service charge applies to the discounted subtotal; VAT applies on top of that (subtotal −
+  // discount + service) — the standard restaurant-bill order (matches how it's normally done in
+  // Egypt, where this app's defaults are already centered — see DEFAULT_COUNTRY_CODE). Delivery
+  // fee is a separate pass-through charge, not subject to either.
+  const netAfterDiscount = subtotal - discAmt;
+  const serviceAmt = Math.round(netAfterDiscount * (servicePercent / 100) * 100) / 100;
+  const vatAmt = Math.round((netAfterDiscount + serviceAmt) * (vatPercent / 100) * 100) / 100;
+  const total = netAfterDiscount + serviceAmt + vatAmt + (deliveryFee || 0);
 
   const applyDiscount = () => {
     const v = Number(discountDraft.value);
@@ -2468,6 +2514,10 @@ function POSPrototype({ tenantId }) {
       subtotal,
       discount: discount ? { ...discount } : null,
       discountAmount: discAmt,
+      serviceRate: servicePercent,
+      serviceAmount: serviceAmt,
+      vatRate: vatPercent,
+      vatAmount: vatAmt,
       deliveryFee: deliveryFee || 0,
       deliveryMethod: deliveryMethod || null,
       deliveryZoneLabel: deliveryZoneLabel || "",
@@ -2557,6 +2607,18 @@ function POSPrototype({ tenantId }) {
           <span>-${money(discAmt)}</span>
         </div>`
       : "";
+    const serviceRow = servicePercent > 0
+      ? `<div class="row" style="font-size:11px;">
+          <span>${escapeHtml(t("serviceCharge"))} (${servicePercent}%)</span>
+          <span>${money(serviceAmt)}</span>
+        </div>`
+      : "";
+    const vatRow = vatPercent > 0
+      ? `<div class="row" style="font-size:11px;">
+          <span>${escapeHtml(t("vat"))} (${vatPercent}%)</span>
+          <span>${money(vatAmt)}</span>
+        </div>`
+      : "";
     const deliveryFeeRow = deliveryMethod === "delivery" && deliveryFee > 0
       ? `<div class="row" style="font-size:11px;">
           <span>${escapeHtml(t("deliveryFeeLineLabel"))}${deliveryZoneLabel ? ` (${escapeHtml(deliveryZoneLabel)})` : ""}</span>
@@ -2579,6 +2641,8 @@ function POSPrototype({ tenantId }) {
       <div class="dashed">
         <div class="row" style="font-size:11px;"><span>${escapeHtml(t("subtotal"))}</span><span>${money(subtotal)}</span></div>
         ${discountRow}
+        ${serviceRow}
+        ${vatRow}
         ${deliveryFeeRow}
         <div class="row" style="font-size:14px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("total"))}</span><span>${money(total)}</span></div>
         ${splitCount > 1 ? `<div class="row" style="font-size:12px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("splitLabel", { n: splitCount }))}</span><span>${escapeHtml(t("eachPays", { amount: money(total / splitCount) }))}</span></div>` : ""}
@@ -2932,7 +2996,20 @@ function POSPrototype({ tenantId }) {
     });
     const newSubtotal = cleaned.reduce((s, it) => s + it.price * it.qty, 0);
     const newDiscAmt = discountAmount(newSubtotal, r.discount);
-    const updatedReceipt = { ...r, items: cleaned, subtotal: newSubtotal, discountAmount: newDiscAmt, total: newSubtotal - newDiscAmt };
+    // Recomputed using THIS receipt's own stored rates, not today's live settings — editing an
+    // old order shouldn't retroactively apply a VAT/service rate change made since then.
+    const newNet = newSubtotal - newDiscAmt;
+    const newServiceAmt = Math.round(newNet * ((r.serviceRate || 0) / 100) * 100) / 100;
+    const newVatAmt = Math.round((newNet + newServiceAmt) * ((r.vatRate || 0) / 100) * 100) / 100;
+    const updatedReceipt = {
+      ...r,
+      items: cleaned,
+      subtotal: newSubtotal,
+      discountAmount: newDiscAmt,
+      serviceAmount: newServiceAmt,
+      vatAmount: newVatAmt,
+      total: newNet + newServiceAmt + newVatAmt + (r.deliveryFee || 0),
+    };
     persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? updatedReceipt : x)));
     flashNotice(t("notice_orderUpdated", { n: r.ticketNo }));
     cancelEditReceipt();
@@ -3885,6 +3962,8 @@ function POSPrototype({ tenantId }) {
               <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("subtotal")}</span><span>{money(subtotal)}</span></div>
                 {discount && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("discount")}</span><span>-{money(discAmt)}</span></div>}
+                {servicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("serviceCharge")} ({servicePercent}%)</span><span>{money(serviceAmt)}</span></div>}
+                {vatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("vat")} ({vatPercent}%)</span><span>{money(vatAmt)}</span></div>}
                 {deliveryMethod === "delivery" && deliveryFee > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}>
                     <span>{t("deliveryFeeLineLabel")}{deliveryZoneLabel ? ` (${deliveryZoneLabel})` : ""}</span><span>{money(deliveryFee)}</span>
@@ -5143,6 +5222,46 @@ function POSPrototype({ tenantId }) {
                   </div>
                   <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 6 }}>{t("secondaryColorHint")}</div>
                 </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("taxesTitle")}</div>
+                <div style={{ fontSize: 11.5, color: "#8A8F99", marginBottom: 10 }}>{t("taxesHint")}</div>
+                <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("vatPercentLabel")}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.1"
+                        value={vatPercent}
+                        onChange={(e) => setVatPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                        className="field"
+                        style={{ width: 90 }}
+                      />
+                      <span style={{ fontSize: 13, color: "#9CA1AC" }}>%</span>
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("servicePercentLabel")}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.1"
+                        value={servicePercent}
+                        onChange={(e) => setServicePercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                        className="field"
+                        style={{ width: 90 }}
+                      />
+                      <span style={{ fontSize: 13, color: "#9CA1AC" }}>%</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 8 }}>{t("taxesOrderNote")}</div>
               </div>
 
               <div>
