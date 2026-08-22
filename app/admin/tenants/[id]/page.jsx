@@ -57,6 +57,7 @@ export default function TenantDetailPage() {
           status: tenant.status,
           paid_until: tenant.paid_until,
           notes: tenant.notes,
+          package: tenant.package,
         }),
       });
       const data = await res.json();
@@ -185,6 +186,35 @@ export default function TenantDetailPage() {
           <button onClick={extend30Days} style={{ alignSelf: "flex-start", fontSize: 12, color: "#7C2D3B", background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: -8 }}>
             + Extend 30 days from today (or from current paid-until, if later)
           </button>
+
+          <div>
+            <label style={labelStyle}>Package</label>
+            <div style={{ display: "flex", gap: 6 }}>
+              {["basic", "standard", "premium"].map((pkg) => (
+                <button
+                  key={pkg}
+                  onClick={() => update("package", pkg)}
+                  style={{
+                    flex: 1,
+                    padding: "9px 0",
+                    borderRadius: 7,
+                    border: `1px solid ${tenant.package === pkg ? "#7C2D3B" : "#DCD5C4"}`,
+                    background: tenant.package === pkg ? "#7C2D3B" : "transparent",
+                    color: tenant.package === pkg ? "#fff" : "#4A4A45",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {pkg}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: "#8A8580", marginTop: 4 }}>
+              Controls which features show up in their POS terminal — define what's in each package under Packages.
+            </div>
+          </div>
 
           <div>
             <label style={labelStyle}>Notes / payment history</label>

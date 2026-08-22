@@ -48,6 +48,7 @@ export async function POST(req) {
       status: body?.status === "paused" ? "paused" : "active",
       paid_until,
       notes: body?.notes || null,
+      package: ["basic", "standard", "premium"].includes(body?.package) ? body.package : "basic",
     })
     .select()
     .single();

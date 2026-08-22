@@ -96,6 +96,17 @@ const STRINGS = {
 
     menuEditorTitle: "Menu editor",
     menuEditorSubtitle: "Add categories and dishes, and set the recipe (which stock items go into each dish) so ordering deducts stock automatically.",
+    scanMenuButton: "Scan a menu photo",
+    scanMenuHint: "Upload a photo of a printed menu and we'll read the items for you to review before adding.",
+    scanMenuModalTitle: "Scan menu photo",
+    scanMenuScanning: "Reading your menu…",
+    scanMenuReviewTitle: "{{n}} items found — review before adding",
+    scanMenuReviewHint: "Uncheck anything that looks wrong, or fix the name/price directly.",
+    scanMenuAddButton: "Add {{n}} items to menu",
+    scanMenuTryAgain: "Try another photo",
+    notice_menuScanTooLarge: "That photo is too large — try one under 8MB",
+    notice_menuScanFailed: "Couldn't read that menu — try a clearer or better-lit photo",
+    notice_menuScanAdded: "{{n}} items added to your menu",
     newCategoryPlaceholder: "New category name (e.g. Sides)",
     addCategory: "Add category",
     addItem: "+ Add item",
@@ -564,6 +575,17 @@ const STRINGS = {
 
     menuEditorTitle: "محرر القائمة",
     menuEditorSubtitle: "أضف الأقسام والأطباق، وحدد المكونات المستخدمة في كل طبق ليتم خصم المخزون تلقائيًا عند الطلب.",
+    scanMenuButton: "مسح صورة قائمة",
+    scanMenuHint: "ارفع صورة لقائمة مطبوعة وسنقرأ الأصناف لتراجعها قبل إضافتها.",
+    scanMenuModalTitle: "مسح صورة القائمة",
+    scanMenuScanning: "جارٍ قراءة قائمتك…",
+    scanMenuReviewTitle: "تم العثور على {{n}} صنف — راجعها قبل الإضافة",
+    scanMenuReviewHint: "أزل التحديد عن أي شيء يبدو غير صحيح، أو عدّل الاسم/السعر مباشرة.",
+    scanMenuAddButton: "إضافة {{n}} صنف إلى القائمة",
+    scanMenuTryAgain: "جرّب صورة أخرى",
+    notice_menuScanTooLarge: "هذه الصورة كبيرة جدًا — جرّب صورة أصغر من 8 ميجابايت",
+    notice_menuScanFailed: "تعذّرت قراءة القائمة — جرّب صورة أوضح أو بإضاءة أفضل",
+    notice_menuScanAdded: "تمت إضافة {{n}} صنف إلى قائمتك",
     newCategoryPlaceholder: "اسم قسم جديد (مثال: أطباق جانبية)",
     addCategory: "إضافة قسم",
     addItem: "+ إضافة صنف",
@@ -1430,6 +1452,13 @@ function POSPrototype({ tenantId }) {
   const [newIngUnitCustom, setNewIngUnitCustom] = useState("");
   const [newIngStock, setNewIngStock] = useState("");
 
+  // Menu photo scan — upload a picture of a printed menu, Claude reads it, staff reviews the
+  // detected items (pre-checked, editable) before they're actually added to the menu.
+  const [menuScanImage, setMenuScanImage] = useState(null); // data URL preview, or null when idle
+  const [menuScanning, setMenuScanning] = useState(false);
+  const [menuScanError, setMenuScanError] = useState("");
+  const [menuScanResults, setMenuScanResults] = useState(null); // [{ category, name, tag, price, include }] | null
+
   const thisMonthKey = () => new Date().toISOString().slice(0, 7);
   const startOfToday = () => {
     const d = new Date();
@@ -1824,10 +1853,21 @@ function POSPrototype({ tenantId }) {
   const currentEmployeeRecord = employees.find((e) => e.id === currentEmployee?.id);
   const isManager = (currentEmployeeRecord?.role || "manager") !== "staff";
 
+  // Which package-gated tabs/features this tenant can use (see lib/packageFeatures.js and
+  // /admin/packages) — "order" and "settings" are always available regardless of package, every
+  // other tab needs an explicit true here. Fails closed (nothing gated shows) until the status
+  // fetch resolves, rather than flashing tabs a Basic tenant shouldn't see and then hiding them.
+  const hasFeature = (key) => !!tenantStatus?.features?.[key];
+
   // Defense in depth: manager-only tabs (Expenses, Dashboard) are only ever shown to managers,
   // but if a role change happens to leave a non-manager sitting on one of them (e.g. someone else
   // just demoted them while it was open), bounce them back to Order rather than leaving a
-  // restricted screen visible.
+  // restricted screen visible. Same idea for package-gated tabs — if the admin downgrades this
+  // restaurant's package while a now-disallowed tab is open, don't leave it up.
+  const PACKAGE_GATED_VIEWS = ["menu", "stock", "tables", "delivery", "receipts", "expenses", "dashboard", "customers", "shift", "staff"];
+  useEffect(() => {
+    if (PACKAGE_GATED_VIEWS.includes(view) && tenantStatus?.features && !hasFeature(view)) setView("order");
+  }, [view, tenantStatus?.features]);
   useEffect(() => {
     if ((view === "expenses" || view === "dashboard") && !isManager) setView("order");
   }, [view, isManager]);
@@ -2023,8 +2063,10 @@ function POSPrototype({ tenantId }) {
     });
 
     const itemsSubtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-    const svcAmt = Math.round(itemsSubtotal * (servicePercent / 100) * 100) / 100;
-    const vtAmt = Math.round((itemsSubtotal + svcAmt) * (vatPercent / 100) * 100) / 100;
+    const tablePaymentServicePercent = hasFeature("vatService") ? servicePercent : 0;
+    const tablePaymentVatPercent = hasFeature("vatService") ? vatPercent : 0;
+    const svcAmt = Math.round(itemsSubtotal * (tablePaymentServicePercent / 100) * 100) / 100;
+    const vtAmt = Math.round((itemsSubtotal + svcAmt) * (tablePaymentVatPercent / 100) * 100) / 100;
     const grandTotal = itemsSubtotal + svcAmt + vtAmt;
     const ticketForThisTable = tableId === activeTableId ? ticketNo : tableDrafts[tableId]?.ticketNo || issueTicketNumber();
 
@@ -2041,9 +2083,9 @@ function POSPrototype({ tenantId }) {
       subtotal: itemsSubtotal,
       discount: null,
       discountAmount: 0,
-      serviceRate: servicePercent,
+      serviceRate: tablePaymentServicePercent,
       serviceAmount: svcAmt,
-      vatRate: vatPercent,
+      vatRate: tablePaymentVatPercent,
       vatAmount: vtAmt,
       deliveryFee: 0,
       deliveryMethod: null,
@@ -2647,10 +2689,15 @@ function POSPrototype({ tenantId }) {
   // Service charge applies to the discounted subtotal; VAT applies on top of that (subtotal −
   // discount + service) — the standard restaurant-bill order (matches how it's normally done in
   // Egypt, where this app's defaults are already centered — see DEFAULT_COUNTRY_CODE). Delivery
-  // fee is a separate pass-through charge, not subject to either.
+  // fee is a separate pass-through charge, not subject to either. Forced to 0 if this tenant's
+  // package doesn't include VAT/service at all, regardless of whatever percentages happen to
+  // still be stored from before a downgrade — package gating shouldn't silently keep charging
+  // something staff can no longer see or adjust.
   const netAfterDiscount = subtotal - discAmt;
-  const serviceAmt = Math.round(netAfterDiscount * (servicePercent / 100) * 100) / 100;
-  const vatAmt = Math.round((netAfterDiscount + serviceAmt) * (vatPercent / 100) * 100) / 100;
+  const effectiveServicePercent = hasFeature("vatService") ? servicePercent : 0;
+  const effectiveVatPercent = hasFeature("vatService") ? vatPercent : 0;
+  const serviceAmt = Math.round(netAfterDiscount * (effectiveServicePercent / 100) * 100) / 100;
+  const vatAmt = Math.round((netAfterDiscount + serviceAmt) * (effectiveVatPercent / 100) * 100) / 100;
   const total = netAfterDiscount + serviceAmt + vatAmt + (deliveryFee || 0);
 
   const applyDiscount = () => {
@@ -2708,9 +2755,9 @@ function POSPrototype({ tenantId }) {
       subtotal,
       discount: discount ? { ...discount } : null,
       discountAmount: discAmt,
-      serviceRate: servicePercent,
+      serviceRate: effectiveServicePercent,
       serviceAmount: serviceAmt,
-      vatRate: vatPercent,
+      vatRate: effectiveVatPercent,
       vatAmount: vatAmt,
       deliveryFee: deliveryFee || 0,
       deliveryMethod: deliveryMethod || null,
@@ -2801,15 +2848,15 @@ function POSPrototype({ tenantId }) {
           <span>-${money(discAmt)}</span>
         </div>`
       : "";
-    const serviceRow = servicePercent > 0
+    const serviceRow = effectiveServicePercent > 0
       ? `<div class="row" style="font-size:11px;">
-          <span>${escapeHtml(t("serviceCharge"))} (${servicePercent}%)</span>
+          <span>${escapeHtml(t("serviceCharge"))} (${effectiveServicePercent}%)</span>
           <span>${money(serviceAmt)}</span>
         </div>`
       : "";
-    const vatRow = vatPercent > 0
+    const vatRow = effectiveVatPercent > 0
       ? `<div class="row" style="font-size:11px;">
-          <span>${escapeHtml(t("vat"))} (${vatPercent}%)</span>
+          <span>${escapeHtml(t("vat"))} (${effectiveVatPercent}%)</span>
           <span>${money(vatAmt)}</span>
         </div>`
       : "";
@@ -3571,6 +3618,79 @@ function POSPrototype({ tenantId }) {
     });
   };
 
+  const MAX_MENU_SCAN_BYTES = 8 * 1024 * 1024;
+  const handleMenuScanFile = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      flashNotice(t("notice_logoInvalidType"));
+      return;
+    }
+    if (file.size > MAX_MENU_SCAN_BYTES) {
+      flashNotice(t("notice_menuScanTooLarge"));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result;
+      setMenuScanImage(dataUrl);
+      setMenuScanResults(null);
+      setMenuScanError("");
+      setMenuScanning(true);
+      try {
+        const res = await fetch(`/api/pos/${encodeURIComponent(tenantId)}/scan-menu`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: dataUrl }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || t("notice_menuScanFailed"));
+        setMenuScanResults(data.items.map((it) => ({ ...it, include: true })));
+      } catch (e) {
+        setMenuScanError(e.message || t("notice_menuScanFailed"));
+      } finally {
+        setMenuScanning(false);
+      }
+    };
+    reader.onerror = () => flashNotice(t("notice_logoInvalidType"));
+    reader.readAsDataURL(file);
+  };
+  const updateMenuScanResult = (index, patch) => {
+    setMenuScanResults((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+  };
+  const closeMenuScan = () => {
+    setMenuScanImage(null);
+    setMenuScanResults(null);
+    setMenuScanError("");
+    setMenuScanning(false);
+  };
+  // Merges the checked, reviewed items into the live menu — creating any new categories along
+  // the way. Scanned items have no recipe (stock tracking for them is opt-in afterward, same as
+  // any manually-added item with no recipe set).
+  const addScannedItems = () => {
+    const toAdd = (menuScanResults || []).filter((it) => it.include && it.name.trim() && Number(it.price) > 0);
+    if (toAdd.length === 0) {
+      closeMenuScan();
+      return;
+    }
+    setCategories((prevCats) => {
+      const newCats = [...prevCats];
+      toAdd.forEach((it) => {
+        if (!newCats.includes(it.category)) newCats.push(it.category);
+      });
+      return newCats;
+    });
+    setMenu((prevMenu) => {
+      const next = { ...prevMenu };
+      toAdd.forEach((it) => {
+        const list = next[it.category] || [];
+        next[it.category] = [...list, { id: newId("item"), name: it.name.trim(), tag: it.tag.trim(), price: Number(it.price), recipe: [] }];
+      });
+      return next;
+    });
+    flashNotice(t("notice_menuScanAdded", { n: toAdd.length }));
+    closeMenuScan();
+  };
+
   // Auto-submits the login PIN pad once 4 digits are entered, rather than requiring a separate
   // "enter" tap — feels like a normal POS PIN pad.
   useEffect(() => {
@@ -3838,7 +3958,7 @@ function POSPrototype({ tenantId }) {
             </div>
           )}
         </div>
-        {helpChatWidget}
+        {hasFeature("helpChat") && helpChatWidget}
       </div>
     );
   }
@@ -3875,6 +3995,7 @@ function POSPrototype({ tenantId }) {
           <div style={{ display: "flex", background: COLORS.inkSoft, borderRadius: 999, padding: 3, border: "1px solid #3A404C", flexWrap: isCompact ? "nowrap" : "wrap", overflowX: isCompact ? "auto" : undefined, maxWidth: isCompact ? "100%" : undefined, WebkitOverflowScrolling: "touch" }}>
             {["order", "menu", "stock", "tables", "delivery", "receipts", "expenses", "dashboard", "customers", "shift", "staff", "settings"]
               .filter((key) => (key !== "expenses" && key !== "dashboard") || isManager)
+              .filter((key) => key === "order" || key === "settings" || hasFeature(key))
               .map((key) => (
               <button
                 key={key}
@@ -4156,8 +4277,8 @@ function POSPrototype({ tenantId }) {
               <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("subtotal")}</span><span>{money(subtotal)}</span></div>
                 {discount && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("discount")}</span><span>-{money(discAmt)}</span></div>}
-                {servicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("serviceCharge")} ({servicePercent}%)</span><span>{money(serviceAmt)}</span></div>}
-                {vatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("vat")} ({vatPercent}%)</span><span>{money(vatAmt)}</span></div>}
+                {effectiveServicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("serviceCharge")} ({effectiveServicePercent}%)</span><span>{money(serviceAmt)}</span></div>}
+                {effectiveVatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("vat")} ({effectiveVatPercent}%)</span><span>{money(vatAmt)}</span></div>}
                 {deliveryMethod === "delivery" && deliveryFee > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}>
                     <span>{t("deliveryFeeLineLabel")}{deliveryZoneLabel ? ` (${deliveryZoneLabel})` : ""}</span><span>{money(deliveryFee)}</span>
@@ -4243,6 +4364,19 @@ function POSPrototype({ tenantId }) {
             <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("menuEditorSubtitle")}</div>
           </div>
 
+          {hasFeature("menuScan") && (
+            <div style={{ background: COLORS.inkSoft, border: `1px dashed ${theme.secondary}`, borderRadius: 10, padding: 16, marginBottom: 20, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 3 }}>{t("scanMenuButton")}</div>
+                <div style={{ fontSize: 11.5, color: "#8A8F99" }}>{t("scanMenuHint")}</div>
+              </div>
+              <label style={{ fontSize: 12.5, padding: "9px 16px", borderRadius: 7, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer", fontWeight: 500, flexShrink: 0 }}>
+                {t("scanMenuButton")}
+                <input type="file" accept="image/*" onChange={(e) => handleMenuScanFile(e.target.files?.[0])} style={{ display: "none" }} />
+              </label>
+            </div>
+          )}
+
           <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
             <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder={t("newCategoryPlaceholder")} className="field" style={{ flex: 1 }} />
             <button onClick={addCategory} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addCategory")}</button>
@@ -4318,6 +4452,77 @@ function POSPrototype({ tenantId }) {
                 <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
                   <button onClick={saveItemEditor} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>{t("saveItem")}</button>
                   <button onClick={closeItemEditor} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 13.5, cursor: "pointer" }}>{t("cancel")}</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {menuScanImage && (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }}>
+              <div style={{ background: COLORS.inkSoft, border: "1px solid #3A404C", borderRadius: 14, padding: 24, width: "100%", maxWidth: 520, maxHeight: "85vh", overflowY: "auto" }}>
+                <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 16 }}>{t("scanMenuModalTitle")}</div>
+
+                <div style={{ display: "flex", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
+                  <img src={menuScanImage} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 8, border: "1px solid #363C47", flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 180 }}>
+                    {menuScanning && <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("scanMenuScanning")}</div>}
+                    {menuScanError && <div style={{ fontSize: 13, color: "#E3A79C" }}>{menuScanError}</div>}
+                    {menuScanResults && !menuScanning && (
+                      <div style={{ fontSize: 13, color: theme.secondaryLight }}>{t("scanMenuReviewTitle", { n: menuScanResults.length })}</div>
+                    )}
+                  </div>
+                </div>
+
+                {menuScanResults && !menuScanning && (
+                  <>
+                    <div style={{ fontSize: 11.5, color: "#8A8F99", marginBottom: 12 }}>{t("scanMenuReviewHint")}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+                      {menuScanResults.map((it, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: COLORS.ink, borderRadius: 8, padding: "8px 10px", opacity: it.include ? 1 : 0.5 }}>
+                          <input type="checkbox" checked={it.include} onChange={(e) => updateMenuScanResult(i, { include: e.target.checked })} style={{ flexShrink: 0, width: 16, height: 16, cursor: "pointer" }} />
+                          <input
+                            type="text"
+                            value={it.category}
+                            onChange={(e) => updateMenuScanResult(i, { category: e.target.value })}
+                            className="field"
+                            style={{ width: 90, fontSize: 11.5, padding: "6px 8px", flexShrink: 0 }}
+                          />
+                          <input
+                            type="text"
+                            value={it.name}
+                            onChange={(e) => updateMenuScanResult(i, { name: e.target.value })}
+                            className="field"
+                            style={{ flex: 1, minWidth: 90, fontSize: 12.5, padding: "6px 8px" }}
+                          />
+                          <input
+                            type="number"
+                            value={it.price}
+                            onChange={(e) => updateMenuScanResult(i, { price: e.target.value })}
+                            className="field"
+                            style={{ width: 66, fontSize: 12.5, padding: "6px 8px", flexShrink: 0 }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  {menuScanResults && !menuScanning ? (
+                    <>
+                      <button onClick={addScannedItems} style={{ flex: 2, padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+                        {t("scanMenuAddButton", { n: menuScanResults.filter((it) => it.include).length })}
+                      </button>
+                      <label style={{ flex: 1, textAlign: "center", padding: "11px 0", borderRadius: 8, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 13, cursor: "pointer" }}>
+                        {t("scanMenuTryAgain")}
+                        <input type="file" accept="image/*" onChange={(e) => handleMenuScanFile(e.target.files?.[0])} style={{ display: "none" }} />
+                      </label>
+                    </>
+                  ) : (
+                    <button onClick={closeMenuScan} disabled={menuScanning} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 13.5, cursor: menuScanning ? "default" : "pointer", opacity: menuScanning ? 0.6 : 1 }}>
+                      {t("cancel")}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -5164,8 +5369,8 @@ function POSPrototype({ tenantId }) {
 
       {payTableModal && (() => {
         const modalSubtotal = payTableModal.items.reduce((s, it) => s + it.price * it.qty, 0);
-        const modalService = Math.round(modalSubtotal * (servicePercent / 100) * 100) / 100;
-        const modalVat = Math.round((modalSubtotal + modalService) * (vatPercent / 100) * 100) / 100;
+        const modalService = Math.round(modalSubtotal * (effectiveServicePercent / 100) * 100) / 100;
+        const modalVat = Math.round((modalSubtotal + modalService) * (effectiveVatPercent / 100) * 100) / 100;
         const modalTotal = modalSubtotal + modalService + modalVat;
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setPayTableModal(null)}>
@@ -5181,8 +5386,8 @@ function POSPrototype({ tenantId }) {
               ))}
               <div style={{ borderTop: "1px dashed #D8D0BE", marginTop: 10, paddingTop: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("subtotal")}</span><span>{money(modalSubtotal)}</span></div>
-                {servicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("serviceCharge")} ({servicePercent}%)</span><span>{money(modalService)}</span></div>}
-                {vatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("vat")} ({vatPercent}%)</span><span>{money(modalVat)}</span></div>}
+                {effectiveServicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("serviceCharge")} ({effectiveServicePercent}%)</span><span>{money(modalService)}</span></div>}
+                {effectiveVatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("vat")} ({effectiveVatPercent}%)</span><span>{money(modalVat)}</span></div>}
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, marginTop: 4 }}>
                   <span>{t("confirmPaymentBody")}</span><span>{money(modalTotal)}</span>
                 </div>
@@ -5481,45 +5686,47 @@ function POSPrototype({ tenantId }) {
                 </div>
               </div>
 
-              <div>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("taxesTitle")}</div>
-                <div style={{ fontSize: 11.5, color: "#8A8F99", marginBottom: 10 }}>{t("taxesHint")}</div>
-                <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-                  <div style={{ flex: 1, minWidth: 160 }}>
-                    <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("vatPercentLabel")}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        step="0.1"
-                        value={vatPercent}
-                        onChange={(e) => setVatPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                        className="field"
-                        style={{ width: 90 }}
-                      />
-                      <span style={{ fontSize: 13, color: "#9CA1AC" }}>%</span>
+              {hasFeature("vatService") && (
+                <div>
+                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("taxesTitle")}</div>
+                  <div style={{ fontSize: 11.5, color: "#8A8F99", marginBottom: 10 }}>{t("taxesHint")}</div>
+                  <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 160 }}>
+                      <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("vatPercentLabel")}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step="0.1"
+                          value={vatPercent}
+                          onChange={(e) => setVatPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                          className="field"
+                          style={{ width: 90 }}
+                        />
+                        <span style={{ fontSize: 13, color: "#9CA1AC" }}>%</span>
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 160 }}>
+                      <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("servicePercentLabel")}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step="0.1"
+                          value={servicePercent}
+                          onChange={(e) => setServicePercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                          className="field"
+                          style={{ width: 90 }}
+                        />
+                        <span style={{ fontSize: 13, color: "#9CA1AC" }}>%</span>
+                      </div>
                     </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 160 }}>
-                    <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("servicePercentLabel")}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        step="0.1"
-                        value={servicePercent}
-                        onChange={(e) => setServicePercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                        className="field"
-                        style={{ width: 90 }}
-                      />
-                      <span style={{ fontSize: 13, color: "#9CA1AC" }}>%</span>
-                    </div>
-                  </div>
+                  <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 8 }}>{t("taxesOrderNote")}</div>
                 </div>
-                <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 8 }}>{t("taxesOrderNote")}</div>
-              </div>
+              )}
 
               <div>
                 <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("previewLabel")}</div>
@@ -5534,7 +5741,7 @@ function POSPrototype({ tenantId }) {
           )}
         </div>
       )}
-      {helpChatWidget}
+      {hasFeature("helpChat") && helpChatWidget}
     </div>
   );
 }

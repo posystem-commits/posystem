@@ -20,7 +20,7 @@ function posLink(tenantId) {
   return `${window.location.origin}/t/${tenantId}`;
 }
 
-const emptyForm = { restaurant_name: "", contact_name: "", contact_email: "", contact_phone: "", paid_until: "", notes: "" };
+const emptyForm = { restaurant_name: "", contact_name: "", contact_email: "", contact_phone: "", paid_until: "", notes: "", package: "basic" };
 
 export default function AdminTenantsPage() {
   const [tenants, setTenants] = useState(null);
@@ -141,6 +141,11 @@ export default function AdminTenantsPage() {
             <input placeholder="Contact email" type="email" value={form.contact_email} onChange={(e) => setForm((f) => ({ ...f, contact_email: e.target.value }))} style={inputStyle} />
             <input placeholder="Contact phone" value={form.contact_phone} onChange={(e) => setForm((f) => ({ ...f, contact_phone: e.target.value }))} style={inputStyle} />
             <input placeholder="Notes (e.g. payment history)" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} style={inputStyle} />
+            <select value={form.package} onChange={(e) => setForm((f) => ({ ...f, package: e.target.value }))} style={inputStyle}>
+              <option value="basic">Basic</option>
+              <option value="standard">Standard</option>
+              <option value="premium">Premium</option>
+            </select>
             <button type="submit" disabled={saving} style={{ gridColumn: "1 / -1", padding: "10px 0", borderRadius: 7, border: "none", background: "#7C2D3B", color: "#fff", fontSize: 13.5, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Adding…" : "Add customer"}
             </button>
@@ -167,6 +172,7 @@ export default function AdminTenantsPage() {
                       </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 999, background: "#EFE9DA", color: "#6B5A3A", textTransform: "capitalize" }}>{tenant.package || "basic"}</span>
                       <span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 10px", borderRadius: 999, background: badge.bg, color: badge.fg }}>{badge.text}</span>
                       <span style={{ fontSize: 12.5, color: "#6B685F", fontFamily: "monospace" }}>paid until {tenant.paid_until}</span>
                       <button

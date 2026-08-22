@@ -90,3 +90,18 @@ create trigger tenant_pos_kv_set_updated_at
 -- a popup shown directly in each tenant's own POS terminal (app/api/pos/[tenantId]/status,
 -- computed live from tenants.paid_until) rather than a server-dispatched email, so there's no
 -- "did we send this yet" state to persist — the terminal just checks its own status on load.
+
+-- ---------------------------------------------------------------------------------------------
+-- Packages: which tenants (see tenants.package below) can use which big features. You define the
+-- Basic/Standard/Premium split yourself in /admin/packages — package_features just stores your
+-- toggle choices. lib/packageFeatures.js has the fixed list of toggleable feature keys and a
+-- default matrix used to seed a package the first time it's read with no rows yet, so this starts
+-- usable out of the box and you adjust from there rather than configuring from a blank slate.
+alter table tenants add column if not exists package text not null default 'basic' check (package in ('basic', 'standard', 'premium'));
+
+create table if not exists package_features (
+  package     text not null check (package in ('basic', 'standard', 'premium')),
+  feature_key text not null,
+  enabled     boolean not null default true,
+  primary key (package, feature_key)
+);

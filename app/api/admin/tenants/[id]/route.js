@@ -13,6 +13,7 @@ const EDITABLE_FIELDS = [
   "status",
   "paid_until",
   "notes",
+  "package",
 ];
 
 // PATCH /admin/tenants/:id — edit info, toggle active/paused, update paid_until.
@@ -22,6 +23,9 @@ export async function PATCH(req, { params }) {
 
   if (body.status && !["active", "paused"].includes(body.status)) {
     return NextResponse.json({ error: "status must be 'active' or 'paused'" }, { status: 400 });
+  }
+  if (body.package && !["basic", "standard", "premium"].includes(body.package)) {
+    return NextResponse.json({ error: "package must be 'basic', 'standard', or 'premium'" }, { status: 400 });
   }
   if (body.paid_until && Number.isNaN(Date.parse(body.paid_until))) {
     return NextResponse.json({ error: "paid_until must be a valid date" }, { status: 400 });
