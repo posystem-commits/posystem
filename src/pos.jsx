@@ -1786,6 +1786,19 @@ function POSPrototype({ tenantId }) {
     syncSet("ui-lang", next, false, t("syncLabelSettings"));
   };
 
+  // Fire-and-forget log of a "major" edit (restaurant name change, logo change, a menu scan) for
+  // /admin/activity to notice if this tenant makes an unusual number of them in a short window —
+  // see app/api/pos/[tenantId]/activity/route.js. Never awaited by callers and never surfaces an
+  // error to staff: this is a background admin-visibility signal, not something that should ever
+  // block or fail a real POS action (especially not while offline).
+  const logActivity = (eventType, detail) => {
+    fetch(`/api/pos/${encodeURIComponent(tenantId)}/activity`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_type: eventType, detail: detail || null }),
+    }).catch(() => {});
+  };
+
   // Persists the full branding bundle (name, logo, colors) together in one key, since they're
   // edited together on the Settings screen and read together everywhere else. Shared, same
   // reasoning as above — a QR-scanning customer needs to see the current branding too.
@@ -1796,6 +1809,18 @@ function POSPrototype({ tenantId }) {
   const updateRestaurantName = (value) => {
     setRestaurantName(value);
     persistBranding({ name: value, logo: logoUrl, primary: primaryColor, secondary: secondaryColor });
+  };
+  // The name field persists on every keystroke (see updateRestaurantName above), which would spam
+  // the activity log if logged there — instead, capture the value when the field gains focus and
+  // log a single event on blur, only if it actually ended up different.
+  const nameOnFocusRef = useRef(restaurantName);
+  const handleNameFocus = () => {
+    nameOnFocusRef.current = restaurantName;
+  };
+  const handleNameBlur = () => {
+    if (restaurantName !== nameOnFocusRef.current) {
+      logActivity("restaurant_name_changed", `"${nameOnFocusRef.current}" -> "${restaurantName}"`);
+    }
   };
   const updatePrimaryColor = (value) => {
     setPrimaryColor(value);
@@ -1822,6 +1847,7 @@ function POSPrototype({ tenantId }) {
       setLogoUrl(dataUrl);
       persistBranding({ name: restaurantName, logo: dataUrl, primary: primaryColor, secondary: secondaryColor });
       flashNotice(t("notice_logoUpdated"));
+      logActivity("logo_changed");
     };
     reader.onerror = () => flashNotice(t("notice_logoInvalidType"));
     reader.readAsDataURL(file);
@@ -3669,6 +3695,7 @@ function POSPrototype({ tenantId }) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || t("notice_menuScanFailed"));
         setMenuScanResults(data.items.map((it) => ({ ...it, include: true })));
+        logActivity("menu_scanned", `${data.items.length} item(s) read`);
       } catch (e) {
         setMenuScanError(e.message || t("notice_menuScanFailed"));
       } finally {
@@ -5675,7 +5702,7 @@ function POSPrototype({ tenantId }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               <div>
                 <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("restaurantNameLabel")}</div>
-                <input type="text" value={restaurantName} onChange={(e) => updateRestaurantName(e.target.value)} placeholder={t("restaurantNamePlaceholder")} className="field" style={{ width: "100%", boxSizing: "border-box" }} />
+                <input type="text" value={restaurantName} onChange={(e) => updateRestaurantName(e.target.value)} onFocus={handleNameFocus} onBlur={handleNameBlur} placeholder={t("restaurantNamePlaceholder")} className="field" style={{ width: "100%", boxSizing: "border-box" }} />
               </div>
 
               <div>

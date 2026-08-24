@@ -21,7 +21,28 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const tenants = data.map((t) => ({ ...t, days_remaining: daysRemaining(t.paid_until) }));
+  // The name typed in here when the tenant was created can drift from what the restaurant has
+  // since renamed their own terminal to, in their Settings tab (stored in the tenant_pos_kv
+  // "restaurant-branding" record) — surface that live value too so the list reflects reality.
+  const ids = data.map((t) => t.id);
+  let liveNameById = {};
+  if (ids.length > 0) {
+    const { data: brandingRows } = await supabaseAdmin()
+      .from("tenant_pos_kv")
+      .select("tenant_id, value")
+      .eq("key", "restaurant-branding")
+      .in("tenant_id", ids);
+    (brandingRows || []).forEach((row) => {
+      try {
+        const parsed = JSON.parse(row.value);
+        if (parsed?.name) liveNameById[row.tenant_id] = parsed.name;
+      } catch (e) {
+        // malformed/legacy value — just skip it, the admin-recorded name still shows
+      }
+    });
+  }
+
+  const tenants = data.map((t) => ({ ...t, days_remaining: daysRemaining(t.paid_until), live_name: liveNameById[t.id] || null }));
   return NextResponse.json({ tenants });
 }
 

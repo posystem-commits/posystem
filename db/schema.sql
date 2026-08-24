@@ -105,3 +105,19 @@ create table if not exists package_features (
   enabled     boolean not null default true,
   primary key (package, feature_key)
 );
+
+-- ---------------------------------------------------------------------------------------------
+-- Activity log: records "major" edits made from inside a tenant's own POS terminal (restaurant
+-- name change, logo change, a menu scan) so /admin/activity can flag a tenant making an unusual
+-- number of them recently — see app/api/pos/[tenantId]/activity/route.js (writer) and
+-- app/api/admin/activity/route.js (the >2-in-30-days read). Append-only; rows are never updated.
+create table if not exists tenant_activity_log (
+  id          bigint generated always as identity primary key,
+  tenant_id   uuid not null references tenants(id) on delete cascade,
+  event_type  text not null,
+  detail      text,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists tenant_activity_log_tenant_created_idx
+  on tenant_activity_log (tenant_id, created_at desc);

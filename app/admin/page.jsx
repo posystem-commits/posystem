@@ -72,6 +72,11 @@ function TenantRow({ tenant, onToggleStatus, onCopyLink, copiedId }) {
           <Link href={`/admin/tenants/${tenant.id}`} style={{ fontSize: 14.5, fontWeight: 600, color: COLORS.ink, textDecoration: "none" }}>
             {tenant.restaurant_name}
           </Link>
+          {tenant.live_name && (
+            <div style={{ fontSize: 11.5, color: tenant.live_name !== tenant.restaurant_name ? COLORS.amber : COLORS.charcoalSoft, marginTop: 3 }}>
+              On their terminal: <strong>{tenant.live_name}</strong>
+            </div>
+          )}
           <div style={{ fontSize: 12, color: COLORS.charcoalSoft, marginTop: 3 }}>
             {tenant.contact_name || tenant.contact_email || tenant.contact_phone || "No contact on file"}
           </div>
