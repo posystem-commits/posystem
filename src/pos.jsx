@@ -199,6 +199,10 @@ const STRINGS = {
     changeLogo: "Change logo",
     removeLogoBtn: "Remove logo",
     noLogoUploaded: "No logo uploaded — a text name is used instead.",
+    locationLabel: "Location",
+    locationPlaceholder: "Paste a Google Maps link, or type your address",
+    locationHint: "Adds a \"Get directions\" button to your online-ordering link, so customers can navigate straight to you. Open your restaurant in Google Maps, tap Share, and paste the link here — or just type your address.",
+    getDirectionsButton: "Get directions",
     primaryColorLabel: "Primary color",
     secondaryColorLabel: "Secondary color",
     primaryColorHint: "Used for buttons, the active tab, and key actions.",
@@ -679,6 +683,10 @@ const STRINGS = {
     changeLogo: "تغيير الشعار",
     removeLogoBtn: "إزالة الشعار",
     noLogoUploaded: "لم يتم رفع شعار — يُستخدم الاسم النصي بدلاً منه.",
+    locationLabel: "الموقع",
+    locationPlaceholder: "الصق رابط خرائط جوجل، أو اكتب عنوانك",
+    locationHint: "يضيف زر \"احصل على الاتجاهات\" إلى رابط الطلب عبر الإنترنت، ليتمكن العملاء من الوصول إليك مباشرة. افتح مطعمك في خرائط جوجل، اضغط مشاركة، والصق الرابط هنا — أو اكتب عنوانك فقط.",
+    getDirectionsButton: "احصل على الاتجاهات",
     primaryColorLabel: "اللون الأساسي",
     secondaryColorLabel: "اللون الثانوي",
     primaryColorHint: "يُستخدم للأزرار والتبويب النشط والإجراءات الرئيسية.",
@@ -1201,6 +1209,19 @@ const lighten = (hex, amount) => {
   return `#${toHex(mix(r))}${toHex(mix(g))}${toHex(mix(b))}`;
 };
 
+// Turns whatever a restaurant owner pasted into the "Location" field into a clickable link that
+// opens Google Maps and starts directions there. Accepts either a real Google Maps link (e.g.
+// copied from that app/site's own Share button — used as-is, since it already points at the
+// right pin) or a plain address (wrapped in Google's documented no-API-key-required directions
+// URL scheme, which opens turn-by-turn navigation to that destination). Returns null if nothing
+// or only whitespace was ever set, so callers can cleanly hide the button.
+const buildMapsHref = (mapsLink) => {
+  const trimmed = (mapsLink || "").trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(trimmed)}`;
+};
+
 // Wraps receipt body markup in a small standalone printable document (shared by both the
 // on-page print path and the downloadable file below).
 const receiptDocument = (title, bodyHtml, autoPrint, rtl) => `<!DOCTYPE html>
@@ -1447,6 +1468,7 @@ function POSPrototype({ tenantId }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [primaryColor, setPrimaryColor] = useState(COLORS.burgundy);
   const [secondaryColor, setSecondaryColor] = useState(COLORS.brass);
+  const [mapsLink, setMapsLink] = useState(""); // a Google Maps place link, or a plain address — see openInGoogleMaps
   const [brandingLoaded, setBrandingLoaded] = useState(false);
 
   const [vatPercent, setVatPercent] = useState(0);
@@ -1609,6 +1631,7 @@ function POSPrototype({ tenantId }) {
           setLogoUrl(parsed.logo || null);
           setPrimaryColor(parsed.primary || theme.primary);
           setSecondaryColor(parsed.secondary || theme.secondary);
+          setMapsLink(parsed.mapsLink || "");
         }
       } catch (e) {
         // fall back to defaults already set
@@ -1808,7 +1831,7 @@ function POSPrototype({ tenantId }) {
   };
   const updateRestaurantName = (value) => {
     setRestaurantName(value);
-    persistBranding({ name: value, logo: logoUrl, primary: primaryColor, secondary: secondaryColor });
+    persistBranding({ name: value, logo: logoUrl, primary: primaryColor, secondary: secondaryColor, mapsLink });
   };
   // The name field persists on every keystroke (see updateRestaurantName above), which would spam
   // the activity log if logged there — instead, capture the value when the field gains focus and
@@ -1824,11 +1847,15 @@ function POSPrototype({ tenantId }) {
   };
   const updatePrimaryColor = (value) => {
     setPrimaryColor(value);
-    persistBranding({ name: restaurantName, logo: logoUrl, primary: value, secondary: secondaryColor });
+    persistBranding({ name: restaurantName, logo: logoUrl, primary: value, secondary: secondaryColor, mapsLink });
   };
   const updateSecondaryColor = (value) => {
     setSecondaryColor(value);
-    persistBranding({ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: value });
+    persistBranding({ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: value, mapsLink });
+  };
+  const updateMapsLink = (value) => {
+    setMapsLink(value);
+    persistBranding({ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: secondaryColor, mapsLink: value });
   };
   const MAX_LOGO_BYTES = 700 * 1024; // keep the header/receipts snappy and well under the storage cap
   const handleLogoFile = (file) => {
@@ -1845,7 +1872,7 @@ function POSPrototype({ tenantId }) {
     reader.onload = () => {
       const dataUrl = reader.result;
       setLogoUrl(dataUrl);
-      persistBranding({ name: restaurantName, logo: dataUrl, primary: primaryColor, secondary: secondaryColor });
+      persistBranding({ name: restaurantName, logo: dataUrl, primary: primaryColor, secondary: secondaryColor, mapsLink });
       flashNotice(t("notice_logoUpdated"));
       logActivity("logo_changed");
     };
@@ -1854,7 +1881,7 @@ function POSPrototype({ tenantId }) {
   };
   const removeLogo = () => {
     setLogoUrl(null);
-    persistBranding({ name: restaurantName, logo: null, primary: primaryColor, secondary: secondaryColor });
+    persistBranding({ name: restaurantName, logo: null, primary: primaryColor, secondary: secondaryColor, mapsLink });
   };
 
   // Looks up a UI string in the current language, falling back to English, with {{var}}
@@ -5728,6 +5755,12 @@ function POSPrototype({ tenantId }) {
                 {!logoUrl && <div style={{ fontSize: 11.5, color: "#8A8F99", marginTop: 8 }}>{t("noLogoUploaded")}</div>}
               </div>
 
+              <div>
+                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("locationLabel")}</div>
+                <input type="text" value={mapsLink} onChange={(e) => updateMapsLink(e.target.value)} placeholder={t("locationPlaceholder")} className="field" style={{ width: "100%", boxSizing: "border-box" }} />
+                <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 6, lineHeight: 1.5 }}>{t("locationHint")}</div>
+              </div>
+
               <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("primaryColorLabel")}</div>
@@ -5822,6 +5855,7 @@ function CustomerMenuView({ tableId, tenantId }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [primaryColor, setPrimaryColor] = useState(COLORS.burgundy);
   const [secondaryColor, setSecondaryColor] = useState(COLORS.brass);
+  const [mapsLink, setMapsLink] = useState("");
   const [categories, setCategories] = useState([]);
   const [menu, setMenu] = useState({});
   const [availability, setAvailability] = useState({}); // { [itemId]: true|false } — boolean only, never raw stock
@@ -5889,6 +5923,7 @@ function CustomerMenuView({ tableId, tenantId }) {
           setLogoUrl(b.logo || null);
           setPrimaryColor(b.primary || COLORS.burgundy);
           setSecondaryColor(b.secondary || COLORS.brass);
+          setMapsLink(b.mapsLink || "");
         }
         if (menuRes?.value) {
           const m = JSON.parse(menuRes.value);
@@ -6082,6 +6117,17 @@ function CustomerMenuView({ tableId, tenantId }) {
             ))}
           </div>
         </div>
+
+        {isGeneralLink && buildMapsHref(mapsLink) && (
+          <a
+            href={buildMapsHref(mapsLink)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, padding: "8px 14px", borderRadius: 999, border: `1px solid ${theme.secondary}`, color: theme.secondaryLight, fontSize: 12.5, fontWeight: 600, textDecoration: "none" }}
+          >
+            📍 {t("getDirectionsButton")}
+          </a>
+        )}
 
         {isGeneralLink && (
           <div style={{ background: COLORS.inkSoft, border: `1px solid ${zoneChoiceError ? COLORS.red : "#3A404C"}`, borderRadius: 10, padding: 14, marginBottom: 20, marginTop: 10 }}>
