@@ -41,9 +41,12 @@ export default function AdminNav() {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
-        <span style={{ fontFamily: FONT_SERIF, fontWeight: 600, fontSize: 17, color: COLORS.burgundy, letterSpacing: 0.2 }}>
-          POS Admin
-        </span>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 9 }}>
+          <span style={{ fontFamily: FONT_SERIF, fontWeight: 600, fontSize: 18, color: COLORS.burgundy, letterSpacing: 0.2 }}>
+            G&amp;B
+          </span>
+          <span style={{ fontSize: 11, color: COLORS.charcoalSoft, letterSpacing: 1.2, textTransform: "uppercase" }}>Admin</span>
+        </div>
         <div style={{ display: "flex", gap: 2 }}>
           {LINKS.map((link) => {
             const active = pathname === link.href;

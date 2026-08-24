@@ -74,7 +74,10 @@ export default function AdminLoginPage() {
         onSubmit={submit}
         style={{ width: "100%", maxWidth: 360, background: COLORS.card, borderRadius: RADIUS.xl, padding: "36px 32px", boxShadow: SHADOW.raised, border: `1px solid ${COLORS.line}` }}
       >
-        <div style={{ fontFamily: FONT_SERIF, fontWeight: 600, fontSize: 24, color: COLORS.burgundy, marginBottom: 6 }}>POS Admin</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+          <span style={{ fontFamily: FONT_SERIF, fontWeight: 600, fontSize: 26, color: COLORS.burgundy }}>G&amp;B</span>
+          <span style={{ fontSize: 11.5, color: COLORS.charcoalSoft, letterSpacing: 1.2, textTransform: "uppercase" }}>Admin</span>
+        </div>
         <p style={{ fontSize: 13.5, color: COLORS.charcoalSoft, marginTop: 0, marginBottom: 26, lineHeight: 1.5 }}>Sign in to manage restaurant customers.</p>
 
         <FormField label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

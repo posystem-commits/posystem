@@ -1,8 +1,8 @@
 import { FONT_IMPORT_URL, FONT_SANS, COLORS } from "@/lib/theme";
 
 export const metadata = {
-  title: "POS Admin",
-  description: "Multi-tenant POS admin dashboard",
+  title: "G&B Admin",
+  description: "G&B multi-tenant POS admin dashboard",
 };
 
 export default function RootLayout({ children }) {

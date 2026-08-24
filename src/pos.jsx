@@ -4041,6 +4041,7 @@ function POSPrototype({ tenantId }) {
               <button onClick={() => setLoginAddMode(true)} style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "1px dashed #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 12.5, cursor: "pointer" }}>{t("loginAddYourself")}</button>
             </div>
           )}
+          <div style={{ textAlign: "center", marginTop: 28, fontSize: 10, letterSpacing: 0.6, color: "#4A4F5A" }}>G&amp;B</div>
         </div>
         {hasFeature("helpChat") && helpChatWidget}
       </div>
@@ -4158,6 +4159,10 @@ function POSPrototype({ tenantId }) {
             <button onClick={clockOut} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("clockOut")}</button>
           </div>
         </div>
+      </div>
+
+      <div style={{ textAlign: "right", padding: isMobile ? "5px 14px" : "5px 32px", fontSize: 10, letterSpacing: 0.6, color: "#5A5F6A" }}>
+        G&amp;B
       </div>
 
       {notice && (
@@ -6255,6 +6260,7 @@ function CustomerMenuView({ tableId, tenantId }) {
             </div>
           ))
         )}
+        <div style={{ textAlign: "center", marginTop: 30, fontSize: 10, letterSpacing: 0.6, color: "#4A4F5A" }}>G&amp;B</div>
       </div>
 
       {cartCount > 0 && (
