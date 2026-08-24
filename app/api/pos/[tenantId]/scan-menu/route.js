@@ -25,6 +25,18 @@ export async function POST(req, { params }) {
   if (!match) return NextResponse.json({ error: "Malformed image data URL" }, { status: 400 });
   const [, mediaType, base64Data] = match;
 
+  // Claude's vision API only accepts these four formats. iPhones save photos as HEIC/HEIF by
+  // default ("High Efficiency" camera setting) — that upload would otherwise sail through our
+  // own checks (it's still a valid image/* file) and fail deep inside the Anthropic call with a
+  // confusing error, so catch it here with an actionable message instead.
+  const SUPPORTED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  if (!SUPPORTED_MEDIA_TYPES.includes(mediaType.toLowerCase())) {
+    return NextResponse.json(
+      { error: "That photo format isn't supported (only JPG, PNG, GIF, or WEBP). If you're on an iPhone, turn off \"High Efficiency\" in Settings > Camera > Formats, or choose \"Use as JPEG\" when picking the photo." },
+      { status: 415 }
+    );
+  }
+
   // Roughly caps the original file around ~8MB (base64 inflates size by ~4/3) — comfortably under
   // Anthropic's per-image limit while keeping request bodies reasonable.
   if (base64Data.length > 11_000_000) {
@@ -76,29 +88,50 @@ Respond with ONLY a JSON array, no other text, no markdown code fences:
     .join("\n")
     .trim();
 
-  // Claude sometimes wraps JSON in a code fence despite being told not to — strip it if present.
-  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+  // Claude sometimes ignores "respond with ONLY a JSON array" and adds a code fence, a leading
+  // sentence ("Here's what I found:"), or a trailing note — strip fences first, then fall back to
+  // just grabbing the outermost [ ... ] substring so any stray prose around it doesn't break
+  // JSON.parse.
+  let cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+  const firstBracket = cleaned.indexOf("[");
+  const lastBracket = cleaned.lastIndexOf("]");
+  if (firstBracket !== -1 && lastBracket > firstBracket) {
+    cleaned = cleaned.slice(firstBracket, lastBracket + 1);
+  }
 
   let items;
   try {
     items = JSON.parse(cleaned);
   } catch (e) {
+    console.error("scan-menu: failed to parse Claude response as JSON:", text);
     return NextResponse.json({ error: "Couldn't read a menu from that photo — try a clearer or better-lit shot." }, { status: 422 });
   }
   if (!Array.isArray(items)) {
+    console.error("scan-menu: Claude response parsed but wasn't an array:", text);
     return NextResponse.json({ error: "Couldn't read a menu from that photo — try a clearer or better-lit shot." }, { status: 422 });
   }
+
+  // Prices sometimes come back as strings with a currency symbol, thousands separator, or stray
+  // whitespace despite the prompt asking for a plain number (e.g. "$12.50", "150 EGP", "1,200") —
+  // strip everything but digits/decimal point before parsing, rather than rejecting the item.
+  const parsePrice = (raw) => {
+    if (typeof raw === "number") return raw;
+    if (typeof raw !== "string") return NaN;
+    const cleaned = raw.replace(/[^0-9.]/g, "");
+    return cleaned ? Number(cleaned) : NaN;
+  };
 
   const cleanItems = items
     .map((it) => ({
       category: String(it?.category || "").trim() || "Menu",
       name: String(it?.name || "").trim(),
       tag: String(it?.tag || "").trim(),
-      price: Number(it?.price),
+      price: parsePrice(it?.price),
     }))
     .filter((it) => it.name && Number.isFinite(it.price) && it.price > 0);
 
   if (cleanItems.length === 0) {
+    console.error("scan-menu: parsed items but none survived validation:", JSON.stringify(items));
     return NextResponse.json({ error: "Didn't find any readable menu items in that photo." }, { status: 422 });
   }
 
