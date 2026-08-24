@@ -43,15 +43,17 @@ export async function POST(req, { params }) {
     return NextResponse.json({ error: "Image is too large — try a smaller photo or a tighter crop." }, { status: 413 });
   }
 
-  const prompt = `This image is a photo or scan of a restaurant menu. Extract every distinct dish/drink you can confidently read.
+  const prompt = `This image is a photo or scan of a restaurant menu, possibly in Arabic or another non-Latin script, and possibly right-to-left. Extract every distinct dish/drink you can confidently read.
 
 For each item, extract:
-- "category": the section heading it appears under (e.g. "Starters", "Mains", "Drinks", "Desserts"). If no heading is visible, infer a sensible one from context.
-- "name": the dish name, exactly as written.
-- "tag": a short description if the menu shows one (ingredients, style — whatever's printed beneath/beside the name). Empty string if none is shown.
-- "price": the numeric price only, no currency symbol, using "." as the decimal separator (e.g. 12.50). If a price is genuinely illegible or missing for an item, omit that item entirely rather than guessing a number.
+- "category": the section heading it appears under, in whatever script/language it's written in the image (e.g. "Starters", or its Arabic equivalent). If no heading is visible, infer a sensible one from context.
+- "name": the dish name, exactly as written, in its original script — do not translate or transliterate it.
+- "tag": a short description if the menu shows one (ingredients, style — whatever's printed beneath/beside the name, e.g. text in parentheses). Empty string if none is shown.
+- "price": the price as a plain JSON number (not a string, not in quotes) — e.g. 23, 23.5, or 150. Menus may print prices using Eastern Arabic-Indic digits (٠١٢٣٤٥٦٧٨٩) or a comma as the decimal separator (e.g. "٢٣,٠٠") — convert these to an ordinary JSON number (23.00), never output the Arabic-Indic digit characters themselves anywhere in the JSON. If a price is genuinely illegible or missing for an item, omit that item entirely rather than guessing a number.
 
-Respond with ONLY a JSON array, no other text, no markdown code fences:
+If the menu has many items, extract ALL of them — do not stop partway or summarize. Keep "tag" brief so you have room to list every item.
+
+Respond with ONLY a JSON array, no other text, no markdown code fences, and make sure it is complete, valid, well-formed JSON (every object and the array itself must be properly closed):
 [{"category": "...", "name": "...", "tag": "...", "price": 12.5}, ...]`;
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -63,7 +65,11 @@ Respond with ONLY a JSON array, no other text, no markdown code fences:
     },
     body: JSON.stringify({
       model: (process.env.ANTHROPIC_MODEL || "claude-sonnet-5").trim(),
-      max_tokens: 4096,
+      // Dense menus (large item counts, or scripts like Arabic that tokenize less efficiently than
+      // Latin text) can produce a long JSON response — 4096 was getting cut off mid-array on real
+      // menus, which broke JSON.parse regardless of how clear the photo was. 8192 gives real
+      // headroom; the truncation-repair fallback below still catches anything longer than that.
+      max_tokens: 8192,
       messages: [
         {
           role: "user",
@@ -99,12 +105,31 @@ Respond with ONLY a JSON array, no other text, no markdown code fences:
     cleaned = cleaned.slice(firstBracket, lastBracket + 1);
   }
 
+  // On a very dense menu, the response can still get cut off mid-object even at 8192 tokens —
+  // rather than losing the whole scan, salvage everything up to the last item that finished
+  // cleanly: walk backwards from the end to each "}" and try closing the array there.
+  const repairTruncatedArray = (str) => {
+    for (let i = str.length - 1; i >= 0; i--) {
+      if (str[i] !== "}") continue;
+      const candidate = `${str.slice(0, i + 1)}]`;
+      try {
+        return JSON.parse(candidate);
+      } catch (e) {
+        // keep walking further back
+      }
+    }
+    return null;
+  };
+
   let items;
   try {
     items = JSON.parse(cleaned);
   } catch (e) {
-    console.error("scan-menu: failed to parse Claude response as JSON:", text);
-    return NextResponse.json({ error: "Couldn't read a menu from that photo — try a clearer or better-lit shot." }, { status: 422 });
+    items = repairTruncatedArray(cleaned);
+    if (!items) {
+      console.error("scan-menu: failed to parse Claude response as JSON:", text);
+      return NextResponse.json({ error: "Couldn't read a menu from that photo — try a clearer or better-lit shot." }, { status: 422 });
+    }
   }
   if (!Array.isArray(items)) {
     console.error("scan-menu: Claude response parsed but wasn't an array:", text);
