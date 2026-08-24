@@ -1071,7 +1071,8 @@ const buildHelpSystemPrompt = (restaurantName, lang) => {
   // what's actually printed on the button, rather than the model improvising its own translation
   // that might use slightly different (if reasonable) Arabic wording than the real interface.
   const glossaryKeys = [
-    "tab_order", "tab_menu", "tab_stock", "tab_tables", "tab_receipts", "tab_customers", "tab_shift", "tab_staff", "tab_settings",
+    "tab_order", "tab_menu", "tab_stock", "tab_tables", "tab_delivery", "tab_receipts", "tab_expenses", "tab_dashboard",
+    "tab_customers", "tab_shift", "tab_staff", "tab_settings",
     "addDiscount", "splitBill", "saveOrder", "printReceipt", "download", "clockOut", "clockIn",
     "qrCode", "addCategory", "addItem", "addEmployee", "editPin", "restock10",
     "confirmOrder", "rejectOrder", "openTicket", "cancelOrder", "refundOrder",
@@ -1087,15 +1088,23 @@ When you refer to a tab or button, use the EXACT text below verbatim — it's pu
 ${glossary}
 
 ## App structure (tabs in the header)
+Not every tab below is necessarily visible right now — which tabs show up depends on this
+restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboard are only ever
+visible to a manager even on a package that includes them. If someone asks about a tab/feature you
+don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
+that you don't see it and it may not be included in their current plan — don't guess.
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount), split the bill evenly among any number of people (+ Split bill), choose a payment method, then Save order. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
-- **Menu**: add/edit/delete categories and dishes. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. A dish with no recipe set is treated as always in stock.
+- **Menu**: add/edit/delete categories and dishes. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. A dish with no recipe set is treated as always in stock. There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Use +10 restock or the +/- buttons to adjust.
-- **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order.
-- **Receipts**: monthly order history. Cancel (restores stock, use when an order never went out), Refund (stock stays deducted, use when it was already served), or Edit a saved order. Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number.
+- **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
+- **Delivery**: shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout.
+- **Receipts**: monthly order history. Cancel (restores stock, use when an order never went out), Refund (stock stays deducted, use when it was already served), or Edit a saved order. Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
+- **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
+- **Dashboard** (manager-only): today's revenue, this month's revenue/orders/average order value, net profit (revenue minus logged expenses), a daily revenue trend chart, and top-selling items.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day. "Clock out" ends their shift and shows a recap.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard and shift history.
-- **Settings**: restaurant name, logo, and primary/secondary brand colors — these apply across the whole app and printed receipts. Also the EN/AR language toggle in the header.
+- **Settings**: restaurant name, logo, and primary/secondary brand colors — these apply across the whole app and printed receipts. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). Also the EN/AR language toggle in the header.
 
 ## How staff log in
 The app requires clocking in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
