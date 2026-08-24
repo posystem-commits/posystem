@@ -1189,7 +1189,7 @@ function initials(name) {
     .join("");
 }
 
-const money = (n) => `$${n.toFixed(2)}`;
+const money = (n) => `${n.toFixed(2)} EGP`;
 const fmtQty = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
 const escapeHtml = (s) =>
