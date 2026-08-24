@@ -479,6 +479,7 @@ const STRINGS = {
     notice_orderRefunded: "Order #{{n}} refunded — stock not restored",
     notice_noPhoneOnFile: "Order #{{n}} has no phone number on file — couldn't send WhatsApp update",
     notice_whatsappSentTo: "WhatsApp update sent to {{name}}",
+    notice_whatsappOpenedFor: "WhatsApp opened for {{name}} — tap Send there to notify them",
     notice_whatsappBackendFailed: "Couldn't reach WhatsApp backend — showing the message to send manually",
     whatsappFallbackTitle: "Send this update via WhatsApp",
     whatsappFallbackSubtitle: "No WhatsApp backend is configured yet, so this can't be sent automatically. Copy the message below or open it directly in WhatsApp.",
@@ -958,6 +959,7 @@ const STRINGS = {
     notice_orderRefunded: "تم استرجاع الطلب رقم {{n}} — لم تتم استعادة المخزون",
     notice_noPhoneOnFile: "الطلب رقم {{n}} لا يحتوي على رقم هاتف مسجل — تعذّر إرسال رسالة نصية",
     notice_whatsappSentTo: "تم إرسال تحديث واتساب إلى {{name}}",
+    notice_whatsappOpenedFor: "تم فتح واتساب لـ {{name}} — اضغط إرسال هناك لإعلامه",
     notice_whatsappBackendFailed: "تعذّر الوصول إلى خادم واتساب — سيتم عرض الرسالة لإرسالها يدويًا",
     whatsappFallbackTitle: "أرسل هذا التحديث عبر واتساب",
     whatsappFallbackSubtitle: "لم يتم إعداد خادم واتساب بعد، لذا لا يمكن إرسالها تلقائيًا. انسخ الرسالة أدناه أو افتحها مباشرة في واتساب.",
@@ -3179,8 +3181,21 @@ function POSPrototype({ tenantId }) {
       }
     }
 
+    // No backend configured (the common case — see WHATSAPP_BACKEND_URL above): rather than
+    // showing our own modal that staff must read and click through first, jump straight to the
+    // wa.me deep link. This still opens WhatsApp with the message pre-filled and still requires
+    // one manual tap of Send there — WhatsApp itself never allows a page to send on someone's
+    // behalf without that tap, no app can bypass it — but it removes the extra step of our own
+    // confirmation screen in between. Called synchronously within the original click handler (no
+    // await precedes this when there's no backend), so this still counts as a user gesture and
+    // won't be popup-blocked. Only falls back to the old modal if the browser blocks it anyway.
     if (!sentSilently) {
-      setWhatsappFallback({ phone: phoneDigits, message, name: receipt.customer?.name || phoneDigits });
+      const waWindow = window.open(`https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+      if (waWindow) {
+        flashNotice(t("notice_whatsappOpenedFor", { name: receipt.customer?.name || phoneDigits }));
+      } else {
+        setWhatsappFallback({ phone: phoneDigits, message, name: receipt.customer?.name || phoneDigits });
+      }
     }
 
     const logEntry = { status: statusId, sentAt: new Date().toISOString(), phone: receipt.customer?.phone, silent: sentSilently };
