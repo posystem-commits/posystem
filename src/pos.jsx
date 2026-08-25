@@ -3872,6 +3872,18 @@ function POSPrototype({ tenantId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabPinInput]);
 
+  // Reads the digit a keydown represents, whether it came from the number row or the numpad.
+  // e.key alone isn't reliable for the numpad: with NumLock off, those same physical keys report
+  // e.key as "Home"/"End"/"PageUp"/arrows/etc. instead of a digit (that's the actual key's other
+  // function), which is exactly why typing a PIN on the numpad would intermittently stop working
+  // depending on NumLock state. e.code identifies the physical key ("Numpad0".."Numpad9")
+  // regardless of NumLock, so fall back to that when e.key isn't already a plain digit.
+  const digitFromKeyEvent = (e) => {
+    if (e.key >= "0" && e.key <= "9") return e.key;
+    if (/^Numpad[0-9]$/.test(e.code)) return e.code.slice(-1);
+    return null;
+  };
+
   // Lets the PIN screen also be typed on a physical keyboard, not just tapped on the on-screen
   // pad — there's no real <input> behind those digit buttons (by design, so nothing shows in
   // autofill/password managers), so keystrokes need to be captured directly. Mirrors the button
@@ -3880,9 +3892,10 @@ function POSPrototype({ tenantId }) {
   useEffect(() => {
     if (!loginSelectedId) return;
     const onKeyDown = (e) => {
-      if (e.key >= "0" && e.key <= "9") {
+      const digit = digitFromKeyEvent(e);
+      if (digit !== null) {
         setLoginError(false);
-        setLoginPin((p) => (p.length < 4 ? p + e.key : p));
+        setLoginPin((p) => (p.length < 4 ? p + digit : p));
       } else if (e.key === "Backspace") {
         setLoginPin((p) => p.slice(0, -1));
       }
@@ -3890,6 +3903,23 @@ function POSPrototype({ tenantId }) {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [loginSelectedId]);
+
+  // Same physical-keyboard support for the manager-PIN prompt shown when a non-manager taps a
+  // gated tab — this one never had it at all, only the login screen did.
+  useEffect(() => {
+    if (!tabPinPrompt) return;
+    const onKeyDown = (e) => {
+      const digit = digitFromKeyEvent(e);
+      if (digit !== null) {
+        setTabPinError(false);
+        setTabPinInput((p) => (p.length < 4 ? p + digit : p));
+      } else if (e.key === "Backspace") {
+        setTabPinInput((p) => p.slice(0, -1));
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [tabPinPrompt]);
 
   // Built once per render and dropped into whichever screen is currently showing (login gate or
   // the main app) — a floating help button plus a slide-up chat panel, backed by a real call to
