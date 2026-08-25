@@ -1682,7 +1682,15 @@ function POSPrototype({ tenantId }) {
       try {
         const result = await getSharedWithRetry(storage, "tab-access-config");
         const parsed = result?.value ? JSON.parse(result.value) : null;
-        if (parsed?.pinGated) setPinGatedTabs(parsed.pinGated);
+        if (parsed?.pinGated) {
+          setPinGatedTabs(parsed.pinGated);
+        } else {
+          // No config has ever been saved for this tenant — Expenses/Dashboard used to be
+          // unconditionally hidden from non-managers before this setting existed, so default
+          // them to locked rather than wide open, preserving that expectation until a manager
+          // actively chooses otherwise in Settings > Tab access.
+          setPinGatedTabs(["expenses", "dashboard"]);
+        }
       } catch (e) {
         // fall back to no tabs gated
       }
@@ -1898,10 +1906,13 @@ function POSPrototype({ tenantId }) {
   };
 
   // Order-taking is deliberately never gate-able — it's the one thing every employee needs
-  // immediate access to regardless of what a manager has locked down. Expenses/Dashboard aren't
-  // offered here either — they're already manager-only (hidden from staff entirely, not just
-  // PIN-gated), so adding them would just be a confusing redundant toggle.
-  const GATEABLE_TABS = ["menu", "stock", "tables", "delivery", "receipts", "customers", "shift", "staff", "settings"];
+  // immediate access to regardless of what a manager has locked down. Expenses/Dashboard use this
+  // same mechanism (see the default-gated fallback in the tab-access-config load effect above) —
+  // they used to be unconditionally hidden from non-managers with no way to change that; now a
+  // manager can choose to unlock them like any other tab, but they still start out locked for
+  // anyone who's never touched this setting, so nothing about the old default behavior changes on
+  // its own.
+  const GATEABLE_TABS = ["menu", "stock", "tables", "delivery", "receipts", "expenses", "dashboard", "customers", "shift", "staff", "settings"];
 
   // A manager who's already clocked in has proven who they are for this whole session, so gated
   // tabs open normally for them — the PIN prompt is only ever shown to non-manager staff, and only
@@ -1996,19 +2007,14 @@ function POSPrototype({ tenantId }) {
   // fetch resolves, rather than flashing tabs a Basic tenant shouldn't see and then hiding them.
   const hasFeature = (key) => !!tenantStatus?.features?.[key];
 
-  // Defense in depth: manager-only tabs (Expenses, Dashboard) are only ever shown to managers,
-  // but if a role change happens to leave a non-manager sitting on one of them (e.g. someone else
-  // just demoted them while it was open), bounce them back to Order rather than leaving a
-  // restricted screen visible. Same idea for package-gated tabs — if the admin downgrades this
-  // restaurant's package while a now-disallowed tab is open, don't leave it up.
+  // Defense in depth: if package-gated tabs are open when the admin downgrades this restaurant's
+  // package mid-session, don't leave a now-disallowed screen up — bounce back to Order.
   const PACKAGE_GATED_VIEWS = ["menu", "stock", "tables", "delivery", "receipts", "expenses", "dashboard", "customers", "shift", "staff"];
   useEffect(() => {
     if (PACKAGE_GATED_VIEWS.includes(view) && tenantStatus?.features && !hasFeature(view)) setView("order");
   }, [view, tenantStatus?.features]);
-  useEffect(() => {
-    if ((view === "expenses" || view === "dashboard") && !isManager) setView("order");
-  }, [view, isManager]);
-  // Same idea for PIN-gated tabs: `view` is component state that outlives any single employee's
+  // Same idea for PIN-gated tabs (which now includes Expenses/Dashboard — see GATEABLE_TABS):
+  // `view` is component state that outlives any single employee's
   // sitting (clocking out doesn't reset it), so without this, a non-manager who clocks in right
   // after someone was looking at a gated tab would land straight on it, PIN prompt never shown.
   useEffect(() => {
@@ -4171,7 +4177,6 @@ function POSPrototype({ tenantId }) {
         <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 20, flexWrap: "wrap", width: isMobile ? "100%" : undefined }}>
           <div style={{ display: "flex", background: COLORS.inkSoft, borderRadius: 999, padding: 3, border: "1px solid #3A404C", flexWrap: isCompact ? "nowrap" : "wrap", overflowX: isCompact ? "auto" : undefined, maxWidth: isCompact ? "100%" : undefined, WebkitOverflowScrolling: "touch" }}>
             {["order", "menu", "stock", "tables", "delivery", "receipts", "expenses", "dashboard", "customers", "shift", "staff", "settings"]
-              .filter((key) => (key !== "expenses" && key !== "dashboard") || isManager)
               .filter((key) => key === "order" || key === "settings" || hasFeature(key))
               .map((key) => {
                 const locked = pinGatedTabs.includes(key) && !isManager && !unlockedTabs.has(key);
