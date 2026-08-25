@@ -214,6 +214,12 @@ const STRINGS = {
     vatPercentLabel: "VAT %",
     servicePercentLabel: "Service charge %",
     taxesOrderNote: "Service charge is calculated on the subtotal after any discount; VAT is calculated on top of that (subtotal − discount + service).",
+    tabAccessTitle: "Tab access",
+    tabAccessHint: "Lock any of these tabs so regular staff need a manager's PIN to open them. You (already clocked in as a manager) always have full access — the prompt only ever shows for non-manager staff.",
+    gatedTabTooltip: "Requires a manager's PIN",
+    enterManagerPinTitle: "Manager PIN required",
+    enterManagerPinHint: "Ask a manager to enter their PIN to open {{tab}}.",
+    managerPinIncorrect: "That's not a valid manager PIN.",
     serviceCharge: "Service charge",
     vat: "VAT",
 
@@ -698,6 +704,12 @@ const STRINGS = {
     vatPercentLabel: "ضريبة القيمة المضافة %",
     servicePercentLabel: "رسوم الخدمة %",
     taxesOrderNote: "تُحسب رسوم الخدمة على الإجمالي الفرعي بعد أي خصم؛ وتُحسب ضريبة القيمة المضافة فوق ذلك (الإجمالي الفرعي − الخصم + رسوم الخدمة).",
+    tabAccessTitle: "الوصول إلى التبويبات",
+    tabAccessHint: "أغلق أيًا من هذه التبويبات ليحتاج الموظفون العاديون إلى رمز PIN الخاص بمدير لفتحها. أنت (مسجّل دخول كمدير بالفعل) لديك دائمًا وصول كامل — لا تظهر الرسالة إلا للموظفين غير المديرين.",
+    gatedTabTooltip: "يتطلب رمز PIN الخاص بمدير",
+    enterManagerPinTitle: "مطلوب رمز PIN الخاص بمدير",
+    enterManagerPinHint: "اطلب من مدير إدخال رمز PIN الخاص به لفتح {{tab}}.",
+    managerPinIncorrect: "هذا ليس رمز PIN صالحًا لمدير.",
     serviceCharge: "رسوم الخدمة",
     vat: "ضريبة القيمة المضافة",
 
@@ -1475,6 +1487,17 @@ function POSPrototype({ tenantId }) {
   const [servicePercent, setServicePercent] = useState(0);
   const [taxConfigLoaded, setTaxConfigLoaded] = useState(false);
 
+  // Tabs a manager has chosen to require a manager PIN to open — see handleTabClick. Regular
+  // staff hit a PIN prompt; a currently-logged-in manager always passes straight through (they've
+  // already proven who they are for this whole session by clocking in).
+  const [pinGatedTabs, setPinGatedTabs] = useState([]);
+  // Which gated tabs this specific sitting has already unlocked, so a non-manager doesn't have to
+  // re-enter a manager's PIN every single time they revisit the same tab — cleared on clock-out.
+  const [unlockedTabs, setUnlockedTabs] = useState(() => new Set());
+  const [tabPinPrompt, setTabPinPrompt] = useState(null); // the tab key awaiting a manager PIN, or null
+  const [tabPinInput, setTabPinInput] = useState("");
+  const [tabPinError, setTabPinError] = useState(false);
+
   // Menu/category editor state
   const [newCategoryName, setNewCategoryName] = useState("");
   const [itemEditor, setItemEditor] = useState(null); // { mode, category, id, name, tag, price, recipe }
@@ -1652,6 +1675,16 @@ function POSPrototype({ tenantId }) {
         // fall back to 0%/0% already set
       } finally {
         setTaxConfigLoaded(true);
+      }
+    })();
+
+    (async () => {
+      try {
+        const result = await getSharedWithRetry(storage, "tab-access-config");
+        const parsed = result?.value ? JSON.parse(result.value) : null;
+        if (parsed?.pinGated) setPinGatedTabs(parsed.pinGated);
+      } catch (e) {
+        // fall back to no tabs gated
       }
     })();
 
@@ -1857,6 +1890,46 @@ function POSPrototype({ tenantId }) {
     setMapsLink(value);
     persistBranding({ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: secondaryColor, mapsLink: value });
   };
+
+  const togglePinGatedTab = (key) => {
+    const next = pinGatedTabs.includes(key) ? pinGatedTabs.filter((k) => k !== key) : [...pinGatedTabs, key];
+    setPinGatedTabs(next);
+    syncSet("tab-access-config", JSON.stringify({ pinGated: next }), true, t("syncLabelSettings"));
+  };
+
+  // Order-taking is deliberately never gate-able — it's the one thing every employee needs
+  // immediate access to regardless of what a manager has locked down. Expenses/Dashboard aren't
+  // offered here either — they're already manager-only (hidden from staff entirely, not just
+  // PIN-gated), so adding them would just be a confusing redundant toggle.
+  const GATEABLE_TABS = ["menu", "stock", "tables", "delivery", "receipts", "customers", "shift", "staff", "settings"];
+
+  // A manager who's already clocked in has proven who they are for this whole session, so gated
+  // tabs open normally for them — the PIN prompt is only ever shown to non-manager staff, and only
+  // once per gated tab per sitting (see unlockedTabs, cleared on clock-out in finishClockOut).
+  const handleTabClick = (key) => {
+    if (pinGatedTabs.includes(key) && !isManager && !unlockedTabs.has(key)) {
+      setTabPinPrompt(key);
+      setTabPinInput("");
+      setTabPinError(false);
+      return;
+    }
+    setView(key);
+  };
+
+  const submitTabPin = (pin) => {
+    const match = employees.find((e) => e.pin === pin && e.role === "manager");
+    if (!match) {
+      setTabPinError(true);
+      setTabPinInput("");
+      return;
+    }
+    setUnlockedTabs((prev) => new Set([...prev, tabPinPrompt]));
+    setView(tabPinPrompt);
+    setTabPinPrompt(null);
+    setTabPinInput("");
+    setTabPinError(false);
+  };
+
   const MAX_LOGO_BYTES = 700 * 1024; // keep the header/receipts snappy and well under the storage cap
   const handleLogoFile = (file) => {
     if (!file) return;
@@ -1935,6 +2008,12 @@ function POSPrototype({ tenantId }) {
   useEffect(() => {
     if ((view === "expenses" || view === "dashboard") && !isManager) setView("order");
   }, [view, isManager]);
+  // Same idea for PIN-gated tabs: `view` is component state that outlives any single employee's
+  // sitting (clocking out doesn't reset it), so without this, a non-manager who clocks in right
+  // after someone was looking at a gated tab would land straight on it, PIN prompt never shown.
+  useEffect(() => {
+    if (pinGatedTabs.includes(view) && !isManager && !unlockedTabs.has(view)) setView("order");
+  }, [view, isManager, pinGatedTabs, unlockedTabs]);
 
   // Resolves a table id ("1", "2", ...) to its display name — a custom name if the operator set
   // one, otherwise "Table N". `null` means Takeaway/Delivery, the original non-table flow.
@@ -3530,6 +3609,7 @@ function POSPrototype({ tenantId }) {
     setShiftRecap(null);
     setCurrentEmployee(null);
     setShiftStart(null);
+    setUnlockedTabs(new Set());
     try {
       await storage.delete("current-employee", false);
       await storage.delete("shift-start", false);
@@ -3777,6 +3857,14 @@ function POSPrototype({ tenantId }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loginPin]);
+
+  // Same auto-submit behavior for the manager-PIN prompt shown when a non-manager taps a gated tab.
+  useEffect(() => {
+    if (tabPinInput.length === 4 && tabPinPrompt) {
+      submitTabPin(tabPinInput);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabPinInput]);
 
   // Lets the PIN screen also be typed on a physical keyboard, not just tapped on the on-screen
   // pad — there's no real <input> behind those digit buttons (by design, so nothing shows in
@@ -4085,27 +4173,31 @@ function POSPrototype({ tenantId }) {
             {["order", "menu", "stock", "tables", "delivery", "receipts", "expenses", "dashboard", "customers", "shift", "staff", "settings"]
               .filter((key) => (key !== "expenses" && key !== "dashboard") || isManager)
               .filter((key) => key === "order" || key === "settings" || hasFeature(key))
-              .map((key) => (
-              <button
-                key={key}
-                onClick={() => setView(key)}
-                className="view-pill"
-                style={{
-                  padding: isMobile ? "7px 11px" : "7px 14px",
-                  borderRadius: 999,
-                  border: "none",
-                  background: view === key ? theme.primary : "transparent",
-                  color: view === key ? COLORS.paper : "#9CA1AC",
-                  fontSize: isMobile ? 12.5 : 13,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                }}
-              >
-                {t(`tab_${key}`)}
-              </button>
-            ))}
+              .map((key) => {
+                const locked = pinGatedTabs.includes(key) && !isManager && !unlockedTabs.has(key);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleTabClick(key)}
+                    className="view-pill"
+                    title={locked ? t("gatedTabTooltip") : undefined}
+                    style={{
+                      padding: isMobile ? "7px 11px" : "7px 14px",
+                      borderRadius: 999,
+                      border: "none",
+                      background: view === key ? theme.primary : "transparent",
+                      color: view === key ? COLORS.paper : "#9CA1AC",
+                      fontSize: isMobile ? 12.5 : 13,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {locked && "🔒 "}{t(`tab_${key}`)}
+                  </button>
+                );
+              })}
           </div>
           <div style={{ display: "flex", background: COLORS.inkSoft, borderRadius: 999, padding: 3, border: "1px solid #3A404C" }} title={t("langToggleLabel")}>
             {["en", "ar"].map((code) => (
@@ -4146,7 +4238,7 @@ function POSPrototype({ tenantId }) {
           )}
           {pendingOrders.length > 0 && (
             <button
-              onClick={() => setView("tables")}
+              onClick={() => handleTabClick("tables")}
               style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, border: "1px solid #C9A24A", background: "rgba(201,162,74,0.15)", color: "#E3C98A", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
             >
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E3C98A", display: "inline-block" }} />
@@ -5696,6 +5788,40 @@ function POSPrototype({ tenantId }) {
         </div>
       )}
 
+      {tabPinPrompt && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 20 }} onClick={() => setTabPinPrompt(null)}>
+          <div style={{ background: COLORS.ink, border: "1px solid #3A404C", borderRadius: 14, padding: 28, width: "100%", maxWidth: 320, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 17, fontWeight: 600, marginBottom: 6, color: COLORS.paper }}>{t("enterManagerPinTitle")}</div>
+            <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 20 }}>{t("enterManagerPinHint", { tab: t(`tab_${tabPinPrompt}`) })}</div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: tabPinError ? 6 : 22 }}>
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${theme.secondary}`, background: i < tabPinInput.length ? theme.secondary : "transparent" }} />
+              ))}
+            </div>
+            {tabPinError && <div style={{ fontSize: 12, color: COLORS.red, marginBottom: 16 }}>{t("managerPinIncorrect")}</div>}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
+              {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => { setTabPinError(false); setTabPinInput((p) => (p.length < 4 ? p + d : p)); }}
+                  style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: COLORS.inkSoft, color: COLORS.paper, fontSize: 18, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}
+                >
+                  {d}
+                </button>
+              ))}
+              <button onClick={() => setTabPinPrompt(null)} style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 12, cursor: "pointer" }}>{t("cancel")}</button>
+              <button
+                onClick={() => { setTabPinError(false); setTabPinInput((p) => (p.length < 4 ? p + "0" : p)); }}
+                style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: COLORS.inkSoft, color: COLORS.paper, fontSize: 18, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}
+              >
+                0
+              </button>
+              <button onClick={() => setTabPinInput((p) => p.slice(0, -1))} style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 16, cursor: "pointer" }}>&larr;</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {whatsappFallback && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setWhatsappFallback(null)}>
           <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 24, width: "100%", maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
@@ -5824,6 +5950,59 @@ function POSPrototype({ tenantId }) {
                     </div>
                   </div>
                   <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 8 }}>{t("taxesOrderNote")}</div>
+                </div>
+              )}
+
+              {isManager && (
+                <div>
+                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("tabAccessTitle")}</div>
+                  <div style={{ fontSize: 11.5, color: "#8A8F99", marginBottom: 12 }}>{t("tabAccessHint")}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2, background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, overflow: "hidden" }}>
+                    {GATEABLE_TABS.map((key, i) => {
+                      const gated = pinGatedTabs.includes(key);
+                      return (
+                        <div
+                          key={key}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "11px 14px",
+                            borderTop: i > 0 ? "1px solid #2C313C" : "none",
+                          }}
+                        >
+                          <span style={{ fontSize: 13 }}>{t(`tab_${key}`)}</span>
+                          <button
+                            onClick={() => togglePinGatedTab(key)}
+                            style={{
+                              width: 40,
+                              height: 22,
+                              borderRadius: 999,
+                              border: "none",
+                              background: gated ? theme.primary : "#3A404C",
+                              position: "relative",
+                              cursor: "pointer",
+                              padding: 0,
+                              flexShrink: 0,
+                            }}
+                          >
+                            <span
+                              style={{
+                                position: "absolute",
+                                top: 2,
+                                left: gated ? 20 : 2,
+                                width: 18,
+                                height: 18,
+                                borderRadius: "50%",
+                                background: "#fff",
+                                transition: "left .15s ease",
+                              }}
+                            />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
