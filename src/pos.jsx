@@ -1918,7 +1918,7 @@ function POSPrototype({ tenantId }) {
   // tabs open normally for them — the PIN prompt is only ever shown to non-manager staff, and only
   // once per gated tab per sitting (see unlockedTabs, cleared on clock-out in finishClockOut).
   const handleTabClick = (key) => {
-    if (pinGatedTabs.includes(key) && !isManager && !unlockedTabs.has(key)) {
+    if (hasFeature("tabAccessControl") && pinGatedTabs.includes(key) && !isManager && !unlockedTabs.has(key)) {
       setTabPinPrompt(key);
       setTabPinInput("");
       setTabPinError(false);
@@ -2010,16 +2010,17 @@ function POSPrototype({ tenantId }) {
   // Defense in depth: if package-gated tabs are open when the admin downgrades this restaurant's
   // package mid-session, don't leave a now-disallowed screen up — bounce back to Order.
   const PACKAGE_GATED_VIEWS = ["menu", "stock", "tables", "delivery", "receipts", "expenses", "dashboard", "customers", "shift", "staff"];
+  const tabStillAllowed = (key) => (key === "delivery" ? hasFeature("onlineOrderingLink") || hasFeature("deliveryZones") : hasFeature(key));
   useEffect(() => {
-    if (PACKAGE_GATED_VIEWS.includes(view) && tenantStatus?.features && !hasFeature(view)) setView("order");
+    if (PACKAGE_GATED_VIEWS.includes(view) && tenantStatus?.features && !tabStillAllowed(view)) setView("order");
   }, [view, tenantStatus?.features]);
   // Same idea for PIN-gated tabs (which now includes Expenses/Dashboard — see GATEABLE_TABS):
   // `view` is component state that outlives any single employee's
   // sitting (clocking out doesn't reset it), so without this, a non-manager who clocks in right
   // after someone was looking at a gated tab would land straight on it, PIN prompt never shown.
   useEffect(() => {
-    if (pinGatedTabs.includes(view) && !isManager && !unlockedTabs.has(view)) setView("order");
-  }, [view, isManager, pinGatedTabs, unlockedTabs]);
+    if (hasFeature("tabAccessControl") && pinGatedTabs.includes(view) && !isManager && !unlockedTabs.has(view)) setView("order");
+  }, [view, isManager, pinGatedTabs, unlockedTabs, tenantStatus?.features]);
 
   // Resolves a table id ("1", "2", ...) to its display name — a custom name if the operator set
   // one, otherwise "Table N". `null` means Takeaway/Delivery, the original non-table flow.
@@ -4207,9 +4208,16 @@ function POSPrototype({ tenantId }) {
         <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 20, flexWrap: "wrap", width: isMobile ? "100%" : undefined }}>
           <div style={{ display: "flex", background: COLORS.inkSoft, borderRadius: 999, padding: 3, border: "1px solid #3A404C", flexWrap: isCompact ? "nowrap" : "wrap", overflowX: isCompact ? "auto" : undefined, maxWidth: isCompact ? "100%" : undefined, WebkitOverflowScrolling: "touch" }}>
             {["order", "menu", "stock", "tables", "delivery", "receipts", "expenses", "dashboard", "customers", "shift", "staff", "settings"]
-              .filter((key) => key === "order" || key === "settings" || hasFeature(key))
+              .filter((key) => {
+                if (key === "order" || key === "settings") return true;
+                // "delivery" isn't itself a package feature key — the tab shows if either of its
+                // two sub-features (the online-ordering link, delivery zones) is enabled, and the
+                // tab's own content decides what to actually render based on which one(s) are on.
+                if (key === "delivery") return hasFeature("onlineOrderingLink") || hasFeature("deliveryZones");
+                return hasFeature(key);
+              })
               .map((key) => {
-                const locked = pinGatedTabs.includes(key) && !isManager && !unlockedTabs.has(key);
+                const locked = hasFeature("tabAccessControl") && pinGatedTabs.includes(key) && !isManager && !unlockedTabs.has(key);
                 return (
                   <button
                     key={key}
@@ -4439,32 +4447,35 @@ function POSPrototype({ tenantId }) {
                 ))}
               </div>
 
-              <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
-                {!discount && !discountOpen && (
-                  <button onClick={() => setDiscountOpen(true)} style={{ fontSize: 11.5, color: theme.primary, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>{t("addDiscount")}</button>
-                )}
-                {discountOpen && (
-                  <div style={{ display: "flex", gap: 6, alignItems: "center", fontFamily: "Inter, sans-serif" }}>
-                    <select value={discountDraft.type} onChange={(e) => setDiscountDraft((d) => ({ ...d, type: e.target.value }))} style={{ fontSize: 11.5, border: `1px solid ${COLORS.line}`, borderRadius: 5, padding: "4px 4px", background: "transparent" }}>
-                      <option value="percent">%</option>
-                      <option value="fixed">$</option>
-                    </select>
-                    <input type="number" value={discountDraft.value} onChange={(e) => setDiscountDraft((d) => ({ ...d, value: e.target.value }))} placeholder="0" style={{ width: 54, fontSize: 11.5, border: `1px solid ${COLORS.line}`, borderRadius: 5, padding: "4px 6px", background: "transparent" }} />
-                    <button onClick={applyDiscount} style={{ fontSize: 11, background: theme.primary, color: COLORS.paper, border: "none", borderRadius: 5, padding: "5px 9px", cursor: "pointer" }}>{t("apply")}</button>
-                    <button onClick={() => setDiscountOpen(false)} style={{ fontSize: 11, background: "none", color: COLORS.charcoalSoft, border: "none", cursor: "pointer" }}>{t("cancel")}</button>
-                  </div>
-                )}
-                {discount && !discountOpen && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Inter, sans-serif" }}>
-                    <span style={{ fontSize: 12 }}>{t("discountLabel", { value: discount.type === "percent" ? `${discount.value}%` : money(Number(discount.value)) })}</span>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => setDiscountOpen(true)} style={{ fontSize: 11, color: COLORS.charcoalSoft, background: "none", border: "none", cursor: "pointer" }}>{t("edit")}</button>
-                      <button onClick={removeDiscount} style={{ fontSize: 11, color: COLORS.red, background: "none", border: "none", cursor: "pointer" }}>{t("remove")}</button>
+              {hasFeature("discounts") && (
+                <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
+                  {!discount && !discountOpen && (
+                    <button onClick={() => setDiscountOpen(true)} style={{ fontSize: 11.5, color: theme.primary, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>{t("addDiscount")}</button>
+                  )}
+                  {discountOpen && (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", fontFamily: "Inter, sans-serif" }}>
+                      <select value={discountDraft.type} onChange={(e) => setDiscountDraft((d) => ({ ...d, type: e.target.value }))} style={{ fontSize: 11.5, border: `1px solid ${COLORS.line}`, borderRadius: 5, padding: "4px 4px", background: "transparent" }}>
+                        <option value="percent">%</option>
+                        <option value="fixed">$</option>
+                      </select>
+                      <input type="number" value={discountDraft.value} onChange={(e) => setDiscountDraft((d) => ({ ...d, value: e.target.value }))} placeholder="0" style={{ width: 54, fontSize: 11.5, border: `1px solid ${COLORS.line}`, borderRadius: 5, padding: "4px 6px", background: "transparent" }} />
+                      <button onClick={applyDiscount} style={{ fontSize: 11, background: theme.primary, color: COLORS.paper, border: "none", borderRadius: 5, padding: "5px 9px", cursor: "pointer" }}>{t("apply")}</button>
+                      <button onClick={() => setDiscountOpen(false)} style={{ fontSize: 11, background: "none", color: COLORS.charcoalSoft, border: "none", cursor: "pointer" }}>{t("cancel")}</button>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                  {discount && !discountOpen && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Inter, sans-serif" }}>
+                      <span style={{ fontSize: 12 }}>{t("discountLabel", { value: discount.type === "percent" ? `${discount.value}%` : money(Number(discount.value)) })}</span>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => setDiscountOpen(true)} style={{ fontSize: 11, color: COLORS.charcoalSoft, background: "none", border: "none", cursor: "pointer" }}>{t("edit")}</button>
+                        <button onClick={removeDiscount} style={{ fontSize: 11, color: COLORS.red, background: "none", border: "none", cursor: "pointer" }}>{t("remove")}</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
+              {hasFeature("splitBill") && (
               <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
                 {!splitCount && !splitOpen && (
                   <button onClick={() => setSplitOpen(true)} style={{ fontSize: 11.5, color: theme.primary, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>{t("splitBill")}</button>
@@ -4493,6 +4504,7 @@ function POSPrototype({ tenantId }) {
                   </div>
                 )}
               </div>
+              )}
 
               <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("subtotal")}</span><span>{money(subtotal)}</span></div>
@@ -4861,7 +4873,7 @@ function POSPrototype({ tenantId }) {
                           </div>
                         )}
 
-                        {!voided && r.customer?.phone && (
+                        {!voided && r.customer?.phone && hasFeature("whatsappUpdates") && (
                           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
                             <span style={{ fontSize: 10.5, color: "#8A8F99" }}>{t("statusColon")}</span>
                             {FULFILLMENT_STATUSES.map((s) => {
@@ -5451,12 +5463,14 @@ function POSPrototype({ tenantId }) {
                             {t("markAsPaid")}
                           </button>
                         )}
-                        <button
-                          onClick={() => setQrTableId(id)}
-                          style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}
-                        >
-                          {t("qrCode")}
-                        </button>
+                        {hasFeature("tableQrOrdering") && (
+                          <button
+                            onClick={() => setQrTableId(id)}
+                            style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}
+                          >
+                            {t("qrCode")}
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -5469,6 +5483,7 @@ function POSPrototype({ tenantId }) {
 
       {view === "delivery" && (
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 780 }}>
+          {hasFeature("onlineOrderingLink") && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("storeLinkTitle")}</div>
             <div style={{ fontSize: 13, color: "#9CA1AC", marginBottom: 14 }}>{t("storeLinkSubtitle")}</div>
@@ -5480,7 +5495,10 @@ function POSPrototype({ tenantId }) {
             </div>
             <div style={{ fontSize: 11, color: COLORS.red, marginTop: 8 }}>{t("storeLinkNote")}</div>
           </div>
+          )}
 
+          {hasFeature("deliveryZones") && (
+          <>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("deliveryZonesTitle")}</div>
             <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("deliveryZonesSubtitle")}</div>
@@ -5525,6 +5543,8 @@ function POSPrototype({ tenantId }) {
                 </div>
               ))}
             </div>
+          )}
+          </>
           )}
         </div>
       )}
@@ -5921,11 +5941,13 @@ function POSPrototype({ tenantId }) {
                 {!logoUrl && <div style={{ fontSize: 11.5, color: "#8A8F99", marginTop: 8 }}>{t("noLogoUploaded")}</div>}
               </div>
 
+              {hasFeature("googleMapsDirections") && (
               <div>
                 <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("locationLabel")}</div>
                 <input type="text" value={mapsLink} onChange={(e) => updateMapsLink(e.target.value)} placeholder={t("locationPlaceholder")} className="field" style={{ width: "100%", boxSizing: "border-box" }} />
                 <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 6, lineHeight: 1.5 }}>{t("locationHint")}</div>
               </div>
+              )}
 
               <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
@@ -5988,7 +6010,7 @@ function POSPrototype({ tenantId }) {
                 </div>
               )}
 
-              {isManager && (
+              {isManager && hasFeature("tabAccessControl") && (
                 <div>
                   <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("tabAccessTitle")}</div>
                   <div style={{ fontSize: 11.5, color: "#8A8F99", marginBottom: 12 }}>{t("tabAccessHint")}</div>
