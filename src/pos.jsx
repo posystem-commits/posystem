@@ -4306,8 +4306,8 @@ function POSPrototype({ tenantId }) {
           )}
           <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 24, fontSize: isMobile ? 12 : 13, color: "#9CA1AC", flexWrap: "wrap" }}>
             <span>{t("orderingForLabel")} <b style={{ color: COLORS.paper, fontWeight: 500 }}>{tableLabel(activeTableId)}</b></span>
-            {!isMobile && <span>{t("serverLabel")} <b style={{ color: COLORS.paper, fontWeight: 500 }}>{currentEmployee?.name}</b></span>}
-            <button onClick={clockOut} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("clockOut")}</button>
+            {!isMobile && hasFeature("staff") && <span>{t("serverLabel")} <b style={{ color: COLORS.paper, fontWeight: 500 }}>{currentEmployee?.name}</b></span>}
+            {hasFeature("shift") && <button onClick={clockOut} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("clockOut")}</button>}
           </div>
         </div>
       </div>
