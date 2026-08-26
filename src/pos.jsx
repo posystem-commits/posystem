@@ -228,6 +228,7 @@ const STRINGS = {
     tablesSubtitle: "Set up your dining tables, see which are occupied, and print a QR code linking to each table's menu.",
     numberOfTablesLabel: "Number of tables",
     takeawayDelivery: "Takeaway / Delivery",
+    dineInLabel: "Dine In",
     tableNumbered: "Table {{n}}",
     renameTablePlaceholder: "Table name",
     tableAvailable: "Available",
@@ -718,6 +719,7 @@ const STRINGS = {
     tablesSubtitle: "أنشئ طاولات مطعمك، وتابع المشغول منها، واطبع رمز QR لكل طاولة يفتح قائمتها.",
     numberOfTablesLabel: "عدد الطاولات",
     takeawayDelivery: "توصيل / استلام",
+    dineInLabel: "صالة",
     tableNumbered: "طاولة {{n}}",
     renameTablePlaceholder: "اسم الطاولة",
     tableAvailable: "متاحة",
@@ -2024,8 +2026,13 @@ function POSPrototype({ tenantId }) {
 
   // Resolves a table id ("1", "2", ...) to its display name — a custom name if the operator set
   // one, otherwise "Table N". `null` means Takeaway/Delivery, the original non-table flow.
+  // "dine-in" is a second sentinel, distinct from any real numbered table: the single generic
+  // bucket shown instead of individual tables when the "tables" package feature is off (see the
+  // Order view's table-switcher strip) — a restaurant that doesn't track individual tables still
+  // wants to separate "eating here" from "takeaway/delivery" without naming/numbering tables.
   const tableLabel = (id) => {
     if (id === null || id === undefined) return t("takeawayDelivery");
+    if (id === "dine-in") return t("dineInLabel");
     return tableNames[id] || t("tableNumbered", { n: id });
   };
   const tableIds = useMemo(() => Array.from({ length: tableCount }, (_, i) => String(i + 1)), [tableCount]);
@@ -2082,6 +2089,15 @@ function POSPrototype({ tenantId }) {
     setSaved(false);
     setActiveTableId(nextId);
   };
+  // Defense in depth: if a specific numbered table was open when a manager turns the "tables"
+  // package feature off (or the admin downgrades the package), don't leave that numbered ticket
+  // active — drop back to the single "Dine In" bucket the simplified switcher now shows.
+  useEffect(() => {
+    if (!hasFeature("tables") && activeTableId !== null && activeTableId !== "dine-in") {
+      switchTable("dine-in");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantStatus?.features]);
   const clearActiveTable = () => {
     setConfirmDialog({
       message: t("confirm_clearTable"),
@@ -4383,16 +4399,28 @@ function POSPrototype({ tenantId }) {
                 {t("takeawayDelivery")}
                 {tableItemCount(null) > 0 && <span style={{ marginLeft: 5, fontSize: 9.5, background: theme.secondary, color: COLORS.ink, borderRadius: 999, padding: "1px 5px" }}>{tableItemCount(null)}</span>}
               </button>
-              {tableIds.map((id) => (
+              {hasFeature("tables") ? (
+                tableIds.map((id) => (
+                  <button
+                    key={id}
+                    onClick={() => switchTable(id)}
+                    style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === id ? theme.secondary : "#3A404C"}`, background: activeTableId === id ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === id ? theme.secondaryLight : "#9CA1AC", fontSize: 11.5, fontWeight: activeTableId === id ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
+                  >
+                    {tableLabel(id)}
+                    {tableItemCount(id) > 0 && <span style={{ marginLeft: 5, fontSize: 9.5, background: theme.secondary, color: COLORS.ink, borderRadius: 999, padding: "1px 5px" }}>{tableItemCount(id)}</span>}
+                  </button>
+                ))
+              ) : (
+                // No individual table tracking on this package — just one generic "Dine In"
+                // bucket alongside Takeaway/Delivery, instead of a numbered-table list.
                 <button
-                  key={id}
-                  onClick={() => switchTable(id)}
-                  style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === id ? theme.secondary : "#3A404C"}`, background: activeTableId === id ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === id ? theme.secondaryLight : "#9CA1AC", fontSize: 11.5, fontWeight: activeTableId === id ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
+                  onClick={() => switchTable("dine-in")}
+                  style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === "dine-in" ? theme.secondary : "#3A404C"}`, background: activeTableId === "dine-in" ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === "dine-in" ? theme.secondaryLight : "#9CA1AC", fontSize: 11.5, fontWeight: activeTableId === "dine-in" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
                 >
-                  {tableLabel(id)}
-                  {tableItemCount(id) > 0 && <span style={{ marginLeft: 5, fontSize: 9.5, background: theme.secondary, color: COLORS.ink, borderRadius: 999, padding: "1px 5px" }}>{tableItemCount(id)}</span>}
+                  {t("dineInLabel")}
+                  {tableItemCount("dine-in") > 0 && <span style={{ marginLeft: 5, fontSize: 9.5, background: theme.secondary, color: COLORS.ink, borderRadius: 999, padding: "1px 5px" }}>{tableItemCount("dine-in")}</span>}
                 </button>
-              ))}
+              )}
             </div>
             <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: "4px 4px 10px 10px", clipPath: "polygon(0% 3%, 4% 0%, 8% 3%, 12% 0%, 16% 3%, 20% 0%, 24% 3%, 28% 0%, 32% 3%, 36% 0%, 40% 3%, 44% 0%, 48% 3%, 52% 0%, 56% 3%, 60% 0%, 64% 3%, 68% 0%, 72% 3%, 76% 0%, 80% 3%, 84% 0%, 88% 3%, 92% 0%, 96% 3%, 100% 0%, 100% 100%, 0% 100%)", padding: "22px 20px 20px", fontFamily: "IBM Plex Mono, monospace" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
