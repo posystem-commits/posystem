@@ -1084,6 +1084,23 @@ const FULFILLMENT_STATUSES = [
   { id: "out_for_delivery", label: "Out for delivery", whatsapp: true },
   { id: "delivered", label: "Delivered", whatsapp: false },
 ];
+// Itemized order summary (items + price breakdown) appended to the "preparing" WhatsApp update,
+// so the customer sees exactly what they're being charged before the order even arrives.
+const buildWhatsAppInvoiceText = (r, lang) => {
+  const fmt = (n) => `${n.toFixed(2)} EGP`;
+  const lines = r.items.map((it) => `${it.qty}x ${it.name} - ${fmt(it.price * it.qty)}`);
+  const labels = lang === "ar"
+    ? { subtotal: "الإجمالي الفرعي", discount: "الخصم", service: "الخدمة", vat: "ضريبة القيمة المضافة", delivery: "رسوم التوصيل", total: "الإجمالي" }
+    : { subtotal: "Subtotal", discount: "Discount", service: "Service", vat: "VAT", delivery: "Delivery fee", total: "Total" };
+  const summary = [
+    `${labels.subtotal}: ${fmt(r.subtotal)}`,
+    r.discountAmount > 0 ? `${labels.discount}: -${fmt(r.discountAmount)}` : null,
+    r.serviceAmount > 0 ? `${labels.service} (${r.serviceRate}%): ${fmt(r.serviceAmount)}` : null,
+    r.vatAmount > 0 ? `${labels.vat} (${r.vatRate}%): ${fmt(r.vatAmount)}` : null,
+    r.deliveryFee > 0 ? `${labels.delivery}: ${fmt(r.deliveryFee)}` : null,
+  ].filter(Boolean);
+  return `${lines.join("\n")}\n\n${summary.join("\n")}\n*${labels.total}: ${fmt(r.total)}*`;
+};
 // Customer-facing WhatsApp message templates, in both UI languages — sent in whichever
 // language the operator currently has the app set to.
 const WHATSAPP_TEMPLATES = {
@@ -1091,14 +1108,14 @@ const WHATSAPP_TEMPLATES = {
     preparing: (r) =>
       `Hi ${r.customer?.name || "there"}, this is an update on your order #${r.ticketNo}: we've started preparing it now.` +
       (r.eta ? ` Estimated ready/delivery time: ${r.eta}.` : "") +
-      ` We'll let you know when it's on its way!`,
+      ` We'll let you know when it's on its way!\n\n${buildWhatsAppInvoiceText(r, "en")}`,
     out_for_delivery: (r) => `Hi ${r.customer?.name || "there"}, your order #${r.ticketNo} is out for delivery${r.customer?.address ? ` to ${r.customer.address}` : ""}. It should be with you shortly!`,
   },
   ar: {
     preparing: (r) =>
       `مرحبًا ${r.customer?.name || "عزيزي العميل"}، هذا تحديث بخصوص طلبك رقم #${r.ticketNo}: بدأنا الآن في تحضيره.` +
       (r.eta ? ` الوقت المتوقع للجاهزية/التوصيل: ${r.eta}.` : "") +
-      ` سنُعلمك عندما يكون في الطريق!`,
+      ` سنُعلمك عندما يكون في الطريق!\n\n${buildWhatsAppInvoiceText(r, "ar")}`,
     out_for_delivery: (r) => `مرحبًا ${r.customer?.name || "عزيزي العميل"}، طلبك رقم #${r.ticketNo} في الطريق إليك${r.customer?.address ? ` إلى ${r.customer.address}` : ""}. سيصلك قريبًا!`,
   },
 };
