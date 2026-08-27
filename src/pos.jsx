@@ -136,6 +136,7 @@ const STRINGS = {
     low: "Low",
     inStock: "In stock",
     restock10: "+10 restock",
+    stockDecreaseTooltip: "Only for correcting counts or returning defective/damaged supply — staff can only add stock, not remove it.",
     unitGroup_Weight: "Weight",
     unitGroup_Volume: "Volume",
     unitGroup_Count: "Count",
@@ -655,6 +656,7 @@ const STRINGS = {
     low: "منخفض",
     inStock: "متوفر",
     restock10: "+١٠ تجديد المخزون",
+    stockDecreaseTooltip: "فقط لتصحيح الأرقام أو إرجاع بضاعة تالفة/معيبة — الموظفون يقدروا يزودوا المخزون فقط ولا يقدروا يقللوه.",
     unitGroup_Weight: "الوزن",
     unitGroup_Volume: "الحجم",
     unitGroup_Count: "العدد",
@@ -5023,11 +5025,19 @@ function POSPrototype({ tenantId }) {
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <button onClick={() => updateIngredientStock(ing.id, -1)} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: COLORS.paper, cursor: "pointer", fontSize: 14 }}>&minus;</button>
-                    <input className="stock-input" type="number" value={ing.stock} onChange={(e) => setIngredientStockValue(ing.id, e.target.value)} style={{ width: 64, textAlign: "center", background: "transparent", border: "1px solid #3A404C", borderRadius: 6, color: COLORS.paper, fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }} />
+                    {isManager && (
+                      <button onClick={() => updateIngredientStock(ing.id, -1)} title={t("stockDecreaseTooltip")} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: COLORS.paper, cursor: "pointer", fontSize: 14 }}>&minus;</button>
+                    )}
+                    {isManager ? (
+                      <input className="stock-input" type="number" value={ing.stock} onChange={(e) => setIngredientStockValue(ing.id, e.target.value)} style={{ width: 64, textAlign: "center", background: "transparent", border: "1px solid #3A404C", borderRadius: 6, color: COLORS.paper, fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }} />
+                    ) : (
+                      <span style={{ width: 64, textAlign: "center", color: COLORS.paper, fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }}>{fmtQty(ing.stock)}</span>
+                    )}
                     <button onClick={() => updateIngredientStock(ing.id, 1)} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: COLORS.paper, cursor: "pointer", fontSize: 14 }}>+</button>
                     <button onClick={() => updateIngredientStock(ing.id, 10)} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer", fontSize: 11.5, fontWeight: 500 }}>{t("restock10")}</button>
-                    <button onClick={() => deleteIngredient(ing.id)} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer", fontSize: 11.5 }}>{t("delete")}</button>
+                    {isManager && (
+                      <button onClick={() => deleteIngredient(ing.id)} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer", fontSize: 11.5 }}>{t("delete")}</button>
+                    )}
                   </div>
                 </div>
               );
