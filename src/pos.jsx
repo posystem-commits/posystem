@@ -83,7 +83,19 @@ const STRINGS = {
     download: "Download",
     downloadReceiptTooltip: "Downloads a receipt file you can open and print — works in this preview",
     saveOrder: "Save order",
+    saveOrderUnpaid: "Save order (unpaid)",
+    paidNowOption: "Paid now",
+    payLaterOption: "Pay later",
+    payLaterHint: "For an open tab — payment hasn't been collected yet",
     paidVia: "Paid via {{method}}",
+    unpaidBadge: "Unpaid",
+    unpaidOrderTooltip: "Saved but payment hasn't been collected yet",
+    markOrderPaid: "Mark as paid",
+    confirm_markOrderPaid: "Mark order #{{n}} as paid?",
+    notice_orderMarkedPaid: "Order #{{n}} marked as paid",
+    unpaidSummary: "{{n}} unpaid · {{amount}}",
+    unpaidThisShiftLabel: "Unpaid orders from this shift",
+    noUnpaidThisShift: "Everything rung up this shift has been paid.",
     thankYou: "Thank you!",
 
     stockNotTracked: "Stock not tracked",
@@ -619,7 +631,19 @@ const STRINGS = {
     download: "تنزيل",
     downloadReceiptTooltip: "ينزّل ملف إيصال يمكنك فتحه وطباعته — يعمل في هذه المعاينة",
     saveOrder: "حفظ الطلب",
+    saveOrderUnpaid: "حفظ الطلب (غير مدفوع)",
+    paidNowOption: "مدفوع الآن",
+    payLaterOption: "الدفع لاحقًا",
+    payLaterHint: "لحساب مفتوح — لم يتم تحصيل الدفع بعد",
     paidVia: "تم الدفع عبر {{method}}",
+    unpaidBadge: "غير مدفوع",
+    unpaidOrderTooltip: "تم الحفظ لكن لم يُحصَّل الدفع بعد",
+    markOrderPaid: "تحديد كمدفوع",
+    confirm_markOrderPaid: "تحديد الطلب رقم #{{n}} كمدفوع؟",
+    notice_orderMarkedPaid: "تم تحديد الطلب رقم #{{n}} كمدفوع",
+    unpaidSummary: "{{n}} غير مدفوع · {{amount}}",
+    unpaidThisShiftLabel: "الطلبات غير المدفوعة من هذه الوردية",
+    noUnpaidThisShift: "كل ما تم تسجيله في هذه الوردية تم دفعه.",
     thankYou: "شكرًا لك!",
 
     stockNotTracked: "المخزون غير متابَع",
@@ -1483,6 +1507,7 @@ function POSPrototype({ tenantId }) {
     syncQueueRef.current = syncQueue;
   }, [syncQueue]);
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [paidNow, setPaidNow] = useState(true); // false = "open tab" — order saved but payment not yet collected
   const [discount, setDiscount] = useState(null);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [discountDraft, setDiscountDraft] = useState({ type: "percent", value: "" });
@@ -2179,6 +2204,7 @@ function POSPrototype({ tenantId }) {
     cart: [],
     ticketNo: issueTicketNumber(),
     paymentMethod: "cash",
+    paidNow: true,
     discount: null,
     splitCount: null,
     customerName: "",
@@ -2197,13 +2223,14 @@ function POSPrototype({ tenantId }) {
   const switchTable = (nextId) => {
     if (nextId === activeTableId) return;
     const outgoingKey = activeTableId === null ? "takeaway" : activeTableId;
-    const outgoingDraft = { cart, ticketNo, paymentMethod, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
+    const outgoingDraft = { cart, ticketNo, paymentMethod, paidNow, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
     const incomingKey = nextId === null ? "takeaway" : nextId;
     const incoming = tableDrafts[incomingKey] || blankDraft();
     setTableDrafts((prev) => ({ ...prev, [outgoingKey]: outgoingDraft }));
     setCart(incoming.cart);
     setTicketNo(incoming.ticketNo);
     setPaymentMethod(incoming.paymentMethod);
+    setPaidNow(incoming.paidNow !== false);
     setDiscount(incoming.discount);
     setSplitCount(incoming.splitCount ?? null);
     setCustomerName(incoming.customerName);
@@ -2239,6 +2266,7 @@ function POSPrototype({ tenantId }) {
         setCart(fresh.cart);
         setTicketNo(fresh.ticketNo);
         setPaymentMethod(fresh.paymentMethod);
+        setPaidNow(fresh.paidNow);
         setDiscount(fresh.discount);
         setSplitCount(fresh.splitCount);
         setSplitOpen(false);
@@ -2394,6 +2422,8 @@ function POSPrototype({ tenantId }) {
       total: grandTotal,
       splitCount: null,
       paymentMethod,
+      paid: true,
+      paidAt: new Date().toISOString(),
       customer: null,
       eta: "",
       status: "completed",
@@ -2416,6 +2446,7 @@ function POSPrototype({ tenantId }) {
       setDeliveryZoneLabel(fresh.deliveryZoneLabel);
       setAssignedTo(fresh.assignedTo);
       setPaymentMethod(fresh.paymentMethod);
+      setPaidNow(fresh.paidNow);
       setSaved(false);
       setTableDrafts((prev) => ({ ...prev, [tableId]: fresh }));
     } else {
@@ -2477,7 +2508,7 @@ function POSPrototype({ tenantId }) {
       // instead would read tableDrafts via a stale closure, since React batches the state update
       // from a merge and the switch together — that would silently drop the merged items.)
       const outgoingKey = activeTableId === null ? "takeaway" : activeTableId;
-      const outgoingDraft = { cart, ticketNo, paymentMethod, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
+      const outgoingDraft = { cart, ticketNo, paymentMethod, paidNow, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
       const incomingExisting = tableDrafts[targetId] || blankDraft();
       const incoming = {
         ...incomingExisting,
@@ -2493,6 +2524,7 @@ function POSPrototype({ tenantId }) {
       setCart(incoming.cart);
       setTicketNo(incoming.ticketNo);
       setPaymentMethod(incoming.paymentMethod);
+      setPaidNow(incoming.paidNow !== false);
       setDiscount(incoming.discount);
       setSplitCount(incoming.splitCount ?? null);
       setCustomerName(incoming.customerName);
@@ -3069,6 +3101,8 @@ function POSPrototype({ tenantId }) {
       total,
       splitCount: splitCount && splitCount > 1 ? splitCount : null,
       paymentMethod,
+      paid: paidNow,
+      paidAt: paidNow ? new Date().toISOString() : null,
       customer,
       eta: orderEta.trim(),
       status: "completed",
@@ -3108,6 +3142,7 @@ function POSPrototype({ tenantId }) {
       setDeliveryZoneLabel(fresh.deliveryZoneLabel);
       setAssignedTo(fresh.assignedTo);
       setPaymentMethod(fresh.paymentMethod);
+      setPaidNow(fresh.paidNow);
       setCustomerName(fresh.customerName);
       setCustomerPhone(fresh.customerPhone);
       setCustomerAddress(fresh.customerAddress);
@@ -3213,6 +3248,8 @@ function POSPrototype({ tenantId }) {
   const currentMonth = selectedMonth || thisMonthKey();
   const monthReceipts = receiptsByMonth[currentMonth] || [];
   const monthRevenue = monthReceipts.filter((r) => r.status === "completed").reduce((s, r) => s + r.total, 0);
+  const monthUnpaid = monthReceipts.filter((r) => r.status === "completed" && r.paid === false);
+  const monthUnpaidTotal = monthUnpaid.reduce((s, r) => s + r.total, 0);
 
   const availableExpenseMonths = useMemo(() => Array.from(new Set([thisMonthKey(), ...expenseMonthKeys])).sort().reverse(), [expenseMonthKeys]);
   const currentExpenseMonth = selectedExpenseMonth || thisMonthKey();
@@ -3547,6 +3584,19 @@ function POSPrototype({ tenantId }) {
     persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? updated : x)));
   };
 
+  // Marks a "pay later" order as actually paid, the moment the cash (or card) is actually
+  // collected — which is what the cash reconciliation keys off, not when the order was rung up.
+  const markReceiptPaid = (r) => {
+    setConfirmDialog({
+      message: t("confirm_markOrderPaid", { n: r.ticketNo }),
+      onConfirm: () => {
+        const updated = { ...r, paid: true, paidAt: new Date().toISOString() };
+        persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? updated : x)));
+        flashNotice(t("notice_orderMarkedPaid", { n: r.ticketNo }));
+      },
+    });
+  };
+
   const startEditReceipt = (r) => {
     setEditingReceiptId(r.id);
     setEditDraftItems(r.items.map((it) => ({ ...it })));
@@ -3627,12 +3677,22 @@ function POSPrototype({ tenantId }) {
   const shiftRefunded = shiftReceipts.filter((r) => r.status === "refunded");
   const shiftGross = shiftCompleted.reduce((s, r) => s + r.total, 0);
   const shiftRefundsTotal = shiftRefunded.reduce((s, r) => s + r.total, 0);
+  // An order rung up as "pay later" doesn't belong in cash reconciliation until it's actually
+  // paid — and conversely, an order rung up on a PREVIOUS shift that gets paid on this one belongs
+  // here, not there, since that's when the money actually entered the drawer. So payment totals
+  // are scoped by paidAt (falling back to timestamp for ordinary paid-immediately orders and for
+  // receipts saved before this field existed), not by when the order itself was created.
+  const paymentsCollectedThisShift = shiftStart
+    ? monthReceiptsForShift.filter((r) => r.status === "completed" && r.paid !== false && (r.paidAt || r.timestamp) >= shiftStart)
+    : [];
   const shiftByMethod = PAYMENT_METHODS.map((m) => ({
     ...m,
-    total: shiftCompleted.filter((r) => r.paymentMethod === m.id).reduce((s, r) => s + r.total, 0),
-    count: shiftCompleted.filter((r) => r.paymentMethod === m.id).length,
+    total: paymentsCollectedThisShift.filter((r) => r.paymentMethod === m.id).reduce((s, r) => s + r.total, 0),
+    count: paymentsCollectedThisShift.filter((r) => r.paymentMethod === m.id).length,
   }));
   const shiftCashSalesTotal = shiftByMethod.find((m) => m.id === "cash")?.total || 0;
+  const shiftUnpaid = shiftCompleted.filter((r) => r.paid === false);
+  const shiftUnpaidTotal = shiftUnpaid.reduce((s, r) => s + r.total, 0);
   // A cash refund is cash actually leaving the drawer back to the customer — unlike a cancellation
   // (which the app treats as the order never having happened financially), so it belongs in the
   // cash reconciliation the same way an expense paid in cash does.
@@ -3682,6 +3742,11 @@ function POSPrototype({ tenantId }) {
         (e) => `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(e.supplierName || t(`category_${e.category}`))}</span><span>-${money(e.amount)}</span></div>`
       )
       .join("");
+    const unpaidRows = shiftUnpaid
+      .map(
+        (r) => `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("ticketHash", { n: r.ticketNo }))}${r.table ? ` &middot; ${escapeHtml(r.table)}` : ""}</span><span>${money(r.total)}</span></div>`
+      )
+      .join("");
     return `
       <div class="center">
         ${brandHeaderHtml()}
@@ -3698,6 +3763,12 @@ function POSPrototype({ tenantId }) {
         <div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t("ordersRefunded"))}</span><span>${shiftRefunded.length}</span></div>
       </div>
       <div class="dashed" style="font-size:12px;">${methodRows}</div>
+      ${shiftUnpaid.length > 0 ? `
+      <div class="dashed" style="font-size:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">${escapeHtml(t("unpaidThisShiftLabel"))}</div>
+        ${unpaidRows}
+        <div class="row" style="font-weight:700;margin-top:4px;"><span>${escapeHtml(tCount("orderCount", shiftUnpaid.length))}</span><span>${money(shiftUnpaidTotal)}</span></div>
+      </div>` : ""}
       <div class="dashed">
         <div class="row" style="font-size:12px;"><span>${escapeHtml(t("grossSales"))}</span><span>${money(shiftGross)}</span></div>
         <div class="row" style="font-size:12px;"><span>${escapeHtml(t("refunds"))}</span><span>-${money(shiftRefundsTotal)}</span></div>
@@ -4873,6 +4944,15 @@ function POSPrototype({ tenantId }) {
               ))}
             </div>
 
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              <button onClick={() => setPaidNow(true)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${paidNow ? "#3F5B45" : "#3A404C"}`, background: paidNow ? "#22301F" : "transparent", color: paidNow ? "#9FCB8E" : "#9CA1AC", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+                {t("paidNowOption")}
+              </button>
+              <button onClick={() => setPaidNow(false)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${!paidNow ? "#5B4F3F" : "#3A404C"}`, background: !paidNow ? "#33301F" : "transparent", color: !paidNow ? "#E3C98A" : "#9CA1AC", fontSize: 12, fontWeight: 500, cursor: "pointer" }} title={t("payLaterHint")}>
+                {t("payLaterOption")}
+              </button>
+            </div>
+
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
               <button disabled={cart.length === 0} onClick={printOrderReceipt} title={t("printReceiptTooltip")} style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "#3A404C" : theme.secondary}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : theme.secondaryLight, fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
                 {t("printReceipt")}
@@ -4880,8 +4960,8 @@ function POSPrototype({ tenantId }) {
               <button disabled={cart.length === 0} onClick={downloadOrderReceipt} title={t("downloadReceiptTooltip")} style={{ padding: "13px 16px", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "#3A404C" : "#3A404C"}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : "#9CA1AC", fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
                 {t("download")}
               </button>
-              <button disabled={cart.length === 0} onClick={saveOrder} className="save-btn" style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: "none", background: cart.length === 0 ? "#4A2C33" : theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.6 : 1 }}>
-                {t("saveOrder")}
+              <button disabled={cart.length === 0} onClick={saveOrder} className="save-btn" style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: "none", background: cart.length === 0 ? "#4A2C33" : paidNow ? theme.primary : "#8A6A2E", color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.6 : 1 }}>
+                {paidNow ? t("saveOrder") : t("saveOrderUnpaid")}
               </button>
             </div>
           </div>
@@ -5146,6 +5226,12 @@ function POSPrototype({ tenantId }) {
                   <span style={{ color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{money(monthRevenue)}</span>
                 </div>
               </div>
+              {monthUnpaid.length > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: -8, marginBottom: 18, fontSize: 12.5, color: "#F0D9A0" }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#F0D9A0", display: "inline-block" }} />
+                  {t("unpaidSummary", { n: monthUnpaid.length, amount: money(monthUnpaidTotal) })}
+                </div>
+              )}
 
               {loadingMonth ? (
                 <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loadingMonth", { month: monthLabel(currentMonth) })}</div>
@@ -5157,9 +5243,10 @@ function POSPrototype({ tenantId }) {
                     const cancelled = r.status === "cancelled";
                     const refunded = r.status === "refunded";
                     const voided = cancelled || refunded;
+                    const unpaid = !voided && r.paid === false;
                     const editing = editingReceiptId === r.id;
                     return (
-                      <div key={r.id} style={{ background: COLORS.inkSoft, border: `1px solid ${voided ? "#4A2E2C" : "#363C47"}`, borderRadius: 10, padding: "14px 18px", opacity: voided ? 0.7 : 1 }}>
+                      <div key={r.id} style={{ background: COLORS.inkSoft, border: `1px solid ${voided ? "#4A2E2C" : unpaid ? "#5B4F3F" : "#363C47"}`, borderRadius: 10, padding: "14px 18px", opacity: voided ? 0.7 : 1 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
                           <span style={{ fontSize: 13, fontFamily: "IBM Plex Mono, monospace" }}>
                             {t("ticketHash", { n: r.ticketNo })} &middot; {new Date(r.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
@@ -5169,6 +5256,7 @@ function POSPrototype({ tenantId }) {
                             {r.paymentMethod && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2E3440", color: "#9CA1AC" }}>{t(`payment_${r.paymentMethod}`)}</span>}
                             {cancelled && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#33301F", color: "#E3C98A" }}>{t("cancelledBadge")}</span>}
                             {refunded && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#3A2A28", color: "#E3A79C" }}>{t("refundedBadge")}</span>}
+                            {unpaid && <span title={t("unpaidOrderTooltip")} style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#5B4F3F", color: "#F0D9A0", fontWeight: 700 }}>{t("unpaidBadge")}</span>}
                           </span>
                           <span style={{ fontSize: 13, fontWeight: 600, color: voided ? "#8A8F99" : theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace", textDecoration: voided ? "line-through" : "none" }}>{money(r.total)}</span>
                         </div>
@@ -5266,6 +5354,9 @@ function POSPrototype({ tenantId }) {
                               </>
                             ) : (
                               <>
+                                {unpaid && (
+                                  <button onClick={() => markReceiptPaid(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: COLORS.paper, cursor: "pointer", fontWeight: 600 }}>{t("markOrderPaid")}</button>
+                                )}
                                 <button onClick={() => startEditReceipt(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("edit")}</button>
                                 <button onClick={() => cancelReceipt(r)} title={t("cancelOrderTooltip")} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #C9A24A", background: "transparent", color: "#E3C98A", cursor: "pointer" }}>{t("cancelOrder")}</button>
                                 <button onClick={() => refundReceipt(r)} title={t("refundOrderTooltip")} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("refundOrder")}</button>
@@ -5714,6 +5805,25 @@ function POSPrototype({ tenantId }) {
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 8, paddingTop: 8, borderTop: "1px dashed #3A404C" }}>
                     <span>{t("discountsGiven")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftDiscountTotal)}</span>
                   </div>
+                )}
+              </div>
+
+              <div style={{ background: shiftUnpaid.length > 0 ? "#2A2717" : COLORS.inkSoft, border: `1px solid ${shiftUnpaid.length > 0 ? "#5B4F3F" : "#363C47"}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: "#9CA1AC", marginBottom: 10 }}>{t("unpaidThisShiftLabel")}</div>
+                {shiftUnpaid.length === 0 ? (
+                  <div style={{ fontSize: 12.5, color: "#8A8F99" }}>{t("noUnpaidThisShift")}</div>
+                ) : (
+                  <>
+                    {shiftUnpaid.map((r) => (
+                      <div key={r.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6, color: "#F0D9A0" }}>
+                        <span>{t("ticketHash", { n: r.ticketNo })}{r.table ? ` · ${r.table}` : ""}</span>
+                        <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(r.total)}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, fontWeight: 700, marginTop: 8, paddingTop: 8, borderTop: "1px dashed #5B4F3F", color: "#F0D9A0" }}>
+                      <span>{tCount("orderCount", shiftUnpaid.length)}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(shiftUnpaidTotal)}</span>
+                    </div>
+                  </>
                 )}
               </div>
 
