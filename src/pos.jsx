@@ -478,6 +478,26 @@ const STRINGS = {
     noLeaderboardData: "Not enough data yet.",
     shiftHistoryLine: "{{orders}} orders · {{revenue}} · {{hours}}",
     currentlyClockedIn: "Currently clocked in",
+    teamRosterTitle: "Waiters & delivery",
+    teamRosterSubtitle: "Add non-login team members so orders can be assigned to whoever is serving or delivering them.",
+    newTeamMemberPlaceholder: "Name",
+    roleWaiter: "Waiter",
+    roleDelivery: "Delivery",
+    addTeamMember: "Add",
+    removeTeamMember: "Remove",
+    confirm_removeTeamMember: "Remove {{name}} from the team roster? Past orders keep their assignment.",
+    notice_enterTeamMemberName: "Enter a name first",
+    notice_teamMemberAdded: "{{name}} added to the team",
+    noTeamMembersYet: "No waiters or delivery staff added yet.",
+    assignedToLabel: "Assigned to (optional)",
+    assignedToNone: "— Unassigned —",
+    assignedToBadge: "{{role}}: {{name}}",
+    reassignLabel: "Reassign",
+    teamPerformanceTitle: "Team performance (this shift)",
+    teamPerformanceSubtitle: "Orders since you clocked in, grouped by who they're assigned to — use this to reconcile cash with delivery staff at the end of the day.",
+    noTeamPerformanceYet: "No orders assigned to anyone yet this shift.",
+    viewAssignedOrders: "View orders ({{n}})",
+    hideAssignedOrders: "Hide orders",
     servedByLabel: "Served by {{name}}",
 
     notice_giveCategoryName: "Give the category a name first",
@@ -977,6 +997,26 @@ const STRINGS = {
     noLeaderboardData: "لا توجد بيانات كافية بعد.",
     shiftHistoryLine: "{{orders}} طلبات · {{revenue}} · {{hours}}",
     currentlyClockedIn: "مسجل حضوره حاليًا",
+    teamRosterTitle: "الجرسونات والدليفري",
+    teamRosterSubtitle: "أضف أفراد الفريق الذين لا يسجلون دخولًا حتى تقدر تسند الطلبات لمن يقدّمها أو يوصّلها.",
+    newTeamMemberPlaceholder: "الاسم",
+    roleWaiter: "جرسون",
+    roleDelivery: "دليفري",
+    addTeamMember: "إضافة",
+    removeTeamMember: "إزالة",
+    confirm_removeTeamMember: "إزالة {{name}} من فريق العمل؟ سيتم الاحتفاظ بإسناد الطلبات السابقة.",
+    notice_enterTeamMemberName: "اكتب الاسم أولاً",
+    notice_teamMemberAdded: "تمت إضافة {{name}} إلى الفريق",
+    noTeamMembersYet: "لم تتم إضافة جرسونات أو عمال دليفري بعد.",
+    assignedToLabel: "مُسند إلى (اختياري)",
+    assignedToNone: "— غير مُسند —",
+    assignedToBadge: "{{role}}: {{name}}",
+    reassignLabel: "إعادة الإسناد",
+    teamPerformanceTitle: "أداء الفريق (هذه الوردية)",
+    teamPerformanceSubtitle: "الطلبات منذ تسجيل حضورك، مجمّعة حسب من أُسندت إليه — استخدم هذا لتسوية النقدية مع عمال الدليفري في نهاية اليوم.",
+    noTeamPerformanceYet: "لم تُسند أي طلبات لأحد بعد في هذه الوردية.",
+    viewAssignedOrders: "عرض الطلبات ({{n}})",
+    hideAssignedOrders: "إخفاء الطلبات",
     servedByLabel: "قدّمه {{name}}",
 
     notice_giveCategoryName: "يرجى إدخال اسم للقسم أولاً",
@@ -1398,6 +1438,7 @@ function POSPrototype({ tenantId }) {
   const [splitCount, setSplitCount] = useState(null); // null/1 = not split; any positive integer otherwise
   const [splitOpen, setSplitOpen] = useState(false);
   const [splitDraft, setSplitDraft] = useState("");
+  const [assignedTo, setAssignedTo] = useState(null); // {id, name, role: "waiter"|"delivery"} | null — who's handling this order, from dutyRoster
   const [deliveryFee, setDeliveryFee] = useState(0); // non-zero only when a confirmed order came from the online-ordering link with delivery selected
   const [deliveryMethod, setDeliveryMethod] = useState(null); // "pickup" | "delivery" | null (dine-in/table order)
   const [deliveryZoneLabel, setDeliveryZoneLabel] = useState(""); // display label of the chosen zone, snapshotted at order time
@@ -1420,6 +1461,12 @@ function POSPrototype({ tenantId }) {
   const [editDraftItems, setEditDraftItems] = useState([]);
   const [editReason, setEditReason] = useState("");
   const [expandedHistoryId, setExpandedHistoryId] = useState(null); // receipt id whose edit-history panel is open, if any
+
+  const [dutyRoster, setDutyRoster] = useState([]); // shared: [{id, name, role: "waiter"|"delivery"}] — non-login personnel orders can be assigned to
+  const [dutyRosterLoaded, setDutyRosterLoaded] = useState(false);
+  const [newDutyName, setNewDutyName] = useState("");
+  const [newDutyRole, setNewDutyRole] = useState("waiter");
+  const [expandedDutyId, setExpandedDutyId] = useState(null); // duty-roster id whose assigned-orders panel is open, if any
 
   const [suppliers, setSuppliers] = useState([]); // shared: [{id, name, category, phone}]
   const [suppliersLoaded, setSuppliersLoaded] = useState(false);
@@ -1768,6 +1815,17 @@ function POSPrototype({ tenantId }) {
 
     (async () => {
       try {
+        const result = await getSharedWithRetry(storage, "duty-roster");
+        setDutyRoster(result?.value ? JSON.parse(result.value) : []);
+      } catch (e) {
+        setDutyRoster([]);
+      } finally {
+        setDutyRosterLoaded(true);
+      }
+    })();
+
+    (async () => {
+      try {
         const result = await getSharedWithRetry(storage, "delivery-zones-config");
         setDeliveryZones(result?.value ? JSON.parse(result.value) : []);
       } catch (e) {
@@ -2075,6 +2133,7 @@ function POSPrototype({ tenantId }) {
     deliveryFee: 0,
     deliveryMethod: null,
     deliveryZoneLabel: "",
+    assignedTo: null,
   });
   // Switches which table (or Takeaway/Delivery) the Order screen is currently building a ticket
   // for. Stashes the outgoing table's in-progress cart in memory and restores (or starts fresh)
@@ -2083,7 +2142,7 @@ function POSPrototype({ tenantId }) {
   const switchTable = (nextId) => {
     if (nextId === activeTableId) return;
     const outgoingKey = activeTableId === null ? "takeaway" : activeTableId;
-    const outgoingDraft = { cart, ticketNo, paymentMethod, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel };
+    const outgoingDraft = { cart, ticketNo, paymentMethod, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
     const incomingKey = nextId === null ? "takeaway" : nextId;
     const incoming = tableDrafts[incomingKey] || blankDraft();
     setTableDrafts((prev) => ({ ...prev, [outgoingKey]: outgoingDraft }));
@@ -2099,6 +2158,7 @@ function POSPrototype({ tenantId }) {
     setDeliveryFee(incoming.deliveryFee || 0);
     setDeliveryMethod(incoming.deliveryMethod || null);
     setDeliveryZoneLabel(incoming.deliveryZoneLabel || "");
+    setAssignedTo(incoming.assignedTo || null);
     setDiscountOpen(false);
     setSplitOpen(false);
     setSplitDraft("");
@@ -2135,6 +2195,7 @@ function POSPrototype({ tenantId }) {
         setDeliveryFee(fresh.deliveryFee);
         setDeliveryMethod(fresh.deliveryMethod);
         setDeliveryZoneLabel(fresh.deliveryZoneLabel);
+        setAssignedTo(fresh.assignedTo);
         const key = activeTableId === null ? "takeaway" : activeTableId;
         setTableDrafts((prev) => ({ ...prev, [key]: fresh }));
       },
@@ -2260,6 +2321,7 @@ function POSPrototype({ tenantId }) {
       timestamp: new Date().toISOString(),
       table: tableLabel(tableId),
       servedBy: currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null,
+      assignedTo: (tableId === activeTableId ? assignedTo : tableDrafts[tableId]?.assignedTo) || null,
       items: items.map((c) => {
         const menuItem = Object.values(menu).flat().find((m) => m.id === c.id);
         return { id: c.id, name: c.name, qty: c.qty, price: c.price, note: c.note || "", recipeSnapshot: menuItem?.recipe || [] };
@@ -2297,6 +2359,7 @@ function POSPrototype({ tenantId }) {
       setDeliveryFee(fresh.deliveryFee);
       setDeliveryMethod(fresh.deliveryMethod);
       setDeliveryZoneLabel(fresh.deliveryZoneLabel);
+      setAssignedTo(fresh.assignedTo);
       setPaymentMethod(fresh.paymentMethod);
       setSaved(false);
       setTableDrafts((prev) => ({ ...prev, [tableId]: fresh }));
@@ -2359,7 +2422,7 @@ function POSPrototype({ tenantId }) {
       // instead would read tableDrafts via a stale closure, since React batches the state update
       // from a merge and the switch together — that would silently drop the merged items.)
       const outgoingKey = activeTableId === null ? "takeaway" : activeTableId;
-      const outgoingDraft = { cart, ticketNo, paymentMethod, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel };
+      const outgoingDraft = { cart, ticketNo, paymentMethod, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
       const incomingExisting = tableDrafts[targetId] || blankDraft();
       const incoming = {
         ...incomingExisting,
@@ -2384,6 +2447,7 @@ function POSPrototype({ tenantId }) {
       setDeliveryFee(incoming.deliveryFee || 0);
       setDeliveryMethod(incoming.deliveryMethod || null);
       setDeliveryZoneLabel(incoming.deliveryZoneLabel || "");
+      setAssignedTo(incoming.assignedTo || null);
       setDiscountOpen(false);
       setSplitOpen(false);
       setSplitDraft("");
@@ -2932,6 +2996,7 @@ function POSPrototype({ tenantId }) {
       timestamp: new Date().toISOString(),
       table: activeTableId === null ? null : tableLabel(activeTableId),
       servedBy: currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null,
+      assignedTo: assignedTo ? { ...assignedTo } : null,
       items: cart.map((c) => {
         const menuItem = Object.values(menu).flat().find((m) => m.id === c.id);
         return { id: c.id, name: c.name, qty: c.qty, price: c.price, note: c.note || "", recipeSnapshot: menuItem?.recipe || [] };
@@ -2986,6 +3051,7 @@ function POSPrototype({ tenantId }) {
       setDeliveryFee(fresh.deliveryFee);
       setDeliveryMethod(fresh.deliveryMethod);
       setDeliveryZoneLabel(fresh.deliveryZoneLabel);
+      setAssignedTo(fresh.assignedTo);
       setPaymentMethod(fresh.paymentMethod);
       setCustomerName(fresh.customerName);
       setCustomerPhone(fresh.customerPhone);
@@ -3161,6 +3227,30 @@ function POSPrototype({ tenantId }) {
     setConfirmDialog({
       message: t("confirm_removeSupplier", { name: supplier.name }),
       onConfirm: () => persistSuppliers(suppliers.filter((s) => s.id !== supplier.id)),
+    });
+  };
+
+  const persistDutyRoster = async (next) => {
+    setDutyRoster(next);
+    return syncSet("duty-roster", JSON.stringify(next), true, t("syncLabelSettings"));
+  };
+  const addDutyMember = () => {
+    const name = newDutyName.trim();
+    if (!name) {
+      flashNotice(t("notice_enterTeamMemberName"));
+      return;
+    }
+    persistDutyRoster([...dutyRoster, { id: newId("duty"), name, role: newDutyRole }]);
+    flashNotice(t("notice_teamMemberAdded", { name }));
+    setNewDutyName("");
+  };
+  const removeDutyMember = (member) => {
+    setConfirmDialog({
+      message: t("confirm_removeTeamMember", { name: member.name }),
+      onConfirm: () => {
+        persistDutyRoster(dutyRoster.filter((m) => m.id !== member.id));
+        if (assignedTo?.id === member.id) setAssignedTo(null);
+      },
     });
   };
 
@@ -3393,6 +3483,13 @@ function POSPrototype({ tenantId }) {
     flashNotice(t("notice_orderMarked", { n: r.ticketNo, status: t(`status_${statusId}`) }));
     const statusDef = FULFILLMENT_STATUSES.find((s) => s.id === statusId);
     if (statusDef?.whatsapp) sendWhatsAppUpdate(updated, statusId);
+  };
+
+  // Reassigns which waiter/delivery person a saved order is attributed to — a manager correction,
+  // separate from editItemsHistory since it's not a change to what was ordered.
+  const assignReceiptTo = (r, member) => {
+    const updated = { ...r, assignedTo: member ? { id: member.id, name: member.name, role: member.role } : null };
+    persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? updated : x)));
   };
 
   const startEditReceipt = (r) => {
@@ -3750,6 +3847,21 @@ function POSPrototype({ tenantId }) {
     () => [...shiftLog].sort((a, b) => new Date(b.clockOut) - new Date(a.clockOut)).slice(0, 20),
     [shiftLog]
   );
+  // Per-waiter/delivery-person totals for reconciliation — scoped to shiftCompleted, the same
+  // "since I clocked in" window already used for Register totals in the Shift tab, so this reads
+  // as one consistent notion of "this shift" rather than introducing a separate date range.
+  const teamPerformance = useMemo(() => {
+    const totals = {};
+    dutyRoster.forEach((p) => { totals[p.id] = { ...p, orders: 0, revenue: 0, tickets: [] }; });
+    shiftCompleted.forEach((r) => {
+      const a = r.assignedTo;
+      if (!a || !totals[a.id]) return;
+      totals[a.id].orders += 1;
+      totals[a.id].revenue += r.total;
+      totals[a.id].tickets.push({ ticketNo: r.ticketNo, total: r.total, timestamp: r.timestamp });
+    });
+    return Object.values(totals);
+  }, [dutyRoster, shiftCompleted]);
 
   // --- Menu / category editor ---
   const addCategory = () => {
@@ -4592,6 +4704,33 @@ function POSPrototype({ tenantId }) {
               </div>
             </div>
 
+            {hasFeature("teamTracking") && dutyRoster.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("assignedToLabel")}</div>
+                <select
+                  value={assignedTo?.id || ""}
+                  onChange={(e) => {
+                    const member = dutyRoster.find((m) => m.id === e.target.value);
+                    setAssignedTo(member ? { id: member.id, name: member.name, role: member.role } : null);
+                  }}
+                  className="field"
+                  style={{ width: "100%" }}
+                >
+                  <option value="">{t("assignedToNone")}</option>
+                  {dutyRoster.filter((m) => m.role === "waiter").length > 0 && (
+                    <optgroup label={t("roleWaiter")}>
+                      {dutyRoster.filter((m) => m.role === "waiter").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </optgroup>
+                  )}
+                  {dutyRoster.filter((m) => m.role === "delivery").length > 0 && (
+                    <optgroup label={t("roleDelivery")}>
+                      {dutyRoster.filter((m) => m.role === "delivery").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+            )}
+
             <div style={{ marginTop: 14 }}>
               <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("customerOptional")}</div>
               <div style={{ position: "relative", marginBottom: 8 }}>
@@ -4919,6 +5058,7 @@ function POSPrototype({ tenantId }) {
                             {t("ticketHash", { n: r.ticketNo })} &middot; {new Date(r.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                             {r.table && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A2E3A", color: "#9CB0E3" }}>{r.table}</span>}
                             {r.servedBy?.name && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A3A2E", color: "#9CE3B0" }}>{t("servedByLabel", { name: r.servedBy.name })}</span>}
+                            {r.assignedTo?.name && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A2E3A", color: "#B0A8E3" }}>{t("assignedToBadge", { role: r.assignedTo.role === "delivery" ? t("roleDelivery") : t("roleWaiter"), name: r.assignedTo.name })}</span>}
                             {r.paymentMethod && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2E3440", color: "#9CA1AC" }}>{t(`payment_${r.paymentMethod}`)}</span>}
                             {cancelled && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#33301F", color: "#E3C98A" }}>{t("cancelledBadge")}</span>}
                             {refunded && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#3A2A28", color: "#E3A79C" }}>{t("refundedBadge")}</span>}
@@ -5024,6 +5164,30 @@ function POSPrototype({ tenantId }) {
                                 <button onClick={() => refundReceipt(r)} title={t("refundOrderTooltip")} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("refundOrder")}</button>
                               </>
                             )}
+                          </div>
+                        )}
+
+                        {!voided && isManager && hasFeature("teamTracking") && dutyRoster.length > 0 && (
+                          <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 10.5, color: "#8A8F99" }}>{t("reassignLabel")}</span>
+                            <select
+                              value={r.assignedTo?.id || ""}
+                              onChange={(e) => assignReceiptTo(r, dutyRoster.find((m) => m.id === e.target.value) || null)}
+                              className="field"
+                              style={{ fontSize: 11.5, padding: "4px 6px" }}
+                            >
+                              <option value="">{t("assignedToNone")}</option>
+                              {dutyRoster.filter((m) => m.role === "waiter").length > 0 && (
+                                <optgroup label={t("roleWaiter")}>
+                                  {dutyRoster.filter((m) => m.role === "waiter").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </optgroup>
+                              )}
+                              {dutyRoster.filter((m) => m.role === "delivery").length > 0 && (
+                                <optgroup label={t("roleDelivery")}>
+                                  {dutyRoster.filter((m) => m.role === "delivery").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </optgroup>
+                              )}
+                            </select>
                           </div>
                         )}
 
@@ -5853,6 +6017,93 @@ function POSPrototype({ tenantId }) {
                 </div>
               ))}
             </div>
+          )}
+
+          {hasFeature("teamTracking") && isManager && (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{t("teamRosterTitle")}</div>
+                <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 12 }}>{t("teamRosterSubtitle")}</div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                  <input type="text" value={newDutyName} onChange={(e) => setNewDutyName(e.target.value)} placeholder={t("newTeamMemberPlaceholder")} className="field" style={{ flex: 1, minWidth: 140 }} />
+                  <select value={newDutyRole} onChange={(e) => setNewDutyRole(e.target.value)} className="field" style={{ width: 140 }}>
+                    <option value="waiter">{t("roleWaiter")}</option>
+                    <option value="delivery">{t("roleDelivery")}</option>
+                  </select>
+                  <button onClick={addDutyMember} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addTeamMember")}</button>
+                </div>
+
+                {!dutyRosterLoaded ? (
+                  <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loading")}</div>
+                ) : dutyRoster.length === 0 ? (
+                  <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noTeamMembersYet")}</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {dutyRoster.map((m) => (
+                      <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "10px 16px", flexWrap: "wrap", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#2A2E3A", color: "#B0A8E3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 600, fontFamily: "IBM Plex Mono, monospace" }}>
+                            {initials(m.name)}
+                          </div>
+                          <div style={{ fontSize: 13.5, display: "flex", alignItems: "center", gap: 6 }}>
+                            {m.name}
+                            <span style={{ fontSize: 9.5, padding: "2px 6px", borderRadius: 999, background: "#2A2E3A", color: "#B0A8E3", fontWeight: 600 }}>
+                              {m.role === "delivery" ? t("roleDelivery") : t("roleWaiter")}
+                            </span>
+                          </div>
+                        </div>
+                        <button onClick={() => removeDutyMember(m)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("removeTeamMember")}</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{t("teamPerformanceTitle")}</div>
+                <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 12 }}>{t("teamPerformanceSubtitle")}</div>
+                {teamPerformance.length === 0 ? (
+                  <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noTeamMembersYet")}</div>
+                ) : teamPerformance.every((p) => p.orders === 0) ? (
+                  <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noTeamPerformanceYet")}</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {teamPerformance.filter((p) => p.orders > 0).sort((a, b) => b.revenue - a.revenue).map((p) => (
+                      <div key={p.id} style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "12px 16px" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                          <div style={{ fontSize: 13.5, display: "flex", alignItems: "center", gap: 6 }}>
+                            {p.name}
+                            <span style={{ fontSize: 9.5, padding: "2px 6px", borderRadius: 999, background: "#2A2E3A", color: "#B0A8E3", fontWeight: 600 }}>
+                              {p.role === "delivery" ? t("roleDelivery") : t("roleWaiter")}
+                            </span>
+                          </div>
+                          <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#9CA1AC" }}>
+                            <span>{tCount("orderCount", p.orders)}</span>
+                            <span style={{ color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{money(p.revenue)}</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setExpandedDutyId(expandedDutyId === p.id ? null : p.id)}
+                          style={{ fontSize: 11, color: theme.secondaryLight, background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: 8, fontFamily: "IBM Plex Mono, monospace" }}
+                        >
+                          {expandedDutyId === p.id ? t("hideAssignedOrders") : t("viewAssignedOrders", { n: p.tickets.length })}
+                        </button>
+                        {expandedDutyId === p.id && (
+                          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                            {p.tickets.map((tk, i) => (
+                              <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#9CA1AC", fontFamily: "IBM Plex Mono, monospace" }}>
+                                <span>{t("ticketHash", { n: tk.ticketNo })} &middot; {new Date(tk.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })}</span>
+                                <span>{money(tk.total)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           <div style={{ fontSize: 12, color: "#8A8F99", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>{t("shiftHistoryTitle")}</div>
