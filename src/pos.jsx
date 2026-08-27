@@ -1635,7 +1635,7 @@ function POSPrototype({ tenantId }) {
   const [editingPinValue, setEditingPinValue] = useState("");
   const [nowTick, setNowTick] = useState(() => Date.now());
 
-  const [lang, setLang] = useState("en");
+  const [lang, setLang] = useState("ar");
   const [langLoaded, setLangLoaded] = useState(false);
 
   const [restaurantName, setRestaurantName] = useState("Ember & Vine");
@@ -1799,9 +1799,10 @@ function POSPrototype({ tenantId }) {
     (async () => {
       try {
         const result = await storage.get("ui-lang", false);
-        setLang(result?.value === "ar" ? "ar" : "en");
+        // Arabic by default — only an explicit past choice of English should override it.
+        setLang(result?.value === "en" ? "en" : "ar");
       } catch (e) {
-        setLang("en");
+        setLang("ar");
       } finally {
         setLangLoaded(true);
       }
@@ -6899,7 +6900,7 @@ function CustomerMenuView({ tableId, tenantId }) {
   // it being assumed dine-in.
   const isGeneralLink = tableId === null || tableId === undefined;
   const storage = useMemo(() => createTenantStorage(tenantId), [tenantId]);
-  const [lang, setLang] = useState("en");
+  const [lang, setLang] = useState("ar");
   const [restaurantName, setRestaurantName] = useState("Ember & Vine");
   const [logoUrl, setLogoUrl] = useState(null);
   const [primaryColor, setPrimaryColor] = useState(COLORS.burgundy);
