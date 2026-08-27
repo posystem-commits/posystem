@@ -192,6 +192,22 @@ const STRINGS = {
     byPaymentMethod: "By payment method",
     refundedCount: "Refunded · {{n}}",
     cancelledCountNote: "Cancelled · {{n}} (stock restored, not counted)",
+    discountsGiven: "Discounts given",
+    cashReconciliationTitle: "Cash reconciliation",
+    cashReconciliationSubtitle: "Counts every cash order, cash refund, and cash expense logged this shift, so the expected drawer total is actually accurate.",
+    openingFloatLabel: "Opening float",
+    openingFloatHint: "Cash physically in the drawer when this shift started",
+    cashSalesLabel: "Cash sales",
+    cashRefundsLabel: "Cash refunds",
+    cashExpensesLabel: "Cash expenses paid out",
+    noCashExpensesThisShift: "No cash expenses logged this shift.",
+    expectedCashLabel: "Expected cash in drawer",
+    countedCashLabel: "Counted cash",
+    countedCashPlaceholder: "Count the drawer and enter it here",
+    varianceLabel: "Variance",
+    varianceOver: "Over",
+    varianceShort: "Short",
+    varianceMatch: "Matches exactly",
     printShiftReport: "Print shift report",
     downloadReportTooltip: "Downloads a report file you can open and print — works in this preview",
     startNewShift: "Start new shift",
@@ -712,6 +728,22 @@ const STRINGS = {
     byPaymentMethod: "حسب طريقة الدفع",
     refundedCount: "مُسترجع · {{n}}",
     cancelledCountNote: "ملغى · {{n}} (تمت استعادة المخزون، غير محتسب)",
+    discountsGiven: "الخصومات الممنوحة",
+    cashReconciliationTitle: "تسوية النقدية",
+    cashReconciliationSubtitle: "يحسب كل طلب نقدي ومسترجع نقدي ومصروف نقدي سُجّل في هذه الوردية، عشان يكون إجمالي الدرج المتوقع دقيق فعلاً.",
+    openingFloatLabel: "رصيد بداية الوردية",
+    openingFloatHint: "النقدية الموجودة فعليًا في الدرج عند بداية هذه الوردية",
+    cashSalesLabel: "المبيعات النقدية",
+    cashRefundsLabel: "المسترجع نقدًا",
+    cashExpensesLabel: "المصروفات المدفوعة نقدًا",
+    noCashExpensesThisShift: "لا توجد مصروفات نقدية مسجّلة في هذه الوردية.",
+    expectedCashLabel: "النقدية المتوقعة في الدرج",
+    countedCashLabel: "النقدية المعدودة",
+    countedCashPlaceholder: "اعدّ الدرج واكتب الرقم هنا",
+    varianceLabel: "الفرق",
+    varianceOver: "زيادة",
+    varianceShort: "عجز",
+    varianceMatch: "مطابق تمامًا",
     printShiftReport: "طباعة تقرير الوردية",
     downloadReportTooltip: "ينزّل ملف تقرير يمكنك فتحه وطباعته — يعمل في هذه المعاينة",
     startNewShift: "بدء وردية جديدة",
@@ -1510,6 +1542,8 @@ function POSPrototype({ tenantId }) {
 
   const [shiftStart, setShiftStart] = useState(null); // doubles as this device's clock-in time
   const [shiftLoaded, setShiftLoaded] = useState(false);
+  const [openingFloat, setOpeningFloat] = useState("0"); // cash physically in the drawer at clock-in, for cash reconciliation
+  const [countedCash, setCountedCash] = useState(""); // cash actually counted at close — entered fresh each time, never persisted
 
   const [employees, setEmployees] = useState([]); // shared staff roster: [{id, name, pin}]
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
@@ -1673,6 +1707,8 @@ function POSPrototype({ tenantId }) {
         if (emp) {
           const result = await storage.get("shift-start", false);
           setShiftStart(result?.value || new Date().toISOString());
+          const floatResult = await storage.get("opening-float", false);
+          setOpeningFloat(floatResult?.value || "0");
         } else {
           setShiftStart(null);
         }
@@ -3596,6 +3632,24 @@ function POSPrototype({ tenantId }) {
     total: shiftCompleted.filter((r) => r.paymentMethod === m.id).reduce((s, r) => s + r.total, 0),
     count: shiftCompleted.filter((r) => r.paymentMethod === m.id).length,
   }));
+  const shiftCashSalesTotal = shiftByMethod.find((m) => m.id === "cash")?.total || 0;
+  // A cash refund is cash actually leaving the drawer back to the customer — unlike a cancellation
+  // (which the app treats as the order never having happened financially), so it belongs in the
+  // cash reconciliation the same way an expense paid in cash does.
+  const shiftCashRefundsTotal = shiftRefunded.filter((r) => r.paymentMethod === "cash").reduce((s, r) => s + r.total, 0);
+  const shiftDiscountTotal = shiftCompleted.reduce((s, r) => s + (r.discountAmount || 0), 0);
+  // Expenses only carry a date (not a timestamp), so "this shift" is approximated as anything
+  // logged on or after the shift's start date — exact enough for the normal case of a shift that
+  // doesn't span midnight, and still reasonable for one that does.
+  const shiftStartDateStr = shiftStart ? shiftStart.slice(0, 10) : null;
+  const shiftCashExpenses = shiftStartDateStr
+    ? Object.values(expensesByMonth).flat().filter((e) => e.status === "paid" && e.paymentMethod === "cash" && e.date >= shiftStartDateStr)
+    : [];
+  const shiftCashExpensesTotal = shiftCashExpenses.reduce((s, e) => s + e.amount, 0);
+  const openingFloatNum = Number(openingFloat) || 0;
+  const expectedCash = openingFloatNum + shiftCashSalesTotal - shiftCashRefundsTotal - shiftCashExpensesTotal;
+  const countedCashNum = countedCash === "" ? null : Number(countedCash) || 0;
+  const cashVariance = countedCashNum === null ? null : Math.round((countedCashNum - expectedCash) * 100) / 100;
 
   // Personal stats for whoever is currently clocked in — same receipts, filtered to just theirs.
   const myShiftCompleted = currentEmployee ? shiftCompleted.filter((r) => r.servedBy?.id === currentEmployee.id) : [];
@@ -3623,6 +3677,11 @@ function POSPrototype({ tenantId }) {
         (m) => `<div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t(`payment_${m.id}`))} (${m.count})</span><span>${money(m.total)}</span></div>`
       )
       .join("");
+    const cashExpenseRows = shiftCashExpenses
+      .map(
+        (e) => `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(e.supplierName || t(`category_${e.category}`))}</span><span>-${money(e.amount)}</span></div>`
+      )
+      .join("");
     return `
       <div class="center">
         ${brandHeaderHtml()}
@@ -3642,7 +3701,18 @@ function POSPrototype({ tenantId }) {
       <div class="dashed">
         <div class="row" style="font-size:12px;"><span>${escapeHtml(t("grossSales"))}</span><span>${money(shiftGross)}</span></div>
         <div class="row" style="font-size:12px;"><span>${escapeHtml(t("refunds"))}</span><span>-${money(shiftRefundsTotal)}</span></div>
+        ${shiftDiscountTotal > 0 ? `<div class="row" style="font-size:12px;"><span>${escapeHtml(t("discountsGiven"))}</span><span>-${money(shiftDiscountTotal)}</span></div>` : ""}
         <div class="row" style="font-size:15px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("net"))}</span><span>${money(shiftGross - shiftRefundsTotal)}</span></div>
+      </div>
+      <div class="dashed" style="font-size:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">${escapeHtml(t("cashReconciliationTitle"))}</div>
+        <div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("openingFloatLabel"))}</span><span>${money(openingFloatNum)}</span></div>
+        <div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("cashSalesLabel"))}</span><span>${money(shiftCashSalesTotal)}</span></div>
+        ${shiftCashRefundsTotal > 0 ? `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("cashRefundsLabel"))}</span><span>-${money(shiftCashRefundsTotal)}</span></div>` : ""}
+        ${cashExpenseRows}
+        <div class="row" style="font-weight:700;margin-top:4px;"><span>${escapeHtml(t("expectedCashLabel"))}</span><span>${money(expectedCash)}</span></div>
+        ${countedCashNum !== null ? `<div class="row" style="margin-top:3px;"><span>${escapeHtml(t("countedCashLabel"))}</span><span>${money(countedCashNum)}</span></div>` : ""}
+        ${cashVariance !== null ? `<div class="row" style="font-weight:700;"><span>${escapeHtml(t("varianceLabel"))}</span><span>${cashVariance >= 0 ? "+" : ""}${money(cashVariance)}</span></div>` : ""}
       </div>`;
   };
   const printShiftReport = () => {
@@ -3716,6 +3786,8 @@ function POSPrototype({ tenantId }) {
     const now = new Date().toISOString();
     setCurrentEmployee({ id: emp.id, name: emp.name });
     setShiftStart(now);
+    setOpeningFloat("0");
+    setCountedCash("");
     setLoginSelectedId(null);
     setLoginPin("");
     setLoginError(false);
@@ -3727,6 +3799,11 @@ function POSPrototype({ tenantId }) {
     // enough to just queue quietly rather than block the person from getting to work.
     syncSet("current-employee", JSON.stringify({ id: emp.id, name: emp.name }), false, t("syncLabelSettings"));
     syncSet("shift-start", now, false, t("syncLabelSettings"));
+    syncSet("opening-float", "0", false, t("syncLabelSettings"));
+  };
+  const updateOpeningFloat = (value) => {
+    setOpeningFloat(value);
+    syncSet("opening-float", value, false, t("syncLabelSettings"));
   };
   const attemptLogin = () => {
     const emp = employees.find((e) => e.id === loginSelectedId);
@@ -3781,10 +3858,13 @@ function POSPrototype({ tenantId }) {
     setShiftRecap(null);
     setCurrentEmployee(null);
     setShiftStart(null);
+    setOpeningFloat("0");
+    setCountedCash("");
     setUnlockedTabs(new Set());
     try {
       await storage.delete("current-employee", false);
       await storage.delete("shift-start", false);
+      await storage.delete("opening-float", false);
     } catch (e) {
       // non-fatal — worst case the next load briefly shows a stale session before this clears
     }
@@ -5630,7 +5710,104 @@ function POSPrototype({ tenantId }) {
                     <span>{t("cancelledCountNote", { n: shiftCancelled.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>—</span>
                   </div>
                 )}
+                {shiftDiscountTotal > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 8, paddingTop: 8, borderTop: "1px dashed #3A404C" }}>
+                    <span>{t("discountsGiven")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftDiscountTotal)}</span>
+                  </div>
+                )}
               </div>
+
+              {isManager && (
+                <div style={{ background: COLORS.inkSoft, border: `1px solid ${theme.secondary}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                  <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("cashReconciliationTitle")}</div>
+                  <div style={{ fontSize: 11.5, color: "#9CA1AC", marginBottom: 14 }}>{t("cashReconciliationSubtitle")}</div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, marginBottom: 8 }}>
+                    <span title={t("openingFloatHint")}>{t("openingFloatLabel")}</span>
+                    <input
+                      type="number"
+                      value={openingFloat}
+                      onChange={(e) => updateOpeningFloat(e.target.value)}
+                      className="field"
+                      style={{ width: 100, textAlign: "right", fontFamily: "IBM Plex Mono, monospace" }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
+                    <span>{t("cashSalesLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(shiftCashSalesTotal)}</span>
+                  </div>
+                  {shiftCashRefundsTotal > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6, color: "#E3A79C" }}>
+                      <span>{t("cashRefundsLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftCashRefundsTotal)}</span>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #3A404C" }}>
+                    <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("cashExpensesLabel")}</div>
+                    {shiftCashExpenses.length === 0 ? (
+                      <div style={{ fontSize: 12, color: "#8A8F99" }}>{t("noCashExpensesThisShift")}</div>
+                    ) : (
+                      <>
+                        {shiftCashExpenses.map((e) => (
+                          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#E3A79C", marginBottom: 4 }}>
+                            <span>{e.supplierName || t(`category_${e.category}`)}</span>
+                            <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(e.amount)}</span>
+                          </div>
+                        ))}
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 4, fontWeight: 600, color: "#E3A79C" }}>
+                          <span>{t("cashExpensesLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftCashExpensesTotal)}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${theme.secondary}` }}>
+                    <span>{t("expectedCashLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(expectedCash)}</span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, marginTop: 12 }}>
+                    <span>{t("countedCashLabel")}</span>
+                    <input
+                      type="number"
+                      value={countedCash}
+                      onChange={(e) => setCountedCash(e.target.value)}
+                      placeholder={t("countedCashPlaceholder")}
+                      className="field"
+                      style={{ width: 140, textAlign: "right", fontFamily: "IBM Plex Mono, monospace" }}
+                    />
+                  </div>
+                  {cashVariance !== null && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13.5, fontWeight: 600, marginTop: 8 }}>
+                      <span>{t("varianceLabel")}</span>
+                      <span style={{ fontFamily: "IBM Plex Mono, monospace", color: cashVariance === 0 ? "#9FCB8E" : cashVariance > 0 ? "#E3C98A" : "#E3A79C" }}>
+                        {cashVariance === 0 ? t("varianceMatch") : `${cashVariance > 0 ? "+" : ""}${money(cashVariance)} (${cashVariance > 0 ? t("varianceOver") : t("varianceShort")})`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {hasFeature("teamTracking") && isManager && teamPerformance.some((p) => p.orders > 0) && (
+                <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, color: "#9CA1AC", marginBottom: 10 }}>{t("teamPerformanceTitle")}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {teamPerformance.filter((p) => p.orders > 0).sort((a, b) => b.revenue - a.revenue).map((p) => (
+                      <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                          {p.name}
+                          <span style={{ fontSize: 9.5, padding: "2px 6px", borderRadius: 999, background: "#2A2E3A", color: "#B0A8E3", fontWeight: 600 }}>
+                            {p.role === "delivery" ? t("roleDelivery") : t("roleWaiter")}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#9CA1AC" }}>
+                          <span>{tCount("orderCount", p.orders)}</span>
+                          <span style={{ color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{money(p.revenue)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={printShiftReport} title={t("printReceiptTooltip")} style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>{t("printShiftReport")}</button>
                 <button onClick={downloadShiftReport} title={t("downloadReportTooltip")} style={{ padding: "13px 16px", borderRadius: 8, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>{t("download")}</button>
