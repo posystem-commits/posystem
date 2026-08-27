@@ -42,6 +42,10 @@ const STRINGS = {
     payment_cash: "Cash",
     payment_visa: "Visa",
     payment_instapay: "InstaPay",
+    payment_split: "Split payment",
+    splitPaymentOption: "Split payment",
+    splitRemainingLabel: "Remaining",
+    notice_splitPaymentMismatch: "Split amounts must add up to the total ({{amount}}) across at least 2 methods",
 
     status_placed: "Order placed",
     status_preparing: "Preparing",
@@ -590,6 +594,10 @@ const STRINGS = {
     payment_cash: "نقدًا",
     payment_visa: "فيزا",
     payment_instapay: "إنستاباي",
+    payment_split: "دفع مقسّم",
+    splitPaymentOption: "دفع مقسّم",
+    splitRemainingLabel: "المتبقي",
+    notice_splitPaymentMismatch: "يجب أن يساوي مجموع المبالغ المقسّمة الإجمالي ({{amount}}) موزعًا على طريقتين على الأقل",
 
     status_placed: "تم استلام الطلب",
     status_preparing: "قيد التحضير",
@@ -1131,6 +1139,14 @@ const PAYMENT_METHODS = [
   { id: "visa", label: "Visa" },
   { id: "instapay", label: "InstaPay" },
 ];
+// A receipt paid across more than one method stores paymentMethod: "split" plus a splitPayments
+// breakdown; every other receipt effectively has one "split" of just its own total. Reporting
+// code should always read amounts through this helper rather than assuming paymentMethod alone
+// tells you the full story, so a split payment counts correctly toward each method it touched.
+const receiptMethodAmounts = (r) =>
+  r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0
+    ? r.splitPayments
+    : [{ method: r.paymentMethod, amount: r.total }];
 
 const EXPENSE_CATEGORIES = ["ingredients", "utilities", "equipment", "marketing", "packaging", "other"];
 
@@ -1508,6 +1524,7 @@ function POSPrototype({ tenantId }) {
   }, [syncQueue]);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [paidNow, setPaidNow] = useState(true); // false = "open tab" — order saved but payment not yet collected
+  const [splitAmounts, setSplitAmounts] = useState({}); // {cash: "12.00", visa: "18.64", ...} — only used when paymentMethod === "split"
   const [discount, setDiscount] = useState(null);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [discountDraft, setDiscountDraft] = useState({ type: "percent", value: "" });
@@ -2205,6 +2222,7 @@ function POSPrototype({ tenantId }) {
     ticketNo: issueTicketNumber(),
     paymentMethod: "cash",
     paidNow: true,
+    splitAmounts: {},
     discount: null,
     splitCount: null,
     customerName: "",
@@ -2223,7 +2241,7 @@ function POSPrototype({ tenantId }) {
   const switchTable = (nextId) => {
     if (nextId === activeTableId) return;
     const outgoingKey = activeTableId === null ? "takeaway" : activeTableId;
-    const outgoingDraft = { cart, ticketNo, paymentMethod, paidNow, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
+    const outgoingDraft = { cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
     const incomingKey = nextId === null ? "takeaway" : nextId;
     const incoming = tableDrafts[incomingKey] || blankDraft();
     setTableDrafts((prev) => ({ ...prev, [outgoingKey]: outgoingDraft }));
@@ -2231,6 +2249,7 @@ function POSPrototype({ tenantId }) {
     setTicketNo(incoming.ticketNo);
     setPaymentMethod(incoming.paymentMethod);
     setPaidNow(incoming.paidNow !== false);
+    setSplitAmounts(incoming.splitAmounts || {});
     setDiscount(incoming.discount);
     setSplitCount(incoming.splitCount ?? null);
     setCustomerName(incoming.customerName);
@@ -2267,6 +2286,7 @@ function POSPrototype({ tenantId }) {
         setTicketNo(fresh.ticketNo);
         setPaymentMethod(fresh.paymentMethod);
         setPaidNow(fresh.paidNow);
+        setSplitAmounts(fresh.splitAmounts);
         setDiscount(fresh.discount);
         setSplitCount(fresh.splitCount);
         setSplitOpen(false);
@@ -2376,14 +2396,31 @@ function POSPrototype({ tenantId }) {
     // checkout-requests list (see requestCheckout in CustomerMenuView), not on the table-tab
     // entry itself — checkoutRequests is already polled, so this is just a lookup.
     const requestedPaymentMethod = checkoutRequestForTable(tableId)?.paymentMethod || null;
-    setPayTableModal({ tableId, items, paymentMethod: requestedPaymentMethod || "cash" });
+    setPayTableModal({ tableId, items, paymentMethod: requestedPaymentMethod || "cash", splitAmounts: {} });
   };
   // Finalizes a table's bill directly from the Tables tab — the same shape of work saveOrder()
   // does for the actively-open table, but sourced from the table's tab (shared or local) rather
   // than requiring staff to switch to that table in the Order screen first.
   const confirmTablePayment = async () => {
     if (!payTableModal) return;
-    const { tableId, items, paymentMethod } = payTableModal;
+    const { tableId, items, paymentMethod, splitAmounts: tableSplitAmounts } = payTableModal;
+
+    const modalSubtotalForValidation = items.reduce((s, i) => s + i.price * i.qty, 0);
+    const modalServicePercent = hasFeature("vatService") ? servicePercent : 0;
+    const modalVatPercent = hasFeature("vatService") ? vatPercent : 0;
+    const modalSvcAmt = Math.round(modalSubtotalForValidation * (modalServicePercent / 100) * 100) / 100;
+    const modalVtAmt = Math.round((modalSubtotalForValidation + modalSvcAmt) * (modalVatPercent / 100) * 100) / 100;
+    const modalGrandTotal = modalSubtotalForValidation + modalSvcAmt + modalVtAmt;
+    const splitPayments = paymentMethod === "split"
+      ? PAYMENT_METHODS.map((m) => ({ method: m.id, amount: Math.round((Number(tableSplitAmounts?.[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
+      : null;
+    if (paymentMethod === "split") {
+      const splitSum = splitPayments.reduce((s, sp) => s + sp.amount, 0);
+      if (splitPayments.length < 2 || Math.abs(splitSum - modalGrandTotal) > 0.01) {
+        flashNotice(t("notice_splitPaymentMismatch", { amount: money(modalGrandTotal) }));
+        return;
+      }
+    }
 
     items.forEach((cartItem) => {
       const menuItem = Object.values(menu).flat().find((m) => m.id === cartItem.id);
@@ -2422,6 +2459,7 @@ function POSPrototype({ tenantId }) {
       total: grandTotal,
       splitCount: null,
       paymentMethod,
+      splitPayments,
       paid: true,
       paidAt: new Date().toISOString(),
       customer: null,
@@ -2447,6 +2485,7 @@ function POSPrototype({ tenantId }) {
       setAssignedTo(fresh.assignedTo);
       setPaymentMethod(fresh.paymentMethod);
       setPaidNow(fresh.paidNow);
+      setSplitAmounts(fresh.splitAmounts);
       setSaved(false);
       setTableDrafts((prev) => ({ ...prev, [tableId]: fresh }));
     } else {
@@ -2508,7 +2547,7 @@ function POSPrototype({ tenantId }) {
       // instead would read tableDrafts via a stale closure, since React batches the state update
       // from a merge and the switch together — that would silently drop the merged items.)
       const outgoingKey = activeTableId === null ? "takeaway" : activeTableId;
-      const outgoingDraft = { cart, ticketNo, paymentMethod, paidNow, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
+      const outgoingDraft = { cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
       const incomingExisting = tableDrafts[targetId] || blankDraft();
       const incoming = {
         ...incomingExisting,
@@ -2525,6 +2564,7 @@ function POSPrototype({ tenantId }) {
       setTicketNo(incoming.ticketNo);
       setPaymentMethod(incoming.paymentMethod);
       setPaidNow(incoming.paidNow !== false);
+      setSplitAmounts(incoming.splitAmounts || {});
       setDiscount(incoming.discount);
       setSplitCount(incoming.splitCount ?? null);
       setCustomerName(incoming.customerName);
@@ -3068,6 +3108,17 @@ function POSPrototype({ tenantId }) {
   const saveOrder = async () => {
     if (cart.length === 0) return;
 
+    const splitPayments = paymentMethod === "split"
+      ? PAYMENT_METHODS.map((m) => ({ method: m.id, amount: Math.round((Number(splitAmounts[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
+      : null;
+    if (paymentMethod === "split") {
+      const splitSum = splitPayments.reduce((s, sp) => s + sp.amount, 0);
+      if (splitPayments.length < 2 || Math.abs(splitSum - total) > 0.01) {
+        flashNotice(t("notice_splitPaymentMismatch", { amount: money(total) }));
+        return;
+      }
+    }
+
     // deduct ingredient stock per recipe, and snapshot the recipe used at time of sale
     cart.forEach((cartItem) => {
       const menuItem = Object.values(menu).flat().find((m) => m.id === cartItem.id);
@@ -3101,6 +3152,7 @@ function POSPrototype({ tenantId }) {
       total,
       splitCount: splitCount && splitCount > 1 ? splitCount : null,
       paymentMethod,
+      splitPayments,
       paid: paidNow,
       paidAt: paidNow ? new Date().toISOString() : null,
       customer,
@@ -3143,6 +3195,7 @@ function POSPrototype({ tenantId }) {
       setAssignedTo(fresh.assignedTo);
       setPaymentMethod(fresh.paymentMethod);
       setPaidNow(fresh.paidNow);
+      setSplitAmounts(fresh.splitAmounts);
       setCustomerName(fresh.customerName);
       setCustomerPhone(fresh.customerPhone);
       setCustomerAddress(fresh.customerAddress);
@@ -3227,7 +3280,11 @@ function POSPrototype({ tenantId }) {
         ${deliveryFeeRow}
         <div class="row" style="font-size:14px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("total"))}</span><span>${money(total)}</span></div>
         ${splitCount > 1 ? `<div class="row" style="font-size:12px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("splitLabel", { n: splitCount }))}</span><span>${escapeHtml(t("eachPays", { amount: money(total / splitCount) }))}</span></div>` : ""}
-        <div style="font-size:11px;margin-top:4px;">${escapeHtml(t("paidVia", { method: t(`payment_${paymentMethod}`) }))}</div>
+        ${paymentMethod === "split"
+          ? PAYMENT_METHODS.filter((m) => Number(splitAmounts[m.id]) > 0)
+              .map((m) => `<div style="font-size:11px;margin-top:2px;">${escapeHtml(t("paidVia", { method: t(`payment_${m.id}`) }))} &mdash; ${money(Number(splitAmounts[m.id]) || 0)}</div>`)
+              .join("")
+          : `<div style="font-size:11px;margin-top:4px;">${escapeHtml(t("paidVia", { method: t(`payment_${paymentMethod}`) }))}</div>`}
       </div>
       <div class="center" style="font-size:10px;margin-top:14px;">${escapeHtml(t("thankYou"))}</div>`;
   };
@@ -3286,7 +3343,8 @@ function POSPrototype({ tenantId }) {
   const topSellers = Object.entries(dashboardItemTotals).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, qty]) => ({ name, qty }));
   const maxTopSellerQty = Math.max(1, ...topSellers.map((s) => s.qty));
 
-  const dashboardByMethod = PAYMENT_METHODS.map((m) => ({ ...m, total: dashboardReceipts.filter((r) => r.paymentMethod === m.id).reduce((s, r) => s + r.total, 0) }));
+  const dashboardMethodAmounts = dashboardReceipts.flatMap(receiptMethodAmounts);
+  const dashboardByMethod = PAYMENT_METHODS.map((m) => ({ ...m, total: dashboardMethodAmounts.filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0) }));
   const maxMethodTotal = Math.max(1, ...dashboardByMethod.map((m) => m.total));
 
   // Categorized using data already on each receipt: deliveryMethod is only ever set for orders
@@ -3655,6 +3713,17 @@ function POSPrototype({ tenantId }) {
           changes,
         }
       : null;
+    const newTotal = newNet + newServiceAmt + newVatAmt + (r.deliveryFee || 0);
+    // A split-payment breakdown is fixed dollar amounts, not a formula like the discount/VAT
+    // rates above — editing quantities changes the total, so rescale each method's share
+    // proportionally to keep receiptMethodAmounts(r) still summing to the new total. Not a
+    // perfect reconstruction of who'd actually pay what, but keeps reporting internally
+    // consistent rather than silently drifting from the receipt's own total.
+    const rescaledSplitPayments = r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.total > 0
+      ? r.splitPayments
+          .map((sp) => ({ method: sp.method, amount: Math.round(sp.amount * (newTotal / r.total) * 100) / 100 }))
+          .filter((sp) => sp.amount > 0)
+      : r.splitPayments;
     const updatedReceipt = {
       ...r,
       items: cleaned,
@@ -3662,7 +3731,8 @@ function POSPrototype({ tenantId }) {
       discountAmount: newDiscAmt,
       serviceAmount: newServiceAmt,
       vatAmount: newVatAmt,
-      total: newNet + newServiceAmt + newVatAmt + (r.deliveryFee || 0),
+      total: newTotal,
+      splitPayments: rescaledSplitPayments,
       editHistory: historyEntry ? [historyEntry, ...(r.editHistory || [])] : r.editHistory,
     };
     persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? updatedReceipt : x)));
@@ -3685,10 +3755,13 @@ function POSPrototype({ tenantId }) {
   const paymentsCollectedThisShift = shiftStart
     ? monthReceiptsForShift.filter((r) => r.status === "completed" && r.paid !== false && (r.paidAt || r.timestamp) >= shiftStart)
     : [];
+  const paymentsCollectedThisShiftAmounts = paymentsCollectedThisShift.flatMap(receiptMethodAmounts);
   const shiftByMethod = PAYMENT_METHODS.map((m) => ({
     ...m,
-    total: paymentsCollectedThisShift.filter((r) => r.paymentMethod === m.id).reduce((s, r) => s + r.total, 0),
-    count: paymentsCollectedThisShift.filter((r) => r.paymentMethod === m.id).length,
+    total: paymentsCollectedThisShiftAmounts.filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0),
+    // Counts orders that touched this method at all — a split order can count toward more than
+    // one method's count, same as it contributes to more than one method's total.
+    count: paymentsCollectedThisShift.filter((r) => receiptMethodAmounts(r).some((a) => a.method === m.id)).length,
   }));
   const shiftCashSalesTotal = shiftByMethod.find((m) => m.id === "cash")?.total || 0;
   const shiftUnpaid = shiftCompleted.filter((r) => r.paid === false);
@@ -3696,7 +3769,7 @@ function POSPrototype({ tenantId }) {
   // A cash refund is cash actually leaving the drawer back to the customer — unlike a cancellation
   // (which the app treats as the order never having happened financially), so it belongs in the
   // cash reconciliation the same way an expense paid in cash does.
-  const shiftCashRefundsTotal = shiftRefunded.filter((r) => r.paymentMethod === "cash").reduce((s, r) => s + r.total, 0);
+  const shiftCashRefundsTotal = shiftRefunded.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
   const shiftDiscountTotal = shiftCompleted.reduce((s, r) => s + (r.discountAmount || 0), 0);
   // Expenses only carry a date (not a timestamp), so "this shift" is approximated as anything
   // logged on or after the shift's start date — exact enough for the normal case of a shift that
@@ -4942,16 +5015,46 @@ function POSPrototype({ tenantId }) {
                   {t(`payment_${m.id}`)}
                 </button>
               ))}
+              <button onClick={() => { setPaymentMethod("split"); setPaidNow(true); }} className="pay-pill" style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === "split" ? theme.secondary : "#3A404C"}`, background: paymentMethod === "split" ? "#3A2E22" : "transparent", color: paymentMethod === "split" ? theme.secondaryLight : "#9CA1AC", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
+                {t("splitPaymentOption")}
+              </button>
             </div>
 
-            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <button onClick={() => setPaidNow(true)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${paidNow ? "#3F5B45" : "#3A404C"}`, background: paidNow ? "#22301F" : "transparent", color: paidNow ? "#9FCB8E" : "#9CA1AC", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
-                {t("paidNowOption")}
-              </button>
-              <button onClick={() => setPaidNow(false)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${!paidNow ? "#5B4F3F" : "#3A404C"}`, background: !paidNow ? "#33301F" : "transparent", color: !paidNow ? "#E3C98A" : "#9CA1AC", fontSize: 12, fontWeight: 500, cursor: "pointer" }} title={t("payLaterHint")}>
-                {t("payLaterOption")}
-              </button>
-            </div>
+            {paymentMethod === "split" && (() => {
+              const splitEntered = PAYMENT_METHODS.reduce((s, m) => s + (Number(splitAmounts[m.id]) || 0), 0);
+              const splitRemaining = Math.round((total - splitEntered) * 100) / 100;
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: 10 }}>
+                  {PAYMENT_METHODS.map((m) => (
+                    <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                      <span style={{ fontSize: 12.5, color: "#9CA1AC" }}>{t(`payment_${m.id}`)}</span>
+                      <input
+                        type="number"
+                        value={splitAmounts[m.id] || ""}
+                        onChange={(e) => setSplitAmounts((prev) => ({ ...prev, [m.id]: e.target.value }))}
+                        placeholder="0.00"
+                        className="field"
+                        style={{ width: 100, textAlign: "right" }}
+                      />
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 600, color: splitRemaining === 0 ? "#9FCB8E" : "#E3A79C" }}>
+                    <span>{t("splitRemainingLabel")}</span><span>{money(splitRemaining)}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {paymentMethod !== "split" && (
+              <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                <button onClick={() => setPaidNow(true)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${paidNow ? "#3F5B45" : "#3A404C"}`, background: paidNow ? "#22301F" : "transparent", color: paidNow ? "#9FCB8E" : "#9CA1AC", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+                  {t("paidNowOption")}
+                </button>
+                <button onClick={() => setPaidNow(false)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${!paidNow ? "#5B4F3F" : "#3A404C"}`, background: !paidNow ? "#33301F" : "transparent", color: !paidNow ? "#E3C98A" : "#9CA1AC", fontSize: 12, fontWeight: 500, cursor: "pointer" }} title={t("payLaterHint")}>
+                  {t("payLaterOption")}
+                </button>
+              </div>
+            )}
 
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
               <button disabled={cart.length === 0} onClick={printOrderReceipt} title={t("printReceiptTooltip")} style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "#3A404C" : theme.secondary}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : theme.secondaryLight, fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
@@ -5262,6 +5365,15 @@ function POSPrototype({ tenantId }) {
                         </div>
                         {r.splitCount > 1 && (
                           <div style={{ fontSize: 11, color: theme.secondaryLight, marginBottom: 6 }}>{t("splitLabel", { n: r.splitCount })} &middot; {t("eachPays", { amount: money(r.total / r.splitCount) })}</div>
+                        )}
+                        {r.paymentMethod === "split" && Array.isArray(r.splitPayments) && (
+                          <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>
+                            {r.splitPayments.map((sp, i) => (
+                              <span key={sp.method}>
+                                {t(`payment_${sp.method}`)} {money(sp.amount)}{i < r.splitPayments.length - 1 ? " + " : ""}
+                              </span>
+                            ))}
+                          </div>
                         )}
                         {r.customer && (r.customer.name || r.customer.phone) && (
                           <div style={{ fontSize: 11.5, color: "#9CA1AC", marginBottom: 8 }}>
@@ -6193,6 +6305,8 @@ function POSPrototype({ tenantId }) {
         const modalService = Math.round(modalSubtotal * (effectiveServicePercent / 100) * 100) / 100;
         const modalVat = Math.round((modalSubtotal + modalService) * (effectiveVatPercent / 100) * 100) / 100;
         const modalTotal = modalSubtotal + modalService + modalVat;
+        const modalSplitEntered = PAYMENT_METHODS.reduce((s, m) => s + (Number(payTableModal.splitAmounts?.[m.id]) || 0), 0);
+        const modalSplitRemaining = Math.round((modalTotal - modalSplitEntered) * 100) / 100;
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setPayTableModal(null)}>
             <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 24, width: "100%", maxWidth: 380, maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
@@ -6225,7 +6339,33 @@ function POSPrototype({ tenantId }) {
                       {t(`payment_${m.id}`)}
                     </button>
                   ))}
+                  <button
+                    onClick={() => setPayTableModal((p) => ({ ...p, paymentMethod: "split" }))}
+                    style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: `1px solid ${payTableModal.paymentMethod === "split" ? theme.secondary : "#DCD5C4"}`, background: payTableModal.paymentMethod === "split" ? "rgba(176,141,87,0.18)" : "transparent", color: payTableModal.paymentMethod === "split" ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                  >
+                    {t("splitPaymentOption")}
+                  </button>
                 </div>
+                {payTableModal.paymentMethod === "split" && (
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {PAYMENT_METHODS.map((m) => (
+                      <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ fontSize: 12.5 }}>{t(`payment_${m.id}`)}</span>
+                        <input
+                          type="number"
+                          value={payTableModal.splitAmounts?.[m.id] || ""}
+                          onChange={(e) => setPayTableModal((p) => ({ ...p, splitAmounts: { ...p.splitAmounts, [m.id]: e.target.value } }))}
+                          placeholder="0.00"
+                          className="field"
+                          style={{ width: 100, textAlign: "right" }}
+                        />
+                      </div>
+                    ))}
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 600, marginTop: 2, color: modalSplitRemaining === 0 ? "#3F7A4F" : COLORS.red }}>
+                      <span>{t("splitRemainingLabel")}</span><span>{money(modalSplitRemaining)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
                 <button onClick={() => setPayTableModal(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("cancel")}</button>
