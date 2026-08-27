@@ -75,7 +75,7 @@ const STRINGS = {
     itemCount: "{{n}} item",
     itemCount_plural: "{{n}} items",
     customerOptional: "Customer (optional)",
-    searchCustomerPlaceholder: "Search returning customer by name or phone…",
+    phoneSearchPlaceholder: "Phone number — type to find a returning customer",
     noMatchesNewCustomer: "No matches — this will be a new customer.",
     unnamed: "Unnamed",
     namePlaceholder: "Name",
@@ -268,7 +268,8 @@ const STRINGS = {
     tablesTitle: "Tables",
     tablesSubtitle: "Set up your dining tables, see which are occupied, and print a QR code linking to each table's menu.",
     numberOfTablesLabel: "Number of tables",
-    takeawayDelivery: "Takeaway / Delivery",
+    takeawayLabel: "Takeaway",
+    deliveryLabel: "Delivery",
     dineInLabel: "Dine In",
     tableNumbered: "Table {{n}}",
     renameTablePlaceholder: "Table name",
@@ -417,6 +418,8 @@ const STRINGS = {
     pickupBadge: "Pickup",
     deliveryBadge: "Delivery · {{zone}}",
     notice_chooseZoneFirst: "Choose your delivery area before sending your order",
+    deliveryDetailsLabel: "Delivery details",
+    notice_deliveryDetailsRequired: "Enter your name, phone number, and address before sending your order",
     notice_copyFailed: "Couldn't copy automatically — select the text and copy it manually",
 
     tab_dashboard: "Dashboard",
@@ -627,7 +630,7 @@ const STRINGS = {
     itemCount: "صنف واحد",
     itemCount_plural: "{{n}} أصناف",
     customerOptional: "العميل (اختياري)",
-    searchCustomerPlaceholder: "ابحث عن عميل سابق بالاسم أو الهاتف…",
+    phoneSearchPlaceholder: "رقم الهاتف — اكتبه للبحث عن عميل سابق",
     noMatchesNewCustomer: "لا توجد نتائج — سيُعتبر عميلًا جديدًا.",
     unnamed: "بدون اسم",
     namePlaceholder: "الاسم",
@@ -820,7 +823,8 @@ const STRINGS = {
     tablesTitle: "الطاولات",
     tablesSubtitle: "أنشئ طاولات مطعمك، وتابع المشغول منها، واطبع رمز QR لكل طاولة يفتح قائمتها.",
     numberOfTablesLabel: "عدد الطاولات",
-    takeawayDelivery: "توصيل / استلام",
+    takeawayLabel: "استلام",
+    deliveryLabel: "توصيل",
     dineInLabel: "صالة",
     tableNumbered: "طاولة {{n}}",
     renameTablePlaceholder: "اسم الطاولة",
@@ -969,6 +973,8 @@ const STRINGS = {
     pickupBadge: "استلام",
     deliveryBadge: "توصيل · {{zone}}",
     notice_chooseZoneFirst: "اختر منطقة التوصيل قبل إرسال طلبك",
+    deliveryDetailsLabel: "بيانات التوصيل",
+    notice_deliveryDetailsRequired: "اكتب اسمك ورقم هاتفك وعنوانك قبل إرسال طلبك",
     notice_copyFailed: "تعذّر النسخ تلقائيًا — حدد النص وانسخه يدويًا",
 
     tab_dashboard: "لوحة المعلومات",
@@ -1491,7 +1497,7 @@ function POSPrototype({ tenantId }) {
   const [storeLinkCopied, setStoreLinkCopied] = useState(false);
   const [pendingOrders, setPendingOrders] = useState([]); // orders submitted by customers via QR, awaiting staff review
   const [pendingOrdersLoaded, setPendingOrdersLoaded] = useState(false);
-  const [reviewTableId, setReviewTableId] = useState(undefined); // which table's pending-orders review modal is open — undefined = closed, null = reviewing Takeaway/Delivery, else a table id
+  const [reviewTableId, setReviewTableId] = useState(undefined); // which table's pending-orders review modal is open — undefined = closed, null = reviewing Takeaway, "delivery" = reviewing Delivery, else a table id
   const [cart, setCart] = useState([]);
   const [editingNoteLineId, setEditingNoteLineId] = useState(null); // which cart line's note input is open, if any
   const [ticketNo, setTicketNo] = useState("1"); // placeholder — corrected to the real next number once the shared counter loads
@@ -1540,7 +1546,6 @@ function POSPrototype({ tenantId }) {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [orderEta, setOrderEta] = useState("");
-  const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
   const [customers, setCustomers] = useState({});
   const [customersLoaded, setCustomersLoaded] = useState(false);
@@ -2205,7 +2210,8 @@ function POSPrototype({ tenantId }) {
   // Order view's table-switcher strip) — a restaurant that doesn't track individual tables still
   // wants to separate "eating here" from "takeaway/delivery" without naming/numbering tables.
   const tableLabel = (id) => {
-    if (id === null || id === undefined) return t("takeawayDelivery");
+    if (id === null || id === undefined) return t("takeawayLabel");
+    if (id === "delivery") return t("deliveryLabel");
     if (id === "dine-in") return t("dineInLabel");
     return tableNames[id] || t("tableNumbered", { n: id });
   };
@@ -2258,13 +2264,14 @@ function POSPrototype({ tenantId }) {
     setCustomerAddress(incoming.customerAddress);
     setOrderEta(incoming.orderEta);
     setDeliveryFee(incoming.deliveryFee || 0);
-    setDeliveryMethod(incoming.deliveryMethod || null);
+    // The "delivery" slot always means a delivery order — no need to make the cashier pick a
+    // fulfillment method separately the way an online order's own choice would set it.
+    setDeliveryMethod(nextId === "delivery" ? "delivery" : incoming.deliveryMethod || null);
     setDeliveryZoneLabel(incoming.deliveryZoneLabel || "");
     setAssignedTo(incoming.assignedTo || null);
     setDiscountOpen(false);
     setSplitOpen(false);
     setSplitDraft("");
-    setCustomerSearch("");
     setShowCustomerSuggestions(false);
     setSaved(false);
     setActiveTableId(nextId);
@@ -2541,6 +2548,11 @@ function POSPrototype({ tenantId }) {
         setDeliveryMethod(orderFulfillmentType);
         setDeliveryZoneLabel(orderZoneLabel);
       }
+      if (order.customer) {
+        setCustomerName(order.customer.name || "");
+        setCustomerPhone(order.customer.phone || "");
+        setCustomerAddress(order.customer.address || "");
+      }
     } else {
       // Switching to a different table: stash the currently active table's live state into its
       // draft, and load the target table's draft — with the new items merged in — into the live
@@ -2559,6 +2571,9 @@ function POSPrototype({ tenantId }) {
         deliveryFee: orderFulfillmentType ? orderDeliveryFee : incomingExisting.deliveryFee || 0,
         deliveryMethod: orderFulfillmentType || incomingExisting.deliveryMethod || null,
         deliveryZoneLabel: orderFulfillmentType ? orderZoneLabel : incomingExisting.deliveryZoneLabel || "",
+        customerName: order.customer ? order.customer.name || "" : incomingExisting.customerName,
+        customerPhone: order.customer ? order.customer.phone || "" : incomingExisting.customerPhone,
+        customerAddress: order.customer ? order.customer.address || "" : incomingExisting.customerAddress,
       };
       setTableDrafts((prev) => ({ ...prev, [outgoingKey]: outgoingDraft, [targetId]: incoming }));
       setCart(incoming.cart);
@@ -2579,7 +2594,6 @@ function POSPrototype({ tenantId }) {
       setDiscountOpen(false);
       setSplitOpen(false);
       setSplitDraft("");
-      setCustomerSearch("");
       setShowCustomerSuggestions(false);
       setSaved(false);
       setActiveTableId(targetId);
@@ -2919,16 +2933,17 @@ function POSPrototype({ tenantId }) {
       flashNotice(t("notice_recognizedCustomer", { name: match.name || value }));
     }
   };
+  // Driven by the phone field itself now — typing a number searches existing customers by phone
+  // (or name, in case the cashier types it there instead) rather than needing a separate search box.
   const customerMatches = useMemo(() => {
-    const q = customerSearch.trim().toLowerCase();
+    const q = customerPhone.trim().toLowerCase();
     if (!q) return [];
     return Object.values(customers).filter((c) => (c.name || "").toLowerCase().includes(q) || (c.phone || "").includes(q)).slice(0, 6);
-  }, [customerSearch, customers]);
+  }, [customerPhone, customers]);
   const selectCustomer = (c) => {
     setCustomerName(c.name || "");
     setCustomerPhone(c.phone || "");
     setCustomerAddress(c.address || "");
-    setCustomerSearch("");
     setShowCustomerSuggestions(false);
     flashNotice(t("notice_loadedCustomerDetails", { name: c.name || c.phone }));
   };
@@ -3200,7 +3215,6 @@ function POSPrototype({ tenantId }) {
       setCustomerName(fresh.customerName);
       setCustomerPhone(fresh.customerPhone);
       setCustomerAddress(fresh.customerAddress);
-      setCustomerSearch("");
       setOrderEta(fresh.orderEta);
       setTicketNo(fresh.ticketNo);
       setSaved(false);
@@ -3266,7 +3280,7 @@ function POSPrototype({ tenantId }) {
     return `
       <div class="center">
         ${brandHeaderHtml()}
-        <div style="font-size:11px;">${escapeHtml(activeTableId === null ? t("takeawayDelivery") : tableLabel(activeTableId))}</div>
+        <div style="font-size:11px;">${escapeHtml(tableLabel(activeTableId))}</div>
         <div style="font-size:11px;">${escapeHtml(t("ticketNumber", { n: ticketNo }))}</div>
         <div style="font-size:11px;">${new Date().toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}</div>
         ${deliveryMethodLine}
@@ -4785,9 +4799,18 @@ function POSPrototype({ tenantId }) {
                 onClick={() => switchTable(null)}
                 style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === null ? theme.secondary : "#3A404C"}`, background: activeTableId === null ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === null ? theme.secondaryLight : "#9CA1AC", fontSize: 11.5, fontWeight: activeTableId === null ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap", position: "relative" }}
               >
-                {t("takeawayDelivery")}
+                {t("takeawayLabel")}
                 {tableItemCount(null) > 0 && <span style={{ marginLeft: 5, fontSize: 9.5, background: theme.secondary, color: COLORS.ink, borderRadius: 999, padding: "1px 5px" }}>{tableItemCount(null)}</span>}
               </button>
+              {hasFeature("deliveryZones") && (
+                <button
+                  onClick={() => switchTable("delivery")}
+                  style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === "delivery" ? theme.secondary : "#3A404C"}`, background: activeTableId === "delivery" ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === "delivery" ? theme.secondaryLight : "#9CA1AC", fontSize: 11.5, fontWeight: activeTableId === "delivery" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
+                >
+                  {t("deliveryLabel")}
+                  {tableItemCount("delivery") > 0 && <span style={{ marginLeft: 5, fontSize: 9.5, background: theme.secondary, color: COLORS.ink, borderRadius: 999, padding: "1px 5px" }}>{tableItemCount("delivery")}</span>}
+                </button>
+              )}
               {hasFeature("tables") ? (
                 tableIds.map((id) => (
                   <button
@@ -4975,40 +4998,68 @@ function POSPrototype({ tenantId }) {
               </div>
             )}
 
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("customerOptional")}</div>
-              <div style={{ position: "relative", marginBottom: 8 }}>
-                <input
-                  type="text"
-                  value={customerSearch}
-                  onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomerSuggestions(true); }}
-                  onFocus={() => setShowCustomerSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowCustomerSuggestions(false), 150)}
-                  placeholder={t("searchCustomerPlaceholder")}
-                  style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: `1px solid ${theme.secondary}`, borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13, fontFamily: "Inter, sans-serif" }}
-                />
-                {showCustomerSuggestions && customerSearch && (
-                  <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: COLORS.inkSoft, border: "1px solid #3A404C", borderRadius: 8, zIndex: 20, overflow: "hidden", boxShadow: "0 8px 20px rgba(0,0,0,0.4)" }}>
-                    {customerMatches.length === 0 ? (
-                      <div style={{ padding: "10px 12px", fontSize: 12, color: "#8A8F99" }}>{t("noMatchesNewCustomer")}</div>
-                    ) : (
-                      customerMatches.map((c) => (
-                        <button key={c.phone} onMouseDown={() => selectCustomer(c)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderBottom: "1px solid #333945", padding: "9px 12px", cursor: "pointer", color: COLORS.paper }}>
-                          <div style={{ fontSize: 13 }}>{c.name || t("unnamed")}</div>
-                          <div style={{ fontSize: 11, color: "#9CA1AC", fontFamily: "IBM Plex Mono, monospace" }}>{c.phone}{c.address ? ` · ${c.address}` : ""}</div>
-                        </button>
-                      ))
-                    )}
-                  </div>
+            {activeTableId === "delivery" && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("chooseDeliveryZone")}</div>
+                {deliveryZones.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "#8A8F99" }}>{t("noZonesYet")}</div>
+                ) : (
+                  <select
+                    value={deliveryZones.find((z) => z.label === deliveryZoneLabel)?.id || ""}
+                    onChange={(e) => {
+                      const zone = deliveryZones.find((z) => z.id === e.target.value);
+                      setDeliveryMethod("delivery");
+                      setDeliveryFee(zone ? zone.fee : 0);
+                      setDeliveryZoneLabel(zone ? zone.label : "");
+                    }}
+                    className="field"
+                    style={{ width: "100%" }}
+                  >
+                    <option value="">{t("selectZonePlaceholder")}</option>
+                    {deliveryZones.map((z) => (
+                      <option key={z.id} value={z.id}>{z.label} — {money(z.fee)}</option>
+                    ))}
+                  </select>
                 )}
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={t("namePlaceholder")} className="field" />
-                <input type="tel" value={customerPhone} onChange={(e) => handlePhoneChange(e.target.value)} placeholder={t("phonePlaceholder")} className="field" />
-                <input type="text" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder={t("addressPlaceholder")} className="field" />
-                <input type="text" value={orderEta} onChange={(e) => setOrderEta(e.target.value)} placeholder={t("etaPlaceholder")} className="field" />
+            )}
+
+            {activeTableId !== null && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("customerOptional")}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={t("namePlaceholder")} className="field" />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type="tel"
+                      value={customerPhone}
+                      onChange={(e) => { handlePhoneChange(e.target.value); setShowCustomerSuggestions(true); }}
+                      onFocus={() => setShowCustomerSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowCustomerSuggestions(false), 150)}
+                      placeholder={t("phoneSearchPlaceholder")}
+                      className="field"
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                    {showCustomerSuggestions && customerPhone && (
+                      <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: COLORS.inkSoft, border: "1px solid #3A404C", borderRadius: 8, zIndex: 20, overflow: "hidden", boxShadow: "0 8px 20px rgba(0,0,0,0.4)" }}>
+                        {customerMatches.length === 0 ? (
+                          <div style={{ padding: "10px 12px", fontSize: 12, color: "#8A8F99" }}>{t("noMatchesNewCustomer")}</div>
+                        ) : (
+                          customerMatches.map((c) => (
+                            <button key={c.phone} onMouseDown={() => selectCustomer(c)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderBottom: "1px solid #333945", padding: "9px 12px", cursor: "pointer", color: COLORS.paper }}>
+                              <div style={{ fontSize: 13 }}>{c.name || t("unnamed")}</div>
+                              <div style={{ fontSize: 11, color: "#9CA1AC", fontFamily: "IBM Plex Mono, monospace" }}>{c.phone}{c.address ? ` · ${c.address}` : ""}</div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <input type="text" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder={t("addressPlaceholder")} className="field" />
+                  <input type="text" value={orderEta} onChange={(e) => setOrderEta(e.target.value)} placeholder={t("etaPlaceholder")} className="field" />
+                </div>
               </div>
-            </div>
+            )}
 
             <div style={{ display: "flex", gap: 6, marginTop: 14 }}>
               {PAYMENT_METHODS.map((m) => (
@@ -6071,7 +6122,7 @@ function POSPrototype({ tenantId }) {
                   return (
                     <div style={{ background: COLORS.inkSoft, border: `1px solid ${pendingTakeaway.length > 0 ? "#C9A24A" : activeTableId === null ? theme.secondary : "#363C47"}`, borderRadius: 10, padding: 14 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                        <div style={{ fontSize: 14, fontWeight: 500, fontFamily: "Fraunces, serif", padding: "3px 0" }}>{t("takeawayDelivery")}</div>
+                        <div style={{ fontSize: 14, fontWeight: 500, fontFamily: "Fraunces, serif", padding: "3px 0" }}>{t("takeawayLabel")}</div>
                         <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 999, background: takeawayOccupied ? "#3A2A28" : "#22301F", color: takeawayOccupied ? "#E3A79C" : "#9FCB8E", fontWeight: 500, flexShrink: 0 }}>
                           {takeawayOccupied ? t("tableOccupied") : t("tableAvailable")}
                         </span>
@@ -6093,6 +6144,43 @@ function POSPrototype({ tenantId }) {
                         ) : (
                           <button
                             onClick={() => { switchTable(null); setView("order"); }}
+                            style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}
+                          >
+                            {t("openTicket")}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+                {hasFeature("deliveryZones") && (() => {
+                  const pendingDelivery = pendingOrdersForTable("delivery");
+                  const deliveryOccupied = tableItemCount("delivery") > 0;
+                  return (
+                    <div style={{ background: COLORS.inkSoft, border: `1px solid ${pendingDelivery.length > 0 ? "#C9A24A" : activeTableId === "delivery" ? theme.secondary : "#363C47"}`, borderRadius: 10, padding: 14 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <div style={{ fontSize: 14, fontWeight: 500, fontFamily: "Fraunces, serif", padding: "3px 0" }}>{t("deliveryLabel")}</div>
+                        <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 999, background: deliveryOccupied ? "#3A2A28" : "#22301F", color: deliveryOccupied ? "#E3A79C" : "#9FCB8E", fontWeight: 500, flexShrink: 0 }}>
+                          {deliveryOccupied ? t("tableOccupied") : t("tableAvailable")}
+                        </span>
+                      </div>
+                      {pendingDelivery.length > 0 && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "#E3C98A", marginBottom: 8 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#E3C98A", display: "inline-block" }} />
+                          {t("newOrderBadge")}
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {pendingDelivery.length > 0 ? (
+                          <button
+                            onClick={() => setReviewTableId("delivery")}
+                            style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #C9A24A", background: "rgba(201,162,74,0.15)", color: "#E3C98A", cursor: "pointer", fontWeight: 600 }}
+                          >
+                            {t("reviewOrder")}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => { switchTable("delivery"); setView("order"); }}
                             style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}
                           >
                             {t("openTicket")}
@@ -6924,6 +7012,10 @@ function CustomerMenuView({ tableId, tenantId }) {
   const [editingNoteItemId, setEditingNoteItemId] = useState(null);
   const [deliveryMethodChoice, setDeliveryMethodChoice] = useState(null); // "pickup" | "delivery" | null
   const [selectedZoneId, setSelectedZoneId] = useState("");
+  const [onlineCustomerName, setOnlineCustomerName] = useState("");
+  const [onlineCustomerPhone, setOnlineCustomerPhone] = useState("");
+  const [onlineCustomerAddress, setOnlineCustomerAddress] = useState("");
+  const [customerInfoError, setCustomerInfoError] = useState(false);
   const [zoneChoiceError, setZoneChoiceError] = useState(false);
   const [sending, setSending] = useState(false);
   const [justSent, setJustSent] = useState(false);
@@ -7053,7 +7145,16 @@ function CustomerMenuView({ tableId, tenantId }) {
       if (!deliveryMethodChoice) return; // button is disabled in this state, but guard anyway
       if (deliveryMethodChoice === "delivery" && !selectedZone) {
         setSendError(false);
+        setCustomerInfoError(false);
         flashChoiceError();
+        return;
+      }
+      // Delivery needs the same name/phone/address a cashier would collect for a walk-in
+      // delivery order — pickup doesn't, since the customer is coming to collect it themselves.
+      if (deliveryMethodChoice === "delivery" && (!onlineCustomerName.trim() || !onlineCustomerPhone.trim() || !onlineCustomerAddress.trim())) {
+        setSendError(false);
+        setCustomerInfoError(true);
+        setTimeout(() => setCustomerInfoError(false), 2500);
         return;
       }
     }
@@ -7068,11 +7169,14 @@ function CustomerMenuView({ tableId, tenantId }) {
       const list = existing?.value ? JSON.parse(existing.value) : [];
       const order = {
         id: `qr_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        tableId: isGeneralLink ? null : tableId,
+        tableId: isGeneralLink ? (deliveryMethodChoice === "delivery" ? "delivery" : null) : tableId,
         items: cartLines.map((l) => ({ id: l.id, name: l.name, price: l.price, qty: l.qty, note: l.note || "" })),
         deliveryMethod: isGeneralLink ? deliveryMethodChoice : null,
         deliveryFee: isGeneralLink ? deliveryFeeAmount : 0,
         deliveryZoneLabel: isGeneralLink && deliveryMethodChoice === "delivery" ? selectedZone?.label || "" : "",
+        customer: isGeneralLink && deliveryMethodChoice === "delivery"
+          ? { name: onlineCustomerName.trim(), phone: onlineCustomerPhone.trim(), address: onlineCustomerAddress.trim() }
+          : null,
         submittedAt: new Date().toISOString(),
       };
       await storage.set("pending-orders", JSON.stringify([...list, order]), true);
@@ -7210,9 +7314,34 @@ function CustomerMenuView({ tableId, tenantId }) {
                     ))}
                   </select>
                 )}
+                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 11.5, color: "#9CA1AC" }}>{t("deliveryDetailsLabel")}</div>
+                  <input
+                    type="text"
+                    value={onlineCustomerName}
+                    onChange={(e) => setOnlineCustomerName(e.target.value)}
+                    placeholder={t("namePlaceholder")}
+                    style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid #3A404C", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
+                  />
+                  <input
+                    type="tel"
+                    value={onlineCustomerPhone}
+                    onChange={(e) => setOnlineCustomerPhone(e.target.value)}
+                    placeholder={t("phonePlaceholder")}
+                    style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid #3A404C", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
+                  />
+                  <input
+                    type="text"
+                    value={onlineCustomerAddress}
+                    onChange={(e) => setOnlineCustomerAddress(e.target.value)}
+                    placeholder={t("addressPlaceholder")}
+                    style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid #3A404C", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
+                  />
+                </div>
               </div>
             )}
             {zoneChoiceError && <div style={{ fontSize: 11.5, color: "#E3A79C", marginTop: 8 }}>{t("notice_chooseZoneFirst")}</div>}
+            {customerInfoError && <div style={{ fontSize: 11.5, color: "#E3A79C", marginTop: 8 }}>{t("notice_deliveryDetailsRequired")}</div>}
           </div>
         )}
 
