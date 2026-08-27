@@ -156,6 +156,14 @@ const STRINGS = {
     whatsappLogLine: "✓ WhatsApp {{sentOrOpened}} for \"{{status}}\" at {{time}}",
     saveChanges: "Save changes",
     cancelEdit: "Cancel edit",
+    editReasonLabel: "Reason for edit (optional)",
+    editReasonPlaceholder: "e.g. customer changed their mind",
+    viewEditHistory: "View edit history ({{n}})",
+    hideEditHistory: "Hide edit history",
+    editHistoryEntry: "{{name}} · {{time}}",
+    editHistoryChange: "{{item}}: {{from}} → {{to}}",
+    editHistoryNoReason: "No reason given",
+    editHistoryUnknownEditor: "Staff member",
     cancelOrder: "Cancel order",
     cancelOrderTooltip: "Order never went out — restores stock",
     refundOrder: "Refund order",
@@ -647,6 +655,14 @@ const STRINGS = {
     whatsappLogLine: "✓ واتساب {{sentOrOpened}} لحالة \"{{status}}\" في {{time}}",
     saveChanges: "حفظ التغييرات",
     cancelEdit: "إلغاء التعديل",
+    editReasonLabel: "سبب التعديل (اختياري)",
+    editReasonPlaceholder: "مثال: العميل غيّر رأيه",
+    viewEditHistory: "عرض سجل التعديلات ({{n}})",
+    hideEditHistory: "إخفاء سجل التعديلات",
+    editHistoryEntry: "{{name}} · {{time}}",
+    editHistoryChange: "{{item}}: {{from}} ← {{to}}",
+    editHistoryNoReason: "لم يُذكر سبب",
+    editHistoryUnknownEditor: "أحد الموظفين",
     cancelOrder: "إلغاء الطلب",
     cancelOrderTooltip: "الطلب لم يخرج أبدًا — يستعيد المخزون",
     refundOrder: "استرجاع الطلب",
@@ -1402,6 +1418,8 @@ function POSPrototype({ tenantId }) {
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [editingReceiptId, setEditingReceiptId] = useState(null);
   const [editDraftItems, setEditDraftItems] = useState([]);
+  const [editReason, setEditReason] = useState("");
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null); // receipt id whose edit-history panel is open, if any
 
   const [suppliers, setSuppliers] = useState([]); // shared: [{id, name, category, phone}]
   const [suppliersLoaded, setSuppliersLoaded] = useState(false);
@@ -3380,10 +3398,12 @@ function POSPrototype({ tenantId }) {
   const startEditReceipt = (r) => {
     setEditingReceiptId(r.id);
     setEditDraftItems(r.items.map((it) => ({ ...it })));
+    setEditReason("");
   };
   const cancelEditReceipt = () => {
     setEditingReceiptId(null);
     setEditDraftItems([]);
+    setEditReason("");
   };
   const changeEditQty = (index, delta, original) => {
     setEditDraftItems((prev) =>
@@ -3408,11 +3428,15 @@ function POSPrototype({ tenantId }) {
     // Paired by position, not by menu item id — a receipt can have two lines for the same dish
     // with different notes (e.g. one plain, one "no onions"), and matching by id alone would
     // conflate them.
+    const changes = [];
     r.items.forEach((orig, i) => {
       const edited = editDraftItems[i];
       const newQty = edited ? edited.qty : 0;
       const delta = orig.qty - newQty;
-      if (delta !== 0) (orig.recipeSnapshot || []).forEach((rec) => updateIngredientStock(rec.ingredientId, rec.qty * delta));
+      if (delta !== 0) {
+        (orig.recipeSnapshot || []).forEach((rec) => updateIngredientStock(rec.ingredientId, rec.qty * delta));
+        changes.push({ name: orig.name, from: orig.qty, to: newQty });
+      }
     });
     const newSubtotal = cleaned.reduce((s, it) => s + it.price * it.qty, 0);
     const newDiscAmt = discountAmount(newSubtotal, r.discount);
@@ -3421,6 +3445,14 @@ function POSPrototype({ tenantId }) {
     const newNet = newSubtotal - newDiscAmt;
     const newServiceAmt = Math.round(newNet * ((r.serviceRate || 0) / 100) * 100) / 100;
     const newVatAmt = Math.round((newNet + newServiceAmt) * ((r.vatRate || 0) / 100) * 100) / 100;
+    const historyEntry = changes.length > 0
+      ? {
+          timestamp: new Date().toISOString(),
+          editedBy: currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null,
+          reason: editReason.trim(),
+          changes,
+        }
+      : null;
     const updatedReceipt = {
       ...r,
       items: cleaned,
@@ -3429,6 +3461,7 @@ function POSPrototype({ tenantId }) {
       serviceAmount: newServiceAmt,
       vatAmount: newVatAmt,
       total: newNet + newServiceAmt + newVatAmt + (r.deliveryFee || 0),
+      editHistory: historyEntry ? [historyEntry, ...(r.editHistory || [])] : r.editHistory,
     };
     persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? updatedReceipt : x)));
     flashNotice(t("notice_orderUpdated", { n: r.ticketNo }));
@@ -4475,7 +4508,7 @@ function POSPrototype({ tenantId }) {
                 ))}
               </div>
 
-              {hasFeature("discounts") && (
+              {hasFeature("discounts") && isManager && (
                 <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
                   {!discount && !discountOpen && (
                     <button onClick={() => setDiscountOpen(true)} style={{ fontSize: 11.5, color: theme.primary, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>{t("addDiscount")}</button>
@@ -4965,6 +4998,15 @@ function POSPrototype({ tenantId }) {
                                 </div>
                               </div>
                             ))}
+                            <textarea
+                              value={editReason}
+                              onChange={(e) => setEditReason(e.target.value)}
+                              placeholder={t("editReasonPlaceholder")}
+                              className="field"
+                              rows={2}
+                              style={{ width: "100%", resize: "vertical", fontSize: 12, marginTop: 4 }}
+                            />
+                            <div style={{ fontSize: 10.5, color: "#8A8F99", marginTop: 3 }}>{t("editReasonLabel")}</div>
                           </div>
                         )}
 
@@ -4981,6 +5023,39 @@ function POSPrototype({ tenantId }) {
                                 <button onClick={() => cancelReceipt(r)} title={t("cancelOrderTooltip")} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #C9A24A", background: "transparent", color: "#E3C98A", cursor: "pointer" }}>{t("cancelOrder")}</button>
                                 <button onClick={() => refundReceipt(r)} title={t("refundOrderTooltip")} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("refundOrder")}</button>
                               </>
+                            )}
+                          </div>
+                        )}
+
+                        {isManager && r.editHistory && r.editHistory.length > 0 && (
+                          <div style={{ marginTop: 10 }}>
+                            <button
+                              onClick={() => setExpandedHistoryId(expandedHistoryId === r.id ? null : r.id)}
+                              style={{ fontSize: 11, color: theme.secondaryLight, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "IBM Plex Mono, monospace" }}
+                            >
+                              {expandedHistoryId === r.id ? t("hideEditHistory") : t("viewEditHistory", { n: r.editHistory.length })}
+                            </button>
+                            {expandedHistoryId === r.id && (
+                              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+                                {r.editHistory.map((h, i) => (
+                                  <div key={i} style={{ fontSize: 11, background: "#20242C", border: "1px solid #363C47", borderRadius: 8, padding: "8px 10px" }}>
+                                    <div style={{ color: "#9CA1AC", marginBottom: 3 }}>
+                                      {t("editHistoryEntry", {
+                                        name: h.editedBy?.name || t("editHistoryUnknownEditor"),
+                                        time: new Date(h.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
+                                      })}
+                                    </div>
+                                    <div style={{ color: "#7C8A6E", fontStyle: "italic", marginBottom: h.changes?.length ? 4 : 0 }}>
+                                      {h.reason || t("editHistoryNoReason")}
+                                    </div>
+                                    {(h.changes || []).map((c, ci) => (
+                                      <div key={ci} style={{ color: "#8A8F99", fontFamily: "IBM Plex Mono, monospace", fontSize: 10.5 }}>
+                                        {t("editHistoryChange", { item: c.name, from: c.from, to: c.to })}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
                             )}
                           </div>
                         )}
