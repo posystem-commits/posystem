@@ -53,6 +53,7 @@ const STRINGS = {
     status_delivered: "Delivered",
 
     ticketNumber: "Ticket #{{n}}",
+    newTicketLabel: "New ticket",
     saved: "Saved",
     open: "Open",
     tapMenuItemHint: "Tap a menu item to add it to the ticket.",
@@ -611,6 +612,7 @@ const STRINGS = {
     status_delivered: "تم التوصيل",
 
     ticketNumber: "فاتورة رقم {{n}}",
+    newTicketLabel: "فاتورة جديدة",
     saved: "تم الحفظ",
     open: "مفتوحة",
     tapMenuItemHint: "اضغط على أي صنف من القائمة لإضافته إلى الفاتورة.",
@@ -1535,7 +1537,7 @@ function POSPrototype({ tenantId }) {
   const [reviewTableId, setReviewTableId] = useState(undefined); // which table's pending-orders review modal is open — undefined = closed, null = reviewing Takeaway, "delivery" = reviewing Delivery, else a table id
   const [cart, setCart] = useState([]);
   const [editingNoteLineId, setEditingNoteLineId] = useState(null); // which cart line's note input is open, if any
-  const [ticketNo, setTicketNo] = useState("1"); // placeholder — corrected to the real next number once the shared counter loads
+  const [ticketNo, setTicketNo] = useState(null); // null until ensureTicketNo() actually assigns one — see blankDraft's comment
   const ticketCounterRef = useRef({ date: null, next: 1 }); // { date: "YYYY-MM-DD", next: number } — resets each day, shared across every terminal
   const [ticketCounterLoaded, setTicketCounterLoaded] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1985,7 +1987,6 @@ function POSPrototype({ tenantId }) {
         ticketCounterRef.current = { date: today, next: 1 };
       } finally {
         setTicketCounterLoaded(true);
-        setTicketNo(issueTicketNumber());
       }
     })();
   }, []);
@@ -2261,7 +2262,9 @@ function POSPrototype({ tenantId }) {
   };
   const blankDraft = () => ({
     cart: [],
-    ticketNo: issueTicketNumber(),
+    // Deliberately not issued yet — see ensureTicketNo. Assigning a real number here would burn
+    // one just from opening an empty table, which is exactly what made the sequence look random.
+    ticketNo: null,
     paymentMethod: "cash",
     paidNow: true,
     splitAmounts: {},
@@ -2489,7 +2492,7 @@ function POSPrototype({ tenantId }) {
     const svcAmt = Math.round(itemsSubtotal * (tablePaymentServicePercent / 100) * 100) / 100;
     const vtAmt = Math.round((itemsSubtotal + svcAmt) * (tablePaymentVatPercent / 100) * 100) / 100;
     const grandTotal = itemsSubtotal + svcAmt + vtAmt;
-    const ticketForThisTable = tableId === activeTableId ? ticketNo : tableDrafts[tableId]?.ticketNo || issueTicketNumber();
+    const ticketForThisTable = tableId === activeTableId ? ensureTicketNo() : (tableDrafts[tableId]?.ticketNo || issueTicketNumber());
 
     const receipt = {
       id: `${ticketForThisTable}-${Date.now()}`,
@@ -2799,6 +2802,15 @@ function POSPrototype({ tenantId }) {
     ticketCounterRef.current = { ...ticketCounterRef.current, next: n + 1 };
     syncSet("ticket-counter", JSON.stringify(ticketCounterRef.current), true, t("syncLabelSettings"));
     return String(n);
+  };
+  // Assigns this ticket's real number the first time it's actually needed — printing, downloading,
+  // or saving — rather than the moment the table/ticket is opened. Caches it on first call so
+  // repeated prints of the same still-open ticket don't each mint a new number.
+  const ensureTicketNo = () => {
+    if (ticketNo) return ticketNo;
+    const n = issueTicketNumber();
+    setTicketNo(n);
+    return n;
   };
 
   const persistMonth = async (monthKey, updatedList) => {
@@ -3186,6 +3198,7 @@ function POSPrototype({ tenantId }) {
 
   const saveOrder = async () => {
     if (cart.length === 0) return;
+    const finalTicketNo = ensureTicketNo();
 
     const splitPayments = paymentMethod === "split"
       ? PAYMENT_METHODS.map((m) => ({ method: m.id, amount: Math.round((Number(splitAmounts[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
@@ -3208,8 +3221,8 @@ function POSPrototype({ tenantId }) {
     const customer = hasCustomer ? { name: customerName.trim(), phone: customerPhone.trim(), address: customerAddress.trim() } : null;
 
     const receipt = {
-      id: `${ticketNo}-${Date.now()}`,
-      ticketNo,
+      id: `${finalTicketNo}-${Date.now()}`,
+      ticketNo: finalTicketNo,
       timestamp: new Date().toISOString(),
       table: activeTableId === null ? null : tableLabel(activeTableId),
       servedBy: currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null,
@@ -3295,7 +3308,8 @@ function POSPrototype({ tenantId }) {
     return `<img src="${logoUrl}" alt="${escapeHtml(restaurantName)}" style="max-width:130px;max-height:60px;margin:0 auto 6px;display:block;" />${nameHtml}`;
   };
 
-  const buildOrderReceiptBodyHtml = () => {
+  const buildOrderReceiptBodyHtml = (ticketNoOverride) => {
+    const displayTicketNo = ticketNoOverride || ticketNo;
     const rows = cart
       .map(
         (item) => `
@@ -3344,7 +3358,7 @@ function POSPrototype({ tenantId }) {
       <div class="center">
         ${brandHeaderHtml()}
         <div style="font-size:11px;">${escapeHtml(tableLabel(activeTableId))}</div>
-        <div style="font-size:11px;">${escapeHtml(t("ticketNumber", { n: ticketNo }))}</div>
+        <div style="font-size:11px;">${escapeHtml(t("ticketNumber", { n: displayTicketNo }))}</div>
         <div style="font-size:11px;">${new Date().toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}</div>
         ${deliveryMethodLine}
         ${customerBlock}
@@ -3367,10 +3381,12 @@ function POSPrototype({ tenantId }) {
       <div class="center" style="font-size:10px;margin-top:14px;">${escapeHtml(t("thankYou"))}</div>`;
   };
   const printOrderReceipt = () => {
-    printViaHiddenFrame(t("ticketNumber", { n: ticketNo }), buildOrderReceiptBodyHtml(), isRtl);
+    const n = ensureTicketNo();
+    printViaHiddenFrame(t("ticketNumber", { n }), buildOrderReceiptBodyHtml(n), isRtl);
   };
   const downloadOrderReceipt = () => {
-    downloadReceiptFile(t("ticketNumber", { n: ticketNo }), buildOrderReceiptBodyHtml(), isRtl);
+    const n = ensureTicketNo();
+    downloadReceiptFile(t("ticketNumber", { n }), buildOrderReceiptBodyHtml(n), isRtl);
     flashNotice(t("notice_receiptDownloaded"));
   };
 
@@ -4909,7 +4925,7 @@ function POSPrototype({ tenantId }) {
             </div>
             <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: "4px 4px 10px 10px", clipPath: "polygon(0% 3%, 4% 0%, 8% 3%, 12% 0%, 16% 3%, 20% 0%, 24% 3%, 28% 0%, 32% 3%, 36% 0%, 40% 3%, 44% 0%, 48% 3%, 52% 0%, 56% 3%, 60% 0%, 64% 3%, 68% 0%, 72% 3%, 76% 0%, 80% 3%, 84% 0%, 88% 3%, 92% 0%, 96% 3%, 100% 0%, 100% 100%, 0% 100%)", padding: "22px 20px 20px", fontFamily: "IBM Plex Mono, monospace" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                <span style={{ fontSize: 15, fontWeight: 500 }}>{t("ticketNumber", { n: ticketNo })}</span>
+                <span style={{ fontSize: 15, fontWeight: 500 }}>{ticketNo ? t("ticketNumber", { n: ticketNo }) : t("newTicketLabel")}</span>
                 <span style={{ fontSize: 10.5, letterSpacing: 1, padding: "3px 8px", borderRadius: 999, background: saved ? "#E3EBE3" : "#EFE4CB", color: saved ? COLORS.sage : "#8A6A2E", textTransform: "uppercase", fontFamily: "Inter, sans-serif", fontWeight: 600 }}>
                   {saved ? t("saved") : t("open")}
                 </span>
