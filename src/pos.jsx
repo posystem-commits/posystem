@@ -567,6 +567,7 @@ const STRINGS = {
     notice_shiftStartSaveFailed: "Couldn't save new shift start",
     notice_newShiftStarted: "New shift started",
     notice_recognizedCustomer: "Recognized returning customer: {{name}}",
+    notice_zoneAutoDetected: "Delivery zone set automatically: {{zone}}",
     notice_loadedCustomerDetails: "Loaded details for {{name}}",
     notice_receiptDownloaded: "Receipt downloaded — open the file to print it",
     notice_shiftReportDownloaded: "Shift report downloaded — open the file to print it",
@@ -1122,6 +1123,7 @@ const STRINGS = {
     notice_shiftStartSaveFailed: "تعذّر حفظ بداية الوردية الجديدة",
     notice_newShiftStarted: "تم بدء وردية جديدة",
     notice_recognizedCustomer: "تم التعرف على عميل سابق: {{name}}",
+    notice_zoneAutoDetected: "تم تحديد منطقة التوصيل تلقائيًا: {{zone}}",
     notice_loadedCustomerDetails: "تم تحميل بيانات {{name}}",
     notice_receiptDownloaded: "تم تنزيل الإيصال — افتح الملف لطباعته",
     notice_shiftReportDownloaded: "تم تنزيل تقرير الوردية — افتح الملف لطباعته",
@@ -2931,6 +2933,21 @@ function POSPrototype({ tenantId }) {
       setCustomerName(match.name || "");
       setCustomerAddress(match.address || "");
       flashNotice(t("notice_recognizedCustomer", { name: match.name || value }));
+    }
+  };
+  // Matches whole words, not substrings — a zone called "Giza" shouldn't fire on an address that
+  // just happens to contain "Gizawy". Only applies while no zone is picked yet, so it never
+  // overwrites a zone the cashier chose (or corrected) themselves.
+  const handleAddressChange = (value) => {
+    setCustomerAddress(value);
+    if (activeTableId !== "delivery" || deliveryZoneLabel) return;
+    const addressWords = value.toLowerCase().split(/[\s,،/]+/).filter(Boolean);
+    const match = deliveryZones.find((z) => z.label.toLowerCase().split(/[\s,،/]+/).filter(Boolean).some((zw) => addressWords.includes(zw)));
+    if (match) {
+      setDeliveryMethod("delivery");
+      setDeliveryFee(match.fee);
+      setDeliveryZoneLabel(match.label);
+      flashNotice(t("notice_zoneAutoDetected", { zone: match.label }));
     }
   };
   // Driven by the phone field itself now — typing a number searches existing customers by phone
@@ -5055,7 +5072,7 @@ function POSPrototype({ tenantId }) {
                       </div>
                     )}
                   </div>
-                  <input type="text" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder={t("addressPlaceholder")} className="field" />
+                  <input type="text" value={customerAddress} onChange={(e) => handleAddressChange(e.target.value)} placeholder={t("addressPlaceholder")} className="field" />
                   <input type="text" value={orderEta} onChange={(e) => setOrderEta(e.target.value)} placeholder={t("etaPlaceholder")} className="field" />
                 </div>
               </div>
