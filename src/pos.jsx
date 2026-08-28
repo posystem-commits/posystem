@@ -304,6 +304,7 @@ const STRINGS = {
     checkoutModalTitle: "Your bill",
     checkoutModalNote: "Reflects items your server has confirmed so far — anything you just sent may take a moment to show up here.",
     checkoutEmptyItems: "Nothing on your table's bill yet — ask your server, or place an order first.",
+    checkoutPreviousOrders: "Previous order(s)",
     checkoutRequestButton: "Request bill",
     checkoutRequestedTitle: "Bill requested",
     checkoutRequestedBody: "Your server will bring your bill shortly.",
@@ -863,6 +864,7 @@ const STRINGS = {
     checkoutModalTitle: "حسابك",
     checkoutModalNote: "يعكس الأصناف التي أكّدها النادل حتى الآن — أي طلب أرسلته للتو قد يستغرق لحظة ليظهر هنا.",
     checkoutEmptyItems: "لا يوجد شيء على حساب طاولتك بعد — اسأل النادل، أو أرسل طلبًا أولاً.",
+    checkoutPreviousOrders: "طلبات سابقة",
     checkoutRequestButton: "طلب الحساب",
     checkoutRequestedTitle: "تم طلب الحساب",
     checkoutRequestedBody: "سيحضر لك النادل الحساب قريبًا.",
@@ -2499,6 +2501,7 @@ function POSPrototype({ tenantId }) {
       ticketNo: ticketForThisTable,
       timestamp: new Date().toISOString(),
       table: tableLabel(tableId),
+      tableId,
       servedBy: currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null,
       assignedTo: (tableId === activeTableId ? assignedTo : tableDrafts[tableId]?.assignedTo) || null,
       items: items.map((c) => {
@@ -3225,6 +3228,7 @@ function POSPrototype({ tenantId }) {
       ticketNo: finalTicketNo,
       timestamp: new Date().toISOString(),
       table: activeTableId === null ? null : tableLabel(activeTableId),
+      tableId: activeTableId,
       servedBy: currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null,
       assignedTo: assignedTo ? { ...assignedTo } : null,
       items: cart.map((c) => {
@@ -7101,6 +7105,7 @@ function CustomerMenuView({ tableId, tenantId }) {
   const [checkoutOpen, setCheckoutOpen] = useState(false); // the "Request the bill" modal, table QR view only
   const [checkoutMethod, setCheckoutMethod] = useState("cash");
   const [checkoutTab, setCheckoutTab] = useState(null); // { items } | null — this table's confirmed running order, fetched on demand
+  const [checkoutUnpaidReceipts, setCheckoutUnpaidReceipts] = useState([]); // receipts staff already saved for this table but haven't collected payment for yet
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
   const [checkoutRequested, setCheckoutRequested] = useState(false);
@@ -7292,23 +7297,29 @@ function CustomerMenuView({ tableId, tenantId }) {
     setTimeout(() => setZoneChoiceError(false), 2500);
   };
 
-  // "Request the bill" — reads the table's shared, cross-device running tab (see
-  // persistTableTab in POSPrototype, which is what actually populates "table-tab:<id>" as staff
-  // confirm items onto the table) so the total shown here matches what the POS terminal will
-  // actually charge, VAT/service included. Only reflects items staff have already confirmed —
-  // anything still sitting unreviewed in "pending-orders" isn't billable yet, so it's excluded
-  // from this total; that's accurate, not a bug, but worth the note below in case a customer
-  // wonders why a just-submitted order isn't reflected immediately.
+  // "Request the bill" — reads two sources and merges them, because the moment staff save an
+  // order the shared "table-tab:<id>" cart is cleared (see persistTableTab/saveOrder in
+  // POSPrototype), even when that order was saved as "pay later" and is still an outstanding
+  // bill. So this pulls (1) the live, not-yet-saved running tab, same as before, and (2) any
+  // already-saved-but-unpaid receipts for this table from this month's history (matched via the
+  // receipt's own tableId field) — otherwise a customer who asks for the bill right after staff
+  // ring in a pay-later order sees "no confirmed orders" despite there being a real bill to pay.
   const openCheckout = async () => {
     setCheckoutOpen(true);
     setCheckoutRequested(false);
     setCheckoutLoading(true);
     try {
-      const res = await storage.get(`table-tab:${tableId}`);
-      const parsed = res?.value ? JSON.parse(res.value) : null;
+      const [tabRes, receiptsRes] = await Promise.all([
+        storage.get(`table-tab:${tableId}`),
+        storage.get(`receipts:${new Date().toISOString().slice(0, 7)}`, false),
+      ]);
+      const parsed = tabRes?.value ? JSON.parse(tabRes.value) : null;
       setCheckoutTab({ items: parsed?.items || [] });
+      const receipts = receiptsRes?.value ? JSON.parse(receiptsRes.value) : [];
+      setCheckoutUnpaidReceipts(receipts.filter((r) => r.status === "completed" && r.paid === false && r.tableId === tableId));
     } catch (e) {
       setCheckoutTab({ items: [] });
+      setCheckoutUnpaidReceipts([]);
     } finally {
       setCheckoutLoading(false);
     }
@@ -7317,7 +7328,13 @@ function CustomerMenuView({ tableId, tenantId }) {
   const checkoutSubtotal = checkoutItems.reduce((s, it) => s + it.price * it.qty, 0);
   const checkoutService = Math.round(checkoutSubtotal * (servicePercent / 100) * 100) / 100;
   const checkoutVat = Math.round((checkoutSubtotal + checkoutService) * (vatPercent / 100) * 100) / 100;
-  const checkoutTotal = checkoutSubtotal + checkoutService + checkoutVat;
+  const checkoutLiveTotal = checkoutSubtotal + checkoutService + checkoutVat;
+  // Each unpaid receipt carries its own already-computed total (its own snapshotted tax/service
+  // rates at the time it was saved) — reuse that rather than re-deriving from live rates, so this
+  // matches exactly what the POS terminal will actually collect for that order.
+  const checkoutUnpaidTotal = checkoutUnpaidReceipts.reduce((s, r) => s + r.total, 0);
+  const checkoutTotal = checkoutLiveTotal + checkoutUnpaidTotal;
+  const checkoutHasAnything = checkoutItems.length > 0 || checkoutUnpaidReceipts.length > 0;
 
   const submitCheckoutRequest = async () => {
     setCheckoutSubmitting(true);
@@ -7589,10 +7606,21 @@ function CustomerMenuView({ tableId, tenantId }) {
                 <div style={{ fontSize: 11.5, color: COLORS.charcoalSoft, marginBottom: 16, lineHeight: 1.4 }}>{t("checkoutModalNote")}</div>
                 {checkoutLoading ? (
                   <div style={{ fontSize: 13, color: COLORS.charcoalSoft, padding: "12px 0" }}>{t("loading")}</div>
-                ) : checkoutItems.length === 0 ? (
+                ) : !checkoutHasAnything ? (
                   <div style={{ fontSize: 13, color: COLORS.charcoalSoft, padding: "12px 0" }}>{t("checkoutEmptyItems")}</div>
                 ) : (
                   <>
+                    {checkoutUnpaidReceipts.map((r) => (
+                      <div key={r.id} style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 10.5, color: COLORS.charcoalSoft, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>{t("ticketNumber", { n: r.ticketNo })}</div>
+                        {r.items.map((it, idx) => (
+                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                            <span>{it.qty}&times; {it.name}</span>
+                            <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(it.price * it.qty)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
                     {checkoutItems.map((it, idx) => (
                       <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                         <span>{it.qty}&times; {it.name}</span>
@@ -7600,9 +7628,16 @@ function CustomerMenuView({ tableId, tenantId }) {
                       </div>
                     ))}
                     <div style={{ borderTop: "1px dashed #D8D0BE", marginTop: 10, paddingTop: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("subtotal")}</span><span>{money(checkoutSubtotal)}</span></div>
-                      {servicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("serviceCharge")} ({servicePercent}%)</span><span>{money(checkoutService)}</span></div>}
-                      {vatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("vat")} ({vatPercent}%)</span><span>{money(checkoutVat)}</span></div>}
+                      {checkoutItems.length > 0 && (
+                        <>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("subtotal")}</span><span>{money(checkoutSubtotal)}</span></div>
+                          {servicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("serviceCharge")} ({servicePercent}%)</span><span>{money(checkoutService)}</span></div>}
+                          {vatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("vat")} ({vatPercent}%)</span><span>{money(checkoutVat)}</span></div>}
+                        </>
+                      )}
+                      {checkoutUnpaidReceipts.length > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("checkoutPreviousOrders")}</span><span>{money(checkoutUnpaidTotal)}</span></div>
+                      )}
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 17, fontWeight: 700, marginTop: 4 }}>
                         <span>{t("total")}</span><span>{money(checkoutTotal)}</span>
                       </div>
