@@ -4915,7 +4915,7 @@ function POSPrototype({ tenantId }) {
                 </span>
               </div>
               <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span>{tableLabel(activeTableId)} &middot; {currentEmployee?.name}</span>
+                <span>{tableLabel(activeTableId)} &middot; {assignedTo?.role === "waiter" ? assignedTo.name : currentEmployee?.name}</span>
                 {cart.length > 0 && <button onClick={clearActiveTable} style={{ fontSize: 10.5, color: COLORS.red, background: "none", border: "none", cursor: "pointer", padding: 0 }}>{t("clearTable")}</button>}
               </div>
 
@@ -5062,7 +5062,8 @@ function POSPrototype({ tenantId }) {
                       {dutyRoster.filter((m) => m.role === "waiter").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </optgroup>
                   )}
-                  {dutyRoster.filter((m) => m.role === "delivery").length > 0 && (
+                  {/* Delivery staff aren't relevant to a table order, so leave them out of the list there — only offer them for Takeaway/Delivery tickets. */}
+                  {(activeTableId === null || activeTableId === "delivery") && dutyRoster.filter((m) => m.role === "delivery").length > 0 && (
                     <optgroup label={t("roleDelivery")}>
                       {dutyRoster.filter((m) => m.role === "delivery").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </optgroup>
@@ -5097,7 +5098,7 @@ function POSPrototype({ tenantId }) {
               </div>
             )}
 
-            {activeTableId !== null && (
+            {activeTableId === "delivery" && (
               <div style={{ marginTop: 14 }}>
                 <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("customerOptional")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -5479,8 +5480,15 @@ function POSPrototype({ tenantId }) {
                           <span style={{ fontSize: 13, fontFamily: "IBM Plex Mono, monospace" }}>
                             {t("ticketHash", { n: r.ticketNo })} &middot; {new Date(r.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                             {r.table && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A2E3A", color: "#9CB0E3" }}>{r.table}</span>}
-                            {r.servedBy?.name && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A3A2E", color: "#9CE3B0" }}>{t("servedByLabel", { name: r.servedBy.name })}</span>}
-                            {r.assignedTo?.name && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A2E3A", color: "#B0A8E3" }}>{t("assignedToBadge", { role: r.assignedTo.role === "delivery" ? t("roleDelivery") : t("roleWaiter"), name: r.assignedTo.name })}</span>}
+                            {/* A waiter assigned from the duty roster is who actually served the table — show them
+                                here instead of whichever login rang it up, so this doesn't duplicate the separate
+                                "Waiter: X" badge below. Delivery stays as its own badge since it's not "who served it". */}
+                            {(r.assignedTo?.role === "waiter" ? r.assignedTo.name : r.servedBy?.name) && (
+                              <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A3A2E", color: "#9CE3B0" }}>
+                                {t("servedByLabel", { name: r.assignedTo?.role === "waiter" ? r.assignedTo.name : r.servedBy.name })}
+                              </span>
+                            )}
+                            {r.assignedTo?.name && r.assignedTo.role !== "waiter" && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A2E3A", color: "#B0A8E3" }}>{t("assignedToBadge", { role: t("roleDelivery"), name: r.assignedTo.name })}</span>}
                             {r.paymentMethod && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2E3440", color: "#9CA1AC" }}>{t(`payment_${r.paymentMethod}`)}</span>}
                             {cancelled && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#33301F", color: "#E3C98A" }}>{t("cancelledBadge")}</span>}
                             {refunded && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#3A2A28", color: "#E3A79C" }}>{t("refundedBadge")}</span>}
