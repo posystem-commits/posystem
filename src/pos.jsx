@@ -5062,8 +5062,8 @@ function POSPrototype({ tenantId }) {
                       {dutyRoster.filter((m) => m.role === "waiter").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </optgroup>
                   )}
-                  {/* Delivery staff aren't relevant to a table order, so leave them out of the list there — only offer them for Takeaway/Delivery tickets. */}
-                  {(activeTableId === null || activeTableId === "delivery") && dutyRoster.filter((m) => m.role === "delivery").length > 0 && (
+                  {/* Delivery staff are only relevant to an actual Delivery ticket — not Takeaway, not a table. */}
+                  {activeTableId === "delivery" && dutyRoster.filter((m) => m.role === "delivery").length > 0 && (
                     <optgroup label={t("roleDelivery")}>
                       {dutyRoster.filter((m) => m.role === "delivery").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </optgroup>
