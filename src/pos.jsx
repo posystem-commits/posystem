@@ -320,6 +320,8 @@ const STRINGS = {
     notice_orderSendFailed: "Couldn't send your order — check your connection and try again",
     pendingOrdersPill: "{{n}} new order",
     pendingOrdersPill_plural: "{{n}} new orders",
+    billRequestedPill: "{{n}} bill requested",
+    billRequestedPill_plural: "{{n}} bills requested",
     newOrderBadge: "New order",
     reviewOrder: "Review order",
     pendingOrderFrom: "New order from {{table}}",
@@ -876,6 +878,8 @@ const STRINGS = {
     notice_orderSendFailed: "تعذّر إرسال طلبك — تحقق من اتصالك وحاول مرة أخرى",
     pendingOrdersPill: "طلب جديد واحد",
     pendingOrdersPill_plural: "{{n}} طلبات جديدة",
+    billRequestedPill: "طلب حساب واحد",
+    billRequestedPill_plural: "{{n}} طلبات حساب",
     newOrderBadge: "طلب جديد",
     reviewOrder: "مراجعة الطلب",
     pendingOrderFrom: "طلب جديد من {{table}}",
@@ -1217,6 +1221,35 @@ const normalizePhoneForWhatsApp = (raw) => {
 };
 
 const newId = (prefix) => `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+// A short two-tone chime for "a customer just requested the bill" — synthesized rather than an
+// audio file so there's nothing extra to host or load. Fails silently if the browser blocks audio
+// (e.g. no user interaction yet on this page load) since the on-screen pill is the notification
+// of record; sound is just an extra nudge.
+const playNotificationChime = () => {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    [880, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.14;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.25, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.25);
+    });
+    setTimeout(() => ctx.close(), 800);
+  } catch (e) {
+    // no-op — audio is a nice-to-have, never worth surfacing an error for
+  }
+};
 
 // Retries a shared-storage read a few times with increasing delay before giving up. Startup loads
 // are the very first thing this app does, and on some platforms (embedded mobile WebViews in
@@ -2353,13 +2386,26 @@ function POSPrototype({ tenantId }) {
   // requestCheckout) — polled the same way pending-orders is, since this is the one piece of
   // table-tab data that genuinely needs to be "live" across devices for staff to notice promptly.
   const [checkoutRequests, setCheckoutRequests] = useState([]);
+  // Tracks which request ids this device has already alerted on, so the chime fires once per new
+  // request rather than replaying on every 8s poll. Starts as null so the very first load (which
+  // may already contain requests from before this device was watching) seeds the set silently
+  // instead of chiming for every pre-existing one.
+  const seenCheckoutRequestIds = useRef(null);
   useEffect(() => {
     let cancelled = false;
     const loadRequests = async () => {
       try {
         const result = await storage.get("checkout-requests", true);
         if (cancelled) return;
-        setCheckoutRequests(result?.value ? JSON.parse(result.value) : []);
+        const next = result?.value ? JSON.parse(result.value) : [];
+        if (seenCheckoutRequestIds.current === null) {
+          seenCheckoutRequestIds.current = new Set(next.map((r) => r.id));
+        } else {
+          const isNew = next.some((r) => !seenCheckoutRequestIds.current.has(r.id));
+          if (isNew) playNotificationChime();
+          seenCheckoutRequestIds.current = new Set(next.map((r) => r.id));
+        }
+        setCheckoutRequests(next);
       } catch (e) {
         // leave whatever was there before — a transient failure shouldn't wipe the list
       }
@@ -4621,6 +4667,7 @@ function POSPrototype({ tenantId }) {
         .save-btn:not(:disabled):active { transform: scale(0.98); }
         .notice { animation: noticeIn .18s ease; }
         @keyframes noticeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes billPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(142,184,214,0.5); } 50% { box-shadow: 0 0 0 5px rgba(142,184,214,0); } }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #3A404C; border-radius: 3px; }
         .stock-input::-webkit-inner-spin-button { opacity: 1; }
@@ -4722,6 +4769,15 @@ function POSPrototype({ tenantId }) {
             >
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E3C98A", display: "inline-block" }} />
               {tCount("pendingOrdersPill", pendingOrders.length)}
+            </button>
+          )}
+          {checkoutRequests.length > 0 && (
+            <button
+              onClick={() => handleTabClick("tables")}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, border: "1px solid #8EB8D6", background: "rgba(142,184,214,0.15)", color: "#8EB8D6", fontSize: 12.5, fontWeight: 600, cursor: "pointer", animation: "billPulse 1.6s ease-in-out infinite" }}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#8EB8D6", display: "inline-block" }} />
+              {tCount("billRequestedPill", checkoutRequests.length)}
             </button>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 24, fontSize: isMobile ? 12 : 13, color: "#9CA1AC", flexWrap: "wrap" }}>
