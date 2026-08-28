@@ -736,7 +736,7 @@ const STRINGS = {
     viewEditHistory: "عرض سجل التعديلات ({{n}})",
     hideEditHistory: "إخفاء سجل التعديلات",
     editHistoryEntry: "{{name}} · {{time}}",
-    editHistoryChange: "{{item}}: {{from}} ← {{to}}",
+    editHistoryChange: "{{item}}: من {{from}} إلى {{to}}",
     editHistoryNoReason: "لم يُذكر سبب",
     editHistoryUnknownEditor: "أحد الموظفين",
     cancelOrder: "إلغاء الطلب",
