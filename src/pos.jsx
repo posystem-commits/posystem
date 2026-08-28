@@ -399,6 +399,8 @@ const STRINGS = {
     tab_delivery: "Delivery",
     deliveryZonesTitle: "Delivery zones",
     deliveryZonesSubtitle: "Set a delivery fee per distance/zone. Customers ordering online pick the zone closest to them at checkout.",
+    deliveryAgentShareTitle: "Delivery agent's share of the fee",
+    deliveryAgentShareSubtitle: "What percentage of the delivery fee the rider keeps as their own pay. The rest counts toward what they owe the restaurant in the cash reconciliation.",
     addZone: "+ Add zone",
     zoneLabel: "Zone label",
     zoneLabelPlaceholder: "e.g. 0–3 km, or a neighborhood name",
@@ -541,7 +543,7 @@ const STRINGS = {
     hideAssignedOrders: "Hide orders",
     servedByLabel: "Served by {{name}}",
     deliveryReconciliationTitle: "Delivery cash reconciliation (today)",
-    deliveryReconciliationSubtitle: "Cash-paid delivery orders today, by rider. Each rider keeps their delivery fee out of the cash they collected — what's left is what they owe back.",
+    deliveryReconciliationSubtitle: "Cash-paid delivery orders today, by rider. Each rider keeps {{pct}}% of the delivery fee out of the cash they collected — what's left is what they owe back.",
     noDeliveryReconciliationYet: "No cash delivery orders today yet.",
     deliveryReconciliationCash: "Cash collected",
     deliveryReconciliationFees: "Delivery fees kept",
@@ -966,6 +968,8 @@ const STRINGS = {
     tab_delivery: "التوصيل",
     deliveryZonesTitle: "مناطق التوصيل",
     deliveryZonesSubtitle: "حدد رسوم توصيل لكل مسافة/منطقة. يختار العملاء الذين يطلبون عبر الإنترنت أقرب منطقة لهم عند إتمام الطلب.",
+    deliveryAgentShareTitle: "نصيب عامل التوصيل من الرسوم",
+    deliveryAgentShareSubtitle: "النسبة المئوية من رسوم التوصيل التي يحتفظ بها العامل كأجر له. الباقي يُحتسب ضمن المستحق للمطعم في تسوية النقدية.",
     addZone: "+ إضافة منطقة",
     zoneLabel: "اسم المنطقة",
     zoneLabelPlaceholder: "مثال: 0-3 كم، أو اسم حي",
@@ -1108,7 +1112,7 @@ const STRINGS = {
     hideAssignedOrders: "إخفاء الطلبات",
     servedByLabel: "قدّمه {{name}}",
     deliveryReconciliationTitle: "تسوية نقدية الدليفري (اليوم)",
-    deliveryReconciliationSubtitle: "طلبات الدليفري المدفوعة نقدًا اليوم، حسب كل عامل. يحتفظ كل عامل برسوم التوصيل من النقدية التي حصّلها — والباقي هو ما يجب عليه تسليمه.",
+    deliveryReconciliationSubtitle: "طلبات الدليفري المدفوعة نقدًا اليوم، حسب كل عامل. يحتفظ كل عامل بنسبة {{pct}}% من رسوم التوصيل من النقدية التي حصّلها — والباقي هو ما يجب عليه تسليمه.",
     noDeliveryReconciliationYet: "لا توجد طلبات دليفري مدفوعة نقدًا اليوم بعد.",
     deliveryReconciliationCash: "النقدية المحصّلة",
     deliveryReconciliationFees: "رسوم التوصيل المحتفظ بها",
@@ -1707,6 +1711,12 @@ function POSPrototype({ tenantId }) {
   const [servicePercent, setServicePercent] = useState(0);
   const [taxConfigLoaded, setTaxConfigLoaded] = useState(false);
 
+  // What share of the delivery fee the rider keeps as their own pay — the rest is added to
+  // what they owe the restaurant in deliveryReconciliation below. Defaults to 100 (rider keeps
+  // the whole fee, today's behavior) until a manager sets it otherwise.
+  const [deliveryAgentSharePercent, setDeliveryAgentSharePercent] = useState(100);
+  const [deliveryShareConfigLoaded, setDeliveryShareConfigLoaded] = useState(false);
+
   // Tabs a manager has chosen to require a manager PIN to open — see handleTabClick. Regular
   // staff hit a PIN prompt; a currently-logged-in manager always passes straight through (they've
   // already proven who they are for this whole session by clocking in).
@@ -1903,6 +1913,20 @@ function POSPrototype({ tenantId }) {
 
     (async () => {
       try {
+        const result = await getSharedWithRetry(storage, "delivery-share-config");
+        const parsed = result?.value ? JSON.parse(result.value) : null;
+        if (parsed && parsed.agentSharePercent !== undefined) {
+          setDeliveryAgentSharePercent(Number(parsed.agentSharePercent));
+        }
+      } catch (e) {
+        // fall back to 100% already set
+      } finally {
+        setDeliveryShareConfigLoaded(true);
+      }
+    })();
+
+    (async () => {
+      try {
         const result = await getSharedWithRetry(storage, "tab-access-config");
         const parsed = result?.value ? JSON.parse(result.value) : null;
         if (parsed?.pinGated) {
@@ -2051,6 +2075,10 @@ function POSPrototype({ tenantId }) {
     if (!taxConfigLoaded) return;
     syncSet("tax-config", JSON.stringify({ vatPercent, servicePercent }), true, t("syncLabelSettings"));
   }, [vatPercent, servicePercent, taxConfigLoaded]);
+  useEffect(() => {
+    if (!deliveryShareConfigLoaded) return;
+    syncSet("delivery-share-config", JSON.stringify({ agentSharePercent: deliveryAgentSharePercent }), true, t("syncLabelSettings"));
+  }, [deliveryAgentSharePercent, deliveryShareConfigLoaded]);
   // Publishes ONLY a per-item true/false availability flag to shared storage — never the
   // underlying ingredient names, quantities, or stock counts. This is what the public online-
   // ordering link (and table QR menus) read to show "Available"/"Not available" per dish, without
@@ -4309,10 +4337,11 @@ function POSPrototype({ tenantId }) {
           (r) => r.assignedTo?.id === p.id && r.paid !== false && receiptMethodAmounts(r).some((a) => a.method === "cash" && a.amount > 0)
         );
         const cashTotal = cashOrders.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
-        const feesTotal = cashOrders.reduce((s, r) => s + (r.deliveryFee || 0), 0);
-        return { ...p, orders: cashOrders.length, cashTotal, feesTotal, owed: cashTotal - feesTotal };
+        const rawFeesTotal = cashOrders.reduce((s, r) => s + (r.deliveryFee || 0), 0);
+        const feesKept = Math.round(rawFeesTotal * (deliveryAgentSharePercent / 100) * 100) / 100;
+        return { ...p, orders: cashOrders.length, cashTotal, feesTotal: feesKept, owed: cashTotal - feesKept };
       });
-  }, [dutyRoster, dashboardReceipts, todayStr]);
+  }, [dutyRoster, dashboardReceipts, todayStr, deliveryAgentSharePercent]);
 
   // --- Menu / category editor ---
   const addCategory = () => {
@@ -6473,6 +6502,23 @@ function POSPrototype({ tenantId }) {
               ))}
             </div>
           )}
+
+          <div style={{ marginTop: 24 }}>
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{t("deliveryAgentShareTitle")}</div>
+            <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 10 }}>{t("deliveryAgentShareSubtitle")}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={deliveryAgentSharePercent}
+                onChange={(e) => setDeliveryAgentSharePercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                className="field"
+                style={{ width: 90 }}
+              />
+              <span style={{ fontSize: 13, color: "#9CA1AC" }}>%</span>
+            </div>
+          </div>
           </>
           )}
         </div>
@@ -6797,7 +6843,7 @@ function POSPrototype({ tenantId }) {
               {deliveryReconciliation.length > 0 && (
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{t("deliveryReconciliationTitle")}</div>
-                  <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 12 }}>{t("deliveryReconciliationSubtitle")}</div>
+                  <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 12 }}>{t("deliveryReconciliationSubtitle", { pct: deliveryAgentSharePercent })}</div>
                   {deliveryReconciliation.every((p) => p.orders === 0) ? (
                     <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noDeliveryReconciliationYet")}</div>
                   ) : (
