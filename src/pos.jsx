@@ -182,6 +182,7 @@ const STRINGS = {
     editHistoryChange: "{{item}}: {{from}} → {{to}}",
     editHistoryNoReason: "No reason given",
     editHistoryUnknownEditor: "Staff member",
+    printReceipt: "Print",
     cancelOrder: "Cancel order",
     cancelOrderTooltip: "Order never went out — restores stock",
     refundOrder: "Refund order",
@@ -539,6 +540,12 @@ const STRINGS = {
     viewAssignedOrders: "View orders ({{n}})",
     hideAssignedOrders: "Hide orders",
     servedByLabel: "Served by {{name}}",
+    deliveryReconciliationTitle: "Delivery cash reconciliation (today)",
+    deliveryReconciliationSubtitle: "Cash-paid delivery orders today, by rider. Each rider keeps their delivery fee out of the cash they collected — what's left is what they owe back.",
+    noDeliveryReconciliationYet: "No cash delivery orders today yet.",
+    deliveryReconciliationCash: "Cash collected",
+    deliveryReconciliationFees: "Delivery fees kept",
+    deliveryReconciliationOwed: "Owes restaurant",
 
     notice_giveCategoryName: "Give the category a name first",
     notice_categoryExists: "A category with that name already exists",
@@ -742,6 +749,7 @@ const STRINGS = {
     editHistoryChange: "{{item}}: من {{from}} إلى {{to}}",
     editHistoryNoReason: "لم يُذكر سبب",
     editHistoryUnknownEditor: "أحد الموظفين",
+    printReceipt: "طباعة",
     cancelOrder: "إلغاء الطلب",
     cancelOrderTooltip: "الطلب لم يخرج أبدًا — يستعيد المخزون",
     refundOrder: "استرجاع الطلب",
@@ -1099,6 +1107,12 @@ const STRINGS = {
     viewAssignedOrders: "عرض الطلبات ({{n}})",
     hideAssignedOrders: "إخفاء الطلبات",
     servedByLabel: "قدّمه {{name}}",
+    deliveryReconciliationTitle: "تسوية نقدية الدليفري (اليوم)",
+    deliveryReconciliationSubtitle: "طلبات الدليفري المدفوعة نقدًا اليوم، حسب كل عامل. يحتفظ كل عامل برسوم التوصيل من النقدية التي حصّلها — والباقي هو ما يجب عليه تسليمه.",
+    noDeliveryReconciliationYet: "لا توجد طلبات دليفري مدفوعة نقدًا اليوم بعد.",
+    deliveryReconciliationCash: "النقدية المحصّلة",
+    deliveryReconciliationFees: "رسوم التوصيل المحتفظ بها",
+    deliveryReconciliationOwed: "مستحق للمطعم",
 
     notice_giveCategoryName: "يرجى إدخال اسم للقسم أولاً",
     notice_categoryExists: "يوجد بالفعل قسم بهذا الاسم",
@@ -3394,6 +3408,81 @@ function POSPrototype({ tenantId }) {
     flashNotice(t("notice_receiptDownloaded"));
   };
 
+  // Reprints an already-saved receipt from history — same layout as buildOrderReceiptBodyHtml,
+  // but sourced entirely from the saved record's own fields rather than the live order state,
+  // since by the time it's in the Receipts tab the cart/discount/etc. that produced it are gone.
+  const buildSavedReceiptBodyHtml = (r) => {
+    const rows = r.items
+      .map(
+        (item) => `
+      <div class="row" style="font-size:12px;margin-bottom:${item.note ? 0 : 4}px;">
+        <span>${item.qty}&times; ${escapeHtml(item.name)}</span>
+        <span>${money(item.price * item.qty)}</span>
+      </div>
+      ${item.note ? `<div style="font-size:10.5px;color:#555;font-style:italic;margin-bottom:4px;">${escapeHtml(item.note)}</div>` : ""}`
+      )
+      .join("");
+    const customerBlock =
+      r.customer && (r.customer.name || r.customer.phone)
+        ? `<div style="font-size:11px;margin-top:4px;">
+            ${escapeHtml(r.customer.name || "")}${r.customer.name && r.customer.phone ? " &middot; " : ""}${escapeHtml(r.customer.phone || "")}
+            ${r.customer.address ? `<div>${escapeHtml(r.customer.address)}</div>` : ""}
+          </div>`
+        : "";
+    const discountRow = r.discount
+      ? `<div class="row" style="font-size:11px;">
+          <span>${escapeHtml(t("discount"))} ${r.discount.type === "percent" ? `(${r.discount.value}%)` : ""}</span>
+          <span>-${money(r.discountAmount)}</span>
+        </div>`
+      : "";
+    const serviceRow = r.serviceRate > 0
+      ? `<div class="row" style="font-size:11px;">
+          <span>${escapeHtml(t("serviceCharge"))} (${r.serviceRate}%)</span>
+          <span>${money(r.serviceAmount)}</span>
+        </div>`
+      : "";
+    const vatRow = r.vatRate > 0
+      ? `<div class="row" style="font-size:11px;">
+          <span>${escapeHtml(t("vat"))} (${r.vatRate}%)</span>
+          <span>${money(r.vatAmount)}</span>
+        </div>`
+      : "";
+    const deliveryFeeRow = r.deliveryMethod === "delivery" && r.deliveryFee > 0
+      ? `<div class="row" style="font-size:11px;">
+          <span>${escapeHtml(t("deliveryFeeLineLabel"))}${r.deliveryZoneLabel ? ` (${escapeHtml(r.deliveryZoneLabel)})` : ""}</span>
+          <span>${money(r.deliveryFee)}</span>
+        </div>`
+      : "";
+    const deliveryMethodLine = r.deliveryMethod
+      ? `<div style="font-size:10.5px;color:#555;margin-top:2px;">${escapeHtml(r.deliveryMethod === "pickup" ? t("pickupBadge") : t("deliveryBadge", { zone: r.deliveryZoneLabel }))}</div>`
+      : "";
+    return `
+      <div class="center">
+        ${brandHeaderHtml()}
+        <div style="font-size:11px;">${escapeHtml(r.table || t("takeawayLabel"))}</div>
+        <div style="font-size:11px;">${escapeHtml(t("ticketNumber", { n: r.ticketNo }))}</div>
+        <div style="font-size:11px;">${new Date(r.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}</div>
+        ${deliveryMethodLine}
+        ${customerBlock}
+      </div>
+      <div class="dashed">${rows}</div>
+      <div class="dashed">
+        <div class="row" style="font-size:11px;"><span>${escapeHtml(t("subtotal"))}</span><span>${money(r.subtotal)}</span></div>
+        ${discountRow}
+        ${serviceRow}
+        ${vatRow}
+        ${deliveryFeeRow}
+        <div class="row" style="font-size:14px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("total"))}</span><span>${money(r.total)}</span></div>
+        ${r.splitCount > 1 ? `<div class="row" style="font-size:12px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("splitLabel", { n: r.splitCount }))}</span><span>${escapeHtml(t("eachPays", { amount: money(r.total / r.splitCount) }))}</span></div>` : ""}
+        ${r.paymentMethod === "split" && Array.isArray(r.splitPayments)
+          ? r.splitPayments.map((sp) => `<div style="font-size:11px;margin-top:2px;">${escapeHtml(t("paidVia", { method: t(`payment_${sp.method}`) }))} &mdash; ${money(sp.amount)}</div>`).join("")
+          : `<div style="font-size:11px;margin-top:4px;">${escapeHtml(t("paidVia", { method: t(`payment_${r.paymentMethod}`) }))}</div>`}
+      </div>
+      <div class="center" style="font-size:10px;margin-top:14px;">${escapeHtml(t("thankYou"))}</div>`;
+  };
+  const printSavedReceipt = (r) => {
+    printViaHiddenFrame(t("ticketNumber", { n: r.ticketNo }), buildSavedReceiptBodyHtml(r), isRtl);
+  };
 
   const monthLabel = (key) => {
     const [y, m] = key.split("-");
@@ -4204,6 +4293,27 @@ function POSPrototype({ tenantId }) {
     return Object.values(totals);
   }, [dutyRoster, shiftCompleted]);
 
+  // Delivery cash reconciliation — restaurant-wide for today (not scoped to whoever's
+  // currently clocked in, unlike teamPerformance above), since this is a manager's end-of-day
+  // check across every rider, not a per-shift view. Only cash-paid delivery orders count: if the
+  // customer paid by card/InstaPay, the rider never touched any cash, so there's nothing to
+  // reconcile for that order. For the ones that were cash, the rider collected the full total
+  // (food + delivery fee) from the customer and keeps the fee as their pay, so what they still
+  // owe the restaurant is cash collected minus their own delivery fee.
+  const deliveryReconciliation = useMemo(() => {
+    const todaysDeliveries = dashboardReceipts.filter((r) => r.timestamp.slice(0, 10) === todayStr && r.tableId === "delivery");
+    return dutyRoster
+      .filter((p) => p.role === "delivery")
+      .map((p) => {
+        const cashOrders = todaysDeliveries.filter(
+          (r) => r.assignedTo?.id === p.id && r.paid !== false && receiptMethodAmounts(r).some((a) => a.method === "cash" && a.amount > 0)
+        );
+        const cashTotal = cashOrders.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
+        const feesTotal = cashOrders.reduce((s, r) => s + (r.deliveryFee || 0), 0);
+        return { ...p, orders: cashOrders.length, cashTotal, feesTotal, owed: cashTotal - feesTotal };
+      });
+  }, [dutyRoster, dashboardReceipts, todayStr]);
+
   // --- Menu / category editor ---
   const addCategory = () => {
     const name = newCategoryName.trim();
@@ -4627,7 +4737,9 @@ function POSPrototype({ tenantId }) {
                 ))}
               </div>
               {loginError && <div style={{ fontSize: 12, color: COLORS.red, marginBottom: 16 }}>{t("pinIncorrect")}</div>}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
+              {/* Keypad direction is deliberately pinned to ltr regardless of page language — a
+                  numeric keypad should always read 1-2-3 left to right, not mirror with RTL. */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16, direction: "ltr" }}>
                 {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
                   <button
                     key={d}
@@ -4784,7 +4896,7 @@ function POSPrototype({ tenantId }) {
           )}
           {pendingOrders.length > 0 && (
             <button
-              onClick={() => handleTabClick("tables")}
+              onClick={() => setReviewTableId(pendingOrders[0].tableId)}
               style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, border: "1px solid #C9A24A", background: "rgba(201,162,74,0.15)", color: "#E3C98A", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
             >
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E3C98A", display: "inline-block" }} />
@@ -5077,7 +5189,9 @@ function POSPrototype({ tenantId }) {
                   style={{ width: "100%" }}
                 >
                   <option value="">{t("assignedToNone")}</option>
-                  {dutyRoster.filter((m) => m.role === "waiter").length > 0 && (
+                  {/* Waiters are only relevant to a table/takeaway ticket — a Delivery ticket is
+                      run entirely by delivery staff, so don't offer waiters there either. */}
+                  {activeTableId !== "delivery" && dutyRoster.filter((m) => m.role === "waiter").length > 0 && (
                     <optgroup label={t("roleWaiter")}>
                       {dutyRoster.filter((m) => m.role === "waiter").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </optgroup>
@@ -5610,6 +5724,12 @@ function POSPrototype({ tenantId }) {
                           </div>
                         )}
 
+                        {!editing && (
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: voided ? 0 : 8 }}>
+                            <button onClick={() => printSavedReceipt(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("printReceipt")}</button>
+                          </div>
+                        )}
+
                         {!voided && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             {editing ? (
@@ -5640,7 +5760,7 @@ function POSPrototype({ tenantId }) {
                               style={{ fontSize: 11.5, padding: "4px 6px" }}
                             >
                               <option value="">{t("assignedToNone")}</option>
-                              {dutyRoster.filter((m) => m.role === "waiter").length > 0 && (
+                              {r.tableId !== "delivery" && dutyRoster.filter((m) => m.role === "waiter").length > 0 && (
                                 <optgroup label={t("roleWaiter")}>
                                   {dutyRoster.filter((m) => m.role === "waiter").map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </optgroup>
@@ -6217,80 +6337,6 @@ function POSPrototype({ tenantId }) {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
-                {(() => {
-                  const pendingTakeaway = pendingOrdersForTable(null);
-                  const takeawayOccupied = tableItemCount(null) > 0;
-                  return (
-                    <div style={{ background: COLORS.inkSoft, border: `1px solid ${pendingTakeaway.length > 0 ? "#C9A24A" : activeTableId === null ? theme.secondary : "#363C47"}`, borderRadius: 10, padding: 14 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                        <div style={{ fontSize: 14, fontWeight: 500, fontFamily: "Fraunces, serif", padding: "3px 0" }}>{t("takeawayLabel")}</div>
-                        <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 999, background: takeawayOccupied ? "#3A2A28" : "#22301F", color: takeawayOccupied ? "#E3A79C" : "#9FCB8E", fontWeight: 500, flexShrink: 0 }}>
-                          {takeawayOccupied ? t("tableOccupied") : t("tableAvailable")}
-                        </span>
-                      </div>
-                      {pendingTakeaway.length > 0 && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "#E3C98A", marginBottom: 8 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#E3C98A", display: "inline-block" }} />
-                          {t("newOrderBadge")}
-                        </div>
-                      )}
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {pendingTakeaway.length > 0 ? (
-                          <button
-                            onClick={() => setReviewTableId(null)}
-                            style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #C9A24A", background: "rgba(201,162,74,0.15)", color: "#E3C98A", cursor: "pointer", fontWeight: 600 }}
-                          >
-                            {t("reviewOrder")}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => { switchTable(null); setView("order"); }}
-                            style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}
-                          >
-                            {t("openTicket")}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
-                {hasFeature("deliveryZones") && (() => {
-                  const pendingDelivery = pendingOrdersForTable("delivery");
-                  const deliveryOccupied = tableItemCount("delivery") > 0;
-                  return (
-                    <div style={{ background: COLORS.inkSoft, border: `1px solid ${pendingDelivery.length > 0 ? "#C9A24A" : activeTableId === "delivery" ? theme.secondary : "#363C47"}`, borderRadius: 10, padding: 14 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                        <div style={{ fontSize: 14, fontWeight: 500, fontFamily: "Fraunces, serif", padding: "3px 0" }}>{t("deliveryLabel")}</div>
-                        <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 999, background: deliveryOccupied ? "#3A2A28" : "#22301F", color: deliveryOccupied ? "#E3A79C" : "#9FCB8E", fontWeight: 500, flexShrink: 0 }}>
-                          {deliveryOccupied ? t("tableOccupied") : t("tableAvailable")}
-                        </span>
-                      </div>
-                      {pendingDelivery.length > 0 && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "#E3C98A", marginBottom: 8 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#E3C98A", display: "inline-block" }} />
-                          {t("newOrderBadge")}
-                        </div>
-                      )}
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {pendingDelivery.length > 0 ? (
-                          <button
-                            onClick={() => setReviewTableId("delivery")}
-                            style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #C9A24A", background: "rgba(201,162,74,0.15)", color: "#E3C98A", cursor: "pointer", fontWeight: 600 }}
-                          >
-                            {t("reviewOrder")}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => { switchTable("delivery"); setView("order"); }}
-                            style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}
-                          >
-                            {t("openTicket")}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
                 {tableIds.map((id) => {
                   const checkoutReq = checkoutRequestForTable(id);
                   const occupied = tableItemCount(id) > 0 || !!checkoutReq;
@@ -6747,6 +6793,34 @@ function POSPrototype({ tenantId }) {
                   </div>
                 )}
               </div>
+
+              {deliveryReconciliation.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{t("deliveryReconciliationTitle")}</div>
+                  <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 12 }}>{t("deliveryReconciliationSubtitle")}</div>
+                  {deliveryReconciliation.every((p) => p.orders === 0) ? (
+                    <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noDeliveryReconciliationYet")}</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {deliveryReconciliation.filter((p) => p.orders > 0).sort((a, b) => b.owed - a.owed).map((p) => (
+                        <div key={p.id} style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "12px 16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                            <div style={{ fontSize: 13.5 }}>{p.name}</div>
+                            <span>{tCount("orderCount", p.orders)}</span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "#9CA1AC" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationCash")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(p.cashTotal)}</span></div>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationFees")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(p.feesTotal)}</span></div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, fontWeight: 700, color: theme.secondaryLight, marginTop: 3, paddingTop: 5, borderTop: "1px dashed #3A404C" }}>
+                              <span>{t("deliveryReconciliationOwed")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(p.owed)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 
@@ -6852,7 +6926,7 @@ function POSPrototype({ tenantId }) {
               ))}
             </div>
             {tabPinError && <div style={{ fontSize: 12, color: COLORS.red, marginBottom: 16 }}>{t("managerPinIncorrect")}</div>}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16, direction: "ltr" }}>
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
                 <button
                   key={d}
