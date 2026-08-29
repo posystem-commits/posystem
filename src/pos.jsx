@@ -4010,8 +4010,16 @@ function POSPrototype({ tenantId }) {
   const shiftUnpaidTotal = shiftUnpaid.reduce((s, r) => s + r.total, 0);
   // A cash refund is cash actually leaving the drawer back to the customer — unlike a cancellation
   // (which the app treats as the order never having happened financially), so it belongs in the
-  // cash reconciliation the same way an expense paid in cash does.
-  const shiftCashRefundsTotal = shiftRefunded.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
+  // cash reconciliation the same way an expense paid in cash does. But if it's an unsettled
+  // delivery order, that cash was never counted as a sale in the drawer to begin with (see
+  // shiftCashSalesTotal above) — the rider is still holding it, so refunding it doesn't remove
+  // anything from the drawer either. Without this exclusion, refunding one of these swung the
+  // drawer negative by subtracting cash that was never added.
+  const shiftCashRefundsTotal = shiftRefunded
+    .filter((r) => !(r.tableId === "delivery" && !r.deliverySettled))
+    .flatMap(receiptMethodAmounts)
+    .filter((a) => a.method === "cash")
+    .reduce((s, a) => s + a.amount, 0);
   const shiftDiscountTotal = shiftCompleted.reduce((s, r) => s + (r.discountAmount || 0), 0);
   // Expenses only carry a date (not a timestamp), so "this shift" is approximated as anything
   // logged on or after the shift's start date — exact enough for the normal case of a shift that
