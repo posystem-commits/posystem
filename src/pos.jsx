@@ -440,7 +440,9 @@ const STRINGS = {
     netProfitLabel: "Net profit this month",
     netProfitHint: "Revenue minus logged expenses",
     avgOrderValueLabel: "Average order value",
+    vsYesterdayChange: "{{pct}}% vs yesterday",
     revenueTrendTitle: "Revenue this month",
+    bestDayLabel: "Best day so far: day {{day}} — {{amount}}",
     topSellersTitle: "Top sellers this month",
     noSalesYetDashboard: "No completed orders yet this month.",
     paymentMixTitle: "Payment methods",
@@ -1015,7 +1017,9 @@ const STRINGS = {
     netProfitLabel: "صافي الربح هذا الشهر",
     netProfitHint: "الإيرادات ناقص المصروفات المسجلة",
     avgOrderValueLabel: "متوسط قيمة الطلب",
+    vsYesterdayChange: "{{pct}}٪ مقارنة بالأمس",
     revenueTrendTitle: "إيرادات هذا الشهر",
+    bestDayLabel: "أفضل يوم حتى الآن: يوم {{day}} — {{amount}}",
     topSellersTitle: "الأكثر مبيعًا هذا الشهر",
     noSalesYetDashboard: "لا توجد طلبات مكتملة بعد هذا الشهر.",
     paymentMixTitle: "طرق الدفع",
@@ -3564,6 +3568,11 @@ function POSPrototype({ tenantId }) {
     return { day: i + 1, total: dashboardReceipts.filter((r) => r.timestamp.slice(8, 10) === dayStr).reduce((s, r) => s + r.total, 0) };
   });
   const maxDailyRevenue = Math.max(1, ...dailyRevenue.map((d) => d.total));
+  const bestDay = dailyRevenue.reduce((best, d) => (d.total > best.total ? d : best), { day: null, total: 0 });
+  // Yesterday is simply the entry right before today's (the array's always ordered day 1..today,
+  // with today last) — null when today is the 1st of the month, since there's no prior-day entry.
+  const yesterdayRevenue = dailyRevenue.length >= 2 ? dailyRevenue[dailyRevenue.length - 2].total : null;
+  const todayVsYesterdayPct = yesterdayRevenue > 0 ? Math.round(((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100) : null;
 
   const dashboardItemTotals = {};
   dashboardReceipts.forEach((r) => r.items.forEach((it) => { dashboardItemTotals[it.name] = (dashboardItemTotals[it.name] || 0) + it.qty; }));
@@ -6097,7 +6106,12 @@ function POSPrototype({ tenantId }) {
 
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)", gap: 12, marginBottom: 24 }}>
             {[
-              { label: t("todayRevenue"), value: money(todayRevenue) },
+              {
+                label: t("todayRevenue"),
+                value: money(todayRevenue),
+                hint: todayVsYesterdayPct === null ? null : t("vsYesterdayChange", { pct: todayVsYesterdayPct > 0 ? `+${todayVsYesterdayPct}` : todayVsYesterdayPct }),
+                hintColor: todayVsYesterdayPct >= 0 ? "#9FCB8E" : "#E3A79C",
+              },
               { label: t("monthRevenue"), value: money(dashboardMonthRevenue) },
               { label: t("monthOrders"), value: String(dashboardMonthOrders) },
               { label: t("avgOrderValueLabel"), value: money(avgOrderValue) },
@@ -6106,23 +6120,41 @@ function POSPrototype({ tenantId }) {
               <div key={i} style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16 }}>
                 <div style={{ fontSize: 10.5, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{card.label}</div>
                 <div style={{ fontSize: 19, fontFamily: "IBM Plex Mono, monospace", color: card.accent || theme.secondaryLight }}>{card.value}</div>
-                {card.hint && <div style={{ fontSize: 9.5, color: "#6B6F78", marginTop: 4 }}>{card.hint}</div>}
+                {card.hint && <div style={{ fontSize: 9.5, color: card.hintColor || "#6B6F78", marginTop: 4 }}>{card.hint}</div>}
               </div>
             ))}
           </div>
 
           <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 18, marginBottom: 20 }}>
-            <div style={{ fontSize: 12, color: "#9CA1AC", marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("revenueTrendTitle")}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: "#9CA1AC", textTransform: "uppercase", letterSpacing: 0.4 }}>{t("revenueTrendTitle")}</div>
+              {bestDay.day !== null && bestDay.total > 0 && (
+                <div style={{ fontSize: 11.5, color: theme.secondaryLight }}>{t("bestDayLabel", { day: bestDay.day, amount: money(bestDay.total) })}</div>
+              )}
+            </div>
             {dailyRevenue.length === 0 ? (
               <div style={{ fontSize: 12.5, color: "#8A8F99" }}>{t("noSalesYetDashboard")}</div>
             ) : (
-              <div style={{ display: "flex", alignItems: "flex-end", gap: dailyRevenue.length > 20 ? 2 : 4, height: 110 }}>
-                {dailyRevenue.map((d) => (
-                  <div key={d.day} title={`${t("expenseDate")} ${d.day}: ${money(d.total)}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
-                    <div style={{ background: d.total > 0 ? theme.secondary : "#2E3440", borderRadius: "3px 3px 0 0", height: `${Math.max(2, (d.total / maxDailyRevenue) * 100)}%`, transition: "height .2s ease" }} />
-                  </div>
-                ))}
-              </div>
+              <>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: dailyRevenue.length > 20 ? 2 : 4, height: 110 }}>
+                  {dailyRevenue.map((d) => (
+                    <div key={d.day} title={`${t("expenseDate")} ${d.day}: ${money(d.total)}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
+                      <div style={{ background: d.day === bestDay.day && d.total > 0 ? theme.primary : d.total > 0 ? theme.secondary : "#2E3440", borderRadius: "3px 3px 0 0", height: `${Math.max(2, (d.total / maxDailyRevenue) * 100)}%`, transition: "height .2s ease" }} />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: dailyRevenue.length > 20 ? 2 : 4, marginTop: 6 }}>
+                  {dailyRevenue.map((d) => {
+                    const interval = dailyRevenue.length <= 10 ? 1 : dailyRevenue.length <= 20 ? 2 : 5;
+                    const showLabel = d.day === 1 || d.day === dailyRevenue.length || d.day % interval === 0;
+                    return (
+                      <div key={d.day} style={{ flex: 1, textAlign: "center", fontSize: 9, color: "#6B6F78", fontFamily: "IBM Plex Mono, monospace" }}>
+                        {showLabel ? d.day : ""}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
 
