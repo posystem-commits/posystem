@@ -6339,6 +6339,40 @@ function POSPrototype({ tenantId }) {
                 </div>
               )}
 
+              {hasFeature("teamTracking") && isManager && deliveryReconciliation.length > 0 && (
+                <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                  <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("deliveryReconciliationTitle")}</div>
+                  <div style={{ fontSize: 11.5, color: "#9CA1AC", marginBottom: 14 }}>{t("deliveryReconciliationSubtitle", { pct: deliveryAgentSharePercent })}</div>
+                  {deliveryReconciliation.every((p) => p.orders === 0) ? (
+                    <div style={{ fontSize: 12.5, color: "#8A8F99" }}>{t("noDeliveryReconciliationYet")}</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {deliveryReconciliation.filter((p) => p.orders > 0).sort((a, b) => b.net - a.net).map((p) => (
+                        <div key={p.id} style={{ background: COLORS.ink, border: "1px solid #363C47", borderRadius: 10, padding: "12px 16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                            <div style={{ fontSize: 13.5 }}>{p.name}</div>
+                            <span>{tCount("orderCount", p.orders)}</span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "#9CA1AC" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationCash")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(p.cashTotal)}</span></div>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationFees")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(p.feesTotal)}</span></div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, fontWeight: 700, color: p.net < 0 ? "#E3A79C" : theme.secondaryLight, marginTop: 3, paddingTop: 5, borderTop: "1px dashed #3A404C" }}>
+                              <span>{p.net < 0 ? t("deliveryReconciliationOwedToAgent") : t("deliveryReconciliationOwed")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(Math.abs(p.net))}</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => settleDeliveryCash(p)}
+                            style={{ marginTop: 10, fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: COLORS.paper, cursor: "pointer", fontWeight: 600 }}
+                          >
+                            {t("settleDeliveryCash")}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {hasFeature("teamTracking") && isManager && teamPerformance.some((p) => p.orders > 0) && (
                 <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16, marginBottom: 20 }}>
                   <div style={{ fontSize: 12, color: "#9CA1AC", marginBottom: 10 }}>{t("teamPerformanceTitle")}</div>
@@ -6868,40 +6902,6 @@ function POSPrototype({ tenantId }) {
                   </div>
                 )}
               </div>
-
-              {deliveryReconciliation.length > 0 && (
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{t("deliveryReconciliationTitle")}</div>
-                  <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 12 }}>{t("deliveryReconciliationSubtitle", { pct: deliveryAgentSharePercent })}</div>
-                  {deliveryReconciliation.every((p) => p.orders === 0) ? (
-                    <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noDeliveryReconciliationYet")}</div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {deliveryReconciliation.filter((p) => p.orders > 0).sort((a, b) => b.net - a.net).map((p) => (
-                        <div key={p.id} style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "12px 16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-                            <div style={{ fontSize: 13.5 }}>{p.name}</div>
-                            <span>{tCount("orderCount", p.orders)}</span>
-                          </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "#9CA1AC" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationCash")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(p.cashTotal)}</span></div>
-                            <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationFees")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(p.feesTotal)}</span></div>
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, fontWeight: 700, color: p.net < 0 ? "#E3A79C" : theme.secondaryLight, marginTop: 3, paddingTop: 5, borderTop: "1px dashed #3A404C" }}>
-                              <span>{p.net < 0 ? t("deliveryReconciliationOwedToAgent") : t("deliveryReconciliationOwed")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(Math.abs(p.net))}</span>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => settleDeliveryCash(p)}
-                            style={{ marginTop: 10, fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: COLORS.paper, cursor: "pointer", fontWeight: 600 }}
-                          >
-                            {t("settleDeliveryCash")}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
             </>
           )}
 
