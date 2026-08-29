@@ -216,6 +216,8 @@ const STRINGS = {
     openingFloatLabel: "Opening float",
     openingFloatHint: "Cash physically in the drawer when this shift started",
     cashSalesLabel: "Cash sales",
+    unsettledDeliveryCashLabel: "Held by delivery riders (not yet settled)",
+    unsettledDeliveryCashHint: "Already excluded from cash sales above — riders are still holding this cash until you settle up with them below.",
     cashRefundsLabel: "Cash refunds",
     cashExpensesLabel: "Cash expenses paid out",
     noCashExpensesThisShift: "No cash expenses logged this shift.",
@@ -789,6 +791,8 @@ const STRINGS = {
     openingFloatLabel: "رصيد بداية الوردية",
     openingFloatHint: "النقدية الموجودة فعليًا في الدرج عند بداية هذه الوردية",
     cashSalesLabel: "المبيعات النقدية",
+    unsettledDeliveryCashLabel: "بحوزة عمال الدليفري (لم تتم تسويتها بعد)",
+    unsettledDeliveryCashHint: "مستبعدة بالفعل من المبيعات النقدية أعلاه — لا تزال هذه النقدية بحوزة العمال حتى تتم التسوية معهم أدناه.",
     cashRefundsLabel: "المسترجع نقدًا",
     cashExpensesLabel: "المصروفات المدفوعة نقدًا",
     noCashExpensesThisShift: "لا توجد مصروفات نقدية مسجّلة في هذه الوردية.",
@@ -3986,7 +3990,22 @@ function POSPrototype({ tenantId }) {
     // one method's count, same as it contributes to more than one method's total.
     count: paymentsCollectedThisShift.filter((r) => receiptMethodAmounts(r).some((a) => a.method === m.id)).length,
   }));
-  const shiftCashSalesTotal = shiftByMethod.find((m) => m.id === "cash")?.total || 0;
+  // A delivery rider physically holds the cash they collect until settleDeliveryCash marks it
+  // settled — until then it hasn't reached the drawer, so it doesn't belong in what the drawer
+  // is expected to hold. The "by payment method" breakdown above still counts it as cash revenue
+  // (it genuinely was paid in cash), only this drawer-facing total excludes it until settled.
+  const shiftCashSalesTotal = paymentsCollectedThisShift
+    .filter((r) => !(r.tableId === "delivery" && !r.deliverySettled))
+    .flatMap(receiptMethodAmounts)
+    .filter((a) => a.method === "cash")
+    .reduce((s, a) => s + a.amount, 0);
+  // Shown as its own line in the drawer reconciliation so the gap against "by payment method"
+  // above is explained, instead of just looking like the numbers don't add up.
+  const shiftUnsettledDeliveryCash = paymentsCollectedThisShift
+    .filter((r) => r.tableId === "delivery" && !r.deliverySettled)
+    .flatMap(receiptMethodAmounts)
+    .filter((a) => a.method === "cash")
+    .reduce((s, a) => s + a.amount, 0);
   const shiftUnpaid = shiftCompleted.filter((r) => r.paid === false);
   const shiftUnpaidTotal = shiftUnpaid.reduce((s, r) => s + r.total, 0);
   // A cash refund is cash actually leaving the drawer back to the customer — unlike a cancellation
@@ -4075,6 +4094,7 @@ function POSPrototype({ tenantId }) {
         <div style="font-weight:600;margin-bottom:6px;">${escapeHtml(t("cashReconciliationTitle"))}</div>
         <div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("openingFloatLabel"))}</span><span>${money(openingFloatNum)}</span></div>
         <div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("cashSalesLabel"))}</span><span>${money(shiftCashSalesTotal)}</span></div>
+        ${shiftUnsettledDeliveryCash > 0 ? `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("unsettledDeliveryCashLabel"))}</span><span>${money(shiftUnsettledDeliveryCash)}</span></div>` : ""}
         ${shiftCashRefundsTotal > 0 ? `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("cashRefundsLabel"))}</span><span>-${money(shiftCashRefundsTotal)}</span></div>` : ""}
         ${cashExpenseRows}
         <div class="row" style="font-weight:700;margin-top:4px;"><span>${escapeHtml(t("expectedCashLabel"))}</span><span>${money(expectedCash)}</span></div>
@@ -6288,6 +6308,11 @@ function POSPrototype({ tenantId }) {
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
                     <span>{t("cashSalesLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(shiftCashSalesTotal)}</span>
                   </div>
+                  {shiftUnsettledDeliveryCash > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6, color: "#F0D9A0" }}>
+                      <span title={t("unsettledDeliveryCashHint")}>{t("unsettledDeliveryCashLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(shiftUnsettledDeliveryCash)}</span>
+                    </div>
+                  )}
                   {shiftCashRefundsTotal > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6, color: "#E3A79C" }}>
                       <span>{t("cashRefundsLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftCashRefundsTotal)}</span>
