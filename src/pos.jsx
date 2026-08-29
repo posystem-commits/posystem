@@ -6,6 +6,40 @@ import { createTenantStorage } from "@/lib/tenantStorage";
 const FONTS = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+
+/* Staff-terminal light/dark theme tokens. Dark is the default (":root", unscoped) and matches
+   the app's original fixed dark palette exactly, so nothing changes visually until a manager
+   switches to light mode in Settings. Only the staff terminal's own root wrapper ever sets
+   data-theme — the customer-facing menu/checkout pages never do, so they keep resolving to
+   these ":root" dark defaults permanently, unaffected by a staff device's theme choice. Modal-
+   style surfaces (confirm dialogs, the checkout/QR modals) intentionally stay their own fixed
+   light "paper" look in both themes, so they aren't tokenized here. */
+:root {
+  --bg: #20242B;
+  --surface: #2B303A;
+  --text-primary: #FBF8F2;
+  --text-muted: var(--text-muted);
+  --text-faint: var(--text-faint);
+  --border: var(--border);
+  --track: var(--track);
+  --success-text: #9FCB8E;
+  --warning-text: #E3C98A;
+  --danger-text: #E3A79C;
+  --info-text: #8EB8D6;
+}
+[data-theme="light"] {
+  --bg: #F5F2EA;
+  --surface: #FFFFFF;
+  --text-primary: #262421;
+  --text-muted: #6B6F78;
+  --text-faint: #7A7E88;
+  --border: #DCD5C4;
+  --track: #E8E3D6;
+  --success-text: #3F8F4F;
+  --warning-text: #9C7A2E;
+  --danger-text: #B85C4E;
+  --info-text: #2E75A6;
+}
 `;
 
 const COLORS = {
@@ -42,6 +76,7 @@ const STRINGS = {
     payment_cash: "Cash",
     payment_visa: "Visa",
     payment_instapay: "InstaPay",
+    payment_wallet: "Wallet",
     payment_split: "Split payment",
     splitPaymentOption: "Split payment",
     splitRemainingLabel: "Remaining",
@@ -210,6 +245,7 @@ const STRINGS = {
     byPaymentMethod: "By payment method",
     refundedCount: "Refunded · {{n}}",
     cancelledCountNote: "Cancelled · {{n}} (stock restored, not counted)",
+    discountedCountNote: "Discounted orders · {{n}}",
     discountsGiven: "Discounts given",
     cashReconciliationTitle: "Cash reconciliation",
     cashReconciliationSubtitle: "Counts every cash order, cash refund, and cash expense logged this shift, so the expected drawer total is actually accurate.",
@@ -228,6 +264,13 @@ const STRINGS = {
     varianceOver: "Over",
     varianceShort: "Short",
     varianceMatch: "Matches exactly",
+    electronicReconciliationTitle: "Visa, InstaPay & wallet reconciliation",
+    electronicReconciliationSubtitle: "No drawer to count here — just check what actually landed in your bank or wallet statement against what this shift expects, per method.",
+    salesLabel: "Sales",
+    refundsLabel: "Refunds",
+    expectedSettlementLabel: "Expected",
+    confirmedOnStatementLabel: "On statement",
+    confirmedElectronicPlaceholder: "Enter the statement amount",
     printShiftReport: "Print shift report",
     downloadReportTooltip: "Downloads a report file you can open and print — works in this preview",
     startNewShift: "Start new shift",
@@ -252,6 +295,10 @@ const STRINGS = {
     secondaryColorLabel: "Secondary color",
     primaryColorHint: "Used for buttons, the active tab, and key actions.",
     secondaryColorHint: "Used for accents, links, and highlighted badges.",
+    themeLabel: "Theme",
+    themeDark: "Dark",
+    themeLight: "Light",
+    themeHint: "Applies to this terminal's screens. Every device signed into this restaurant sees the same theme.",
     previewLabel: "Preview",
 
     taxesTitle: "Taxes & service charge",
@@ -401,8 +448,11 @@ const STRINGS = {
     tab_delivery: "Delivery",
     deliveryZonesTitle: "Delivery zones",
     deliveryZonesSubtitle: "Set a delivery fee per distance/zone. Customers ordering online pick the zone closest to them at checkout.",
-    deliveryAgentShareTitle: "Delivery agent's share of the fee",
-    deliveryAgentShareSubtitle: "What percentage of the delivery fee the rider keeps as their own pay. The rest counts toward what they owe the restaurant in the cash reconciliation.",
+    deliveryAgentShareTitle: "How much of the delivery fee the restaurant keeps",
+    deliveryAgentShareSubtitle: "The rest is the rider's pay. Take it as a percentage of each fee, or a flat amount per delivery regardless of the fee size.",
+    retentionModePercentage: "Percentage",
+    retentionModeFixed: "Fixed amount",
+    perDeliveryLabel: "per delivery",
     addZone: "+ Add zone",
     zoneLabel: "Zone label",
     zoneLabelPlaceholder: "e.g. 0–3 km, or a neighborhood name",
@@ -433,18 +483,27 @@ const STRINGS = {
 
     tab_dashboard: "Dashboard",
     dashboardTitle: "Dashboard",
-    dashboardSubtitle: "A snapshot of how the business is doing this month.",
+    dashboardSubtitle: "A snapshot of how the business is doing — pick a day or a month below.",
+    dashboardModeMonth: "Month",
+    dashboardModeDay: "Day",
+    periodRevenueLabel: "Revenue",
+    periodOrdersLabel: "Orders",
     todayRevenue: "Today's revenue",
     monthRevenue: "This month's revenue",
     monthOrders: "This month's orders",
-    netProfitLabel: "Net profit this month",
+    netProfitLabel: "Net profit",
     netProfitHint: "Revenue minus logged expenses",
     avgOrderValueLabel: "Average order value",
+    discountsGivenLabel: "Discounts given",
     vsYesterdayChange: "{{pct}}% vs yesterday",
+    vsPreviousDayChange: "{{pct}}% vs previous day",
     revenueTrendTitle: "Revenue this month",
+    revenueTrendTitleMonth: "Revenue by day",
+    revenueTrendTitleDay: "Revenue by hour",
     bestDayLabel: "Best day so far: day {{day}} — {{amount}}",
-    topSellersTitle: "Top sellers this month",
-    noSalesYetDashboard: "No completed orders yet this month.",
+    bestHourLabel: "Best hour: {{time}} — {{amount}}",
+    topSellersTitle: "Top sellers",
+    noSalesYetDashboard: "No completed orders in this period.",
     paymentMixTitle: "Payment methods",
     orderSourceTitle: "Where orders came from",
     sourceDineIn: "Dine-in",
@@ -547,7 +606,7 @@ const STRINGS = {
     hideAssignedOrders: "Hide orders",
     servedByLabel: "Served by {{name}}",
     deliveryReconciliationTitle: "Delivery cash reconciliation",
-    deliveryReconciliationSubtitle: "Every unsettled delivery order, by rider, until you settle up. Each rider keeps {{pct}}% of the delivery fee — out of the cash they collected on cash orders, or paid out to them for card/InstaPay orders they still delivered.",
+    deliveryReconciliationSubtitle: "Every unsettled delivery order, by rider, until you settle up. The restaurant keeps {{cut}} of each delivery fee — the rider keeps the rest, whether that's out of cash they collected or credited to them on a card/InstaPay order they still delivered.",
     noDeliveryReconciliationYet: "No unsettled delivery orders right now.",
     deliveryReconciliationCash: "Cash collected",
     deliveryReconciliationFees: "Delivery fees kept",
@@ -619,6 +678,7 @@ const STRINGS = {
     payment_cash: "نقدًا",
     payment_visa: "فيزا",
     payment_instapay: "إنستاباي",
+    payment_wallet: "محفظة إلكترونية",
     payment_split: "دفع مقسّم",
     splitPaymentOption: "دفع مقسّم",
     splitRemainingLabel: "المتبقي",
@@ -787,6 +847,7 @@ const STRINGS = {
     byPaymentMethod: "حسب طريقة الدفع",
     refundedCount: "مُسترجع · {{n}}",
     cancelledCountNote: "ملغى · {{n}} (تمت استعادة المخزون، غير محتسب)",
+    discountedCountNote: "طلبات بها خصم · {{n}}",
     discountsGiven: "الخصومات الممنوحة",
     cashReconciliationTitle: "تسوية النقدية",
     cashReconciliationSubtitle: "يحسب كل طلب نقدي ومسترجع نقدي ومصروف نقدي سُجّل في هذه الوردية، عشان يكون إجمالي الدرج المتوقع دقيق فعلاً.",
@@ -805,6 +866,13 @@ const STRINGS = {
     varianceOver: "زيادة",
     varianceShort: "عجز",
     varianceMatch: "مطابق تمامًا",
+    electronicReconciliationTitle: "تسوية فيزا وإنستاباي والمحفظة الإلكترونية",
+    electronicReconciliationSubtitle: "لا يوجد درج لعدّه هنا — فقط تأكد مما ظهر فعليًا في كشف حسابك البنكي أو المحفظة مقارنة بما تتوقعه هذه الوردية لكل طريقة.",
+    salesLabel: "المبيعات",
+    refundsLabel: "المسترجع",
+    expectedSettlementLabel: "المتوقع",
+    confirmedOnStatementLabel: "في الكشف",
+    confirmedElectronicPlaceholder: "أدخل المبلغ من الكشف",
     printShiftReport: "طباعة تقرير الوردية",
     downloadReportTooltip: "ينزّل ملف تقرير يمكنك فتحه وطباعته — يعمل في هذه المعاينة",
     startNewShift: "بدء وردية جديدة",
@@ -829,6 +897,10 @@ const STRINGS = {
     secondaryColorLabel: "اللون الثانوي",
     primaryColorHint: "يُستخدم للأزرار والتبويب النشط والإجراءات الرئيسية.",
     secondaryColorHint: "يُستخدم للمسات المميزة والروابط والشارات البارزة.",
+    themeLabel: "المظهر",
+    themeDark: "داكن",
+    themeLight: "فاتح",
+    themeHint: "يُطبَّق على شاشات هذا الجهاز. كل جهاز مسجّل دخول في هذا المطعم يرى نفس المظهر.",
     previewLabel: "معاينة",
 
     taxesTitle: "الضرائب ورسوم الخدمة",
@@ -978,8 +1050,11 @@ const STRINGS = {
     tab_delivery: "التوصيل",
     deliveryZonesTitle: "مناطق التوصيل",
     deliveryZonesSubtitle: "حدد رسوم توصيل لكل مسافة/منطقة. يختار العملاء الذين يطلبون عبر الإنترنت أقرب منطقة لهم عند إتمام الطلب.",
-    deliveryAgentShareTitle: "نصيب عامل التوصيل من الرسوم",
-    deliveryAgentShareSubtitle: "النسبة المئوية من رسوم التوصيل التي يحتفظ بها العامل كأجر له. الباقي يُحتسب ضمن المستحق للمطعم في تسوية النقدية.",
+    deliveryAgentShareTitle: "كم يحتفظ المطعم من رسوم التوصيل",
+    deliveryAgentShareSubtitle: "الباقي هو أجر عامل التوصيل. حدده كنسبة مئوية من كل رسوم، أو كمبلغ ثابت لكل توصيلة بغض النظر عن قيمة الرسوم.",
+    retentionModePercentage: "نسبة مئوية",
+    retentionModeFixed: "مبلغ ثابت",
+    perDeliveryLabel: "لكل توصيلة",
     addZone: "+ إضافة منطقة",
     zoneLabel: "اسم المنطقة",
     zoneLabelPlaceholder: "مثال: 0-3 كم، أو اسم حي",
@@ -1010,18 +1085,27 @@ const STRINGS = {
 
     tab_dashboard: "لوحة المعلومات",
     dashboardTitle: "لوحة المعلومات",
-    dashboardSubtitle: "نظرة سريعة على أداء العمل هذا الشهر.",
+    dashboardSubtitle: "نظرة سريعة على أداء العمل — اختر يومًا أو شهرًا أدناه.",
+    dashboardModeMonth: "شهر",
+    dashboardModeDay: "يوم",
+    periodRevenueLabel: "الإيرادات",
+    periodOrdersLabel: "الطلبات",
     todayRevenue: "إيرادات اليوم",
     monthRevenue: "إيرادات هذا الشهر",
     monthOrders: "طلبات هذا الشهر",
-    netProfitLabel: "صافي الربح هذا الشهر",
+    netProfitLabel: "صافي الربح",
     netProfitHint: "الإيرادات ناقص المصروفات المسجلة",
     avgOrderValueLabel: "متوسط قيمة الطلب",
+    discountsGivenLabel: "الخصومات الممنوحة",
     vsYesterdayChange: "{{pct}}٪ مقارنة بالأمس",
+    vsPreviousDayChange: "{{pct}}٪ مقارنة باليوم السابق",
     revenueTrendTitle: "إيرادات هذا الشهر",
+    revenueTrendTitleMonth: "الإيرادات حسب اليوم",
+    revenueTrendTitleDay: "الإيرادات حسب الساعة",
     bestDayLabel: "أفضل يوم حتى الآن: يوم {{day}} — {{amount}}",
-    topSellersTitle: "الأكثر مبيعًا هذا الشهر",
-    noSalesYetDashboard: "لا توجد طلبات مكتملة بعد هذا الشهر.",
+    bestHourLabel: "أفضل ساعة: {{time}} — {{amount}}",
+    topSellersTitle: "الأكثر مبيعًا",
+    noSalesYetDashboard: "لا توجد طلبات مكتملة في هذه الفترة.",
     paymentMixTitle: "طرق الدفع",
     orderSourceTitle: "مصدر الطلبات",
     sourceDineIn: "تناول في المطعم",
@@ -1124,7 +1208,7 @@ const STRINGS = {
     hideAssignedOrders: "إخفاء الطلبات",
     servedByLabel: "قدّمه {{name}}",
     deliveryReconciliationTitle: "تسوية نقدية الدليفري",
-    deliveryReconciliationSubtitle: "كل طلبات الدليفري غير المُسوّاة بعد، حسب كل عامل، حتى تتم التسوية معه. يحتفظ كل عامل بنسبة {{pct}}% من رسوم التوصيل — إما من النقدية التي حصّلها في الطلبات النقدية، أو تُدفع له عن طلبات الفيزا/إنستاباي التي وصّلها أيضًا.",
+    deliveryReconciliationSubtitle: "كل طلبات الدليفري غير المُسوّاة بعد، حسب كل عامل، حتى تتم التسوية معه. يحتفظ المطعم بـ{{cut}} من كل رسوم توصيل — والباقي للعامل، سواء من النقدية التي حصّلها أو كرصيد له عن طلبات الفيزا/إنستاباي التي وصّلها أيضًا.",
     noDeliveryReconciliationYet: "لا توجد طلبات دليفري غير مُسوّاة حاليًا.",
     deliveryReconciliationCash: "النقدية المحصّلة",
     deliveryReconciliationFees: "رسوم التوصيل المحتفظ بها",
@@ -1188,6 +1272,7 @@ const PAYMENT_METHODS = [
   { id: "cash", label: "Cash" },
   { id: "visa", label: "Visa" },
   { id: "instapay", label: "InstaPay" },
+  { id: "wallet", label: "Wallet" },
 ];
 // A receipt paid across more than one method stores paymentMethod: "split" plus a splitPayments
 // breakdown; every other receipt effectively has one "split" of just its own total. Reporting
@@ -1627,6 +1712,13 @@ function POSPrototype({ tenantId }) {
   const [monthKeys, setMonthKeys] = useState([]);
   const [monthsLoaded, setMonthsLoaded] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(null);
+
+  // Dashboard's own period selector — deliberately separate from selectedMonth above (which
+  // belongs to the Receipts tab) so picking a month to review receipts doesn't also change what
+  // the dashboard is showing, and vice versa.
+  const [dashboardMode, setDashboardMode] = useState("month"); // "month" | "day"
+  const [dashboardMonth, setDashboardMonth] = useState(null); // "YYYY-MM", defaults to the current month once known
+  const [dashboardDay, setDashboardDay] = useState(null); // "YYYY-MM-DD", defaults to today once known
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [editingReceiptId, setEditingReceiptId] = useState(null);
   const [editDraftItems, setEditDraftItems] = useState([]);
@@ -1664,6 +1756,7 @@ function POSPrototype({ tenantId }) {
   const [shiftLoaded, setShiftLoaded] = useState(false);
   const [openingFloat, setOpeningFloat] = useState("0"); // cash physically in the drawer at clock-in, for cash reconciliation
   const [countedCash, setCountedCash] = useState(""); // cash actually counted at close — entered fresh each time, never persisted
+  const [confirmedElectronic, setConfirmedElectronic] = useState({}); // { [methodId]: "123.45" } — what actually shows on the bank/gateway statement, checked against expected settlement; same ephemeral, never-persisted pattern as countedCash
 
   const [employees, setEmployees] = useState([]); // shared staff roster: [{id, name, pin}]
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
@@ -1716,6 +1809,12 @@ function POSPrototype({ tenantId }) {
   const [lang, setLang] = useState("ar");
   const [langLoaded, setLangLoaded] = useState(false);
 
+  // Staff terminal's own light/dark theme — see the token block in FONTS above. Independent of
+  // any per-device local setting so every terminal in the restaurant shows the same theme, same
+  // as the rest of branding.
+  const [uiTheme, setUiTheme] = useState("dark");
+  const [uiThemeLoaded, setUiThemeLoaded] = useState(false);
+
   const [restaurantName, setRestaurantName] = useState("Ember & Vine");
   const [logoUrl, setLogoUrl] = useState(null);
   const [primaryColor, setPrimaryColor] = useState(COLORS.burgundy);
@@ -1727,10 +1826,13 @@ function POSPrototype({ tenantId }) {
   const [servicePercent, setServicePercent] = useState(0);
   const [taxConfigLoaded, setTaxConfigLoaded] = useState(false);
 
-  // What share of the delivery fee the rider keeps as their own pay — the rest is added to
-  // what they owe the restaurant in deliveryReconciliation below. Defaults to 100 (rider keeps
-  // the whole fee, today's behavior) until a manager sets it otherwise.
-  const [deliveryAgentSharePercent, setDeliveryAgentSharePercent] = useState(100);
+  // How much of the delivery fee the restaurant keeps for itself — the rest is the rider's pay.
+  // Either a percentage of the fee, or a flat amount per delivery regardless of the fee size.
+  // Defaults to 0% (restaurant keeps nothing, rider keeps the whole fee — today's behavior)
+  // until a manager sets it otherwise.
+  const [deliveryFeeRetentionMode, setDeliveryFeeRetentionMode] = useState("percentage"); // "percentage" | "fixed"
+  const [deliveryFeeRetentionPercent, setDeliveryFeeRetentionPercent] = useState(0);
+  const [deliveryFeeRetentionFixed, setDeliveryFeeRetentionFixed] = useState(0);
   const [deliveryShareConfigLoaded, setDeliveryShareConfigLoaded] = useState(false);
 
   // Tabs a manager has chosen to require a manager PIN to open — see handleTabClick. Regular
@@ -1931,13 +2033,33 @@ function POSPrototype({ tenantId }) {
       try {
         const result = await getSharedWithRetry(storage, "delivery-share-config");
         const parsed = result?.value ? JSON.parse(result.value) : null;
-        if (parsed && parsed.agentSharePercent !== undefined) {
-          setDeliveryAgentSharePercent(Number(parsed.agentSharePercent));
+        if (parsed && parsed.agentSharePercent !== undefined && parsed.retentionMode === undefined) {
+          // Old format: agentSharePercent was the rider's share. Convert to the restaurant's
+          // retention percentage (its complement) so already-configured tenants keep the exact
+          // same split after this field's meaning flipped.
+          setDeliveryFeeRetentionMode("percentage");
+          setDeliveryFeeRetentionPercent(Math.max(0, Math.min(100, 100 - Number(parsed.agentSharePercent))));
+        } else if (parsed) {
+          setDeliveryFeeRetentionMode(parsed.retentionMode === "fixed" ? "fixed" : "percentage");
+          setDeliveryFeeRetentionPercent(Number(parsed.retentionPercent) || 0);
+          setDeliveryFeeRetentionFixed(Number(parsed.retentionFixed) || 0);
         }
       } catch (e) {
-        // fall back to 100% already set
+        // fall back to 0% / restaurant keeps nothing, already set
       } finally {
         setDeliveryShareConfigLoaded(true);
+      }
+    })();
+
+    (async () => {
+      try {
+        const result = await getSharedWithRetry(storage, "ui-theme-config");
+        const parsed = result?.value ? JSON.parse(result.value) : null;
+        if (parsed?.theme === "light" || parsed?.theme === "dark") setUiTheme(parsed.theme);
+      } catch (e) {
+        // fall back to dark, already set
+      } finally {
+        setUiThemeLoaded(true);
       }
     })();
 
@@ -2093,8 +2215,17 @@ function POSPrototype({ tenantId }) {
   }, [vatPercent, servicePercent, taxConfigLoaded]);
   useEffect(() => {
     if (!deliveryShareConfigLoaded) return;
-    syncSet("delivery-share-config", JSON.stringify({ agentSharePercent: deliveryAgentSharePercent }), true, t("syncLabelSettings"));
-  }, [deliveryAgentSharePercent, deliveryShareConfigLoaded]);
+    syncSet(
+      "delivery-share-config",
+      JSON.stringify({ retentionMode: deliveryFeeRetentionMode, retentionPercent: deliveryFeeRetentionPercent, retentionFixed: deliveryFeeRetentionFixed }),
+      true,
+      t("syncLabelSettings")
+    );
+  }, [deliveryFeeRetentionMode, deliveryFeeRetentionPercent, deliveryFeeRetentionFixed, deliveryShareConfigLoaded]);
+  useEffect(() => {
+    if (!uiThemeLoaded) return;
+    syncSet("ui-theme-config", JSON.stringify({ theme: uiTheme }), true, t("syncLabelSettings"));
+  }, [uiTheme, uiThemeLoaded]);
   // Publishes ONLY a per-item true/false availability flag to shared storage — never the
   // underlying ingredient names, quantities, or stock counts. This is what the public online-
   // ordering link (and table QR menus) read to show "Available"/"Not available" per dish, without
@@ -2752,6 +2883,12 @@ function POSPrototype({ tenantId }) {
   useEffect(() => {
     ensureExpenseMonthLoaded(thisMonthKey());
   }, []);
+  useEffect(() => {
+    const monthKey = dashboardMode === "day" && dashboardDay ? dashboardDay.slice(0, 7) : dashboardMonth;
+    if (!monthKey) return;
+    ensureMonthLoaded(monthKey);
+    ensureExpenseMonthLoaded(monthKey);
+  }, [dashboardMode, dashboardMonth, dashboardDay]);
 
   // Tracks connectivity and retries failed writes automatically once back online. Restaurant-wide
   // data now lives in a real tenant-scoped Postgres table via lib/tenantStorage.js (see
@@ -3165,7 +3302,7 @@ function POSPrototype({ tenantId }) {
 
   const servingsBadge = (item) => {
     const max = rawMaxServings(item);
-    if (max === null) return { text: t("stockNotTracked"), color: "#2E3440", fg: "#9CA1AC" };
+    if (max === null) return { text: t("stockNotTracked"), color: "var(--track)", fg: "var(--text-muted)" };
     if (max === 0) return { text: t("outOfStock"), color: "#3A2A28", fg: "#E3A79C" };
     if (max <= 3) return { text: t("lowLeft", { n: max }), color: "#3A331F", fg: "#E3C98A" };
     return { text: t("available", { n: max }), color: "#22301F", fg: "#9FCB8E" };
@@ -3532,6 +3669,7 @@ function POSPrototype({ tenantId }) {
     const [y, m] = key.split("-");
     return new Date(Number(y), Number(m) - 1, 1).toLocaleString("en-US", { month: "long", year: "numeric" });
   };
+  const formatHour = (h) => new Date(2000, 0, 1, h).toLocaleTimeString("en-US", { hour: "numeric" });
   const availableMonths = useMemo(() => Array.from(new Set([thisMonthKey(), ...monthKeys])).sort().reverse(), [monthKeys]);
   const currentMonth = selectedMonth || thisMonthKey();
   const monthReceipts = receiptsByMonth[currentMonth] || [];
@@ -3550,29 +3688,63 @@ function POSPrototype({ tenantId }) {
   const outstandingExpenses = monthExpenses.filter((e) => e.status === "unpaid");
   const outstandingTotal = outstandingExpenses.reduce((s, e) => s + e.amount, 0);
 
-  // Dashboard analytics — deliberately scoped to the actual current month via thisMonthKey(),
+  // Dashboard analytics — filterable to either a whole month or a single day (dashboardMode),
   // independent of whatever month a manager might have selected in the Receipts or Expenses view
-  // dropdowns elsewhere. Both underlying datasets are already loaded eagerly at startup, so this
-  // needs no extra fetching.
-  const dashboardReceipts = (receiptsByMonth[thisMonthKey()] || []).filter((r) => r.status === "completed");
-  const dashboardExpenseTotal = (expensesByMonth[thisMonthKey()] || []).reduce((s, e) => s + e.amount, 0);
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayRevenue = dashboardReceipts.filter((r) => r.timestamp.slice(0, 10) === todayStr).reduce((s, r) => s + r.total, 0);
-  const dashboardMonthRevenue = dashboardReceipts.reduce((s, r) => s + r.total, 0);
-  const dashboardMonthOrders = dashboardReceipts.length;
-  const avgOrderValue = dashboardMonthOrders > 0 ? dashboardMonthRevenue / dashboardMonthOrders : 0;
-  const netProfit = dashboardMonthRevenue - dashboardExpenseTotal;
+  // dropdowns elsewhere (those use selectedMonth/selectedExpenseMonth, not these). Defaults to the
+  // current month / today until changed. The month containing whichever period is selected gets
+  // fetched on demand (see the effect near ensureMonthLoaded) since it may not be the one already
+  // loaded eagerly at startup.
+  const effectiveDashboardMonth = dashboardMonth || thisMonthKey();
+  const effectiveDashboardDay = dashboardDay || new Date().toISOString().slice(0, 10);
+  const dashboardActiveMonthKey = dashboardMode === "day" ? effectiveDashboardDay.slice(0, 7) : effectiveDashboardMonth;
+  const dashboardMonthDataLoaded = receiptsByMonth[dashboardActiveMonthKey] !== undefined;
 
-  const dailyRevenue = Array.from({ length: new Date().getDate() }, (_, i) => {
+  const dashboardMonthReceiptsAll = (receiptsByMonth[dashboardActiveMonthKey] || []).filter((r) => r.status === "completed");
+  const dashboardReceipts = dashboardMode === "day"
+    ? dashboardMonthReceiptsAll.filter((r) => r.timestamp.slice(0, 10) === effectiveDashboardDay)
+    : dashboardMonthReceiptsAll;
+
+  const dashboardExpensesAll = expensesByMonth[dashboardActiveMonthKey] || [];
+  const dashboardExpenseTotal = (dashboardMode === "day" ? dashboardExpensesAll.filter((e) => e.date === effectiveDashboardDay) : dashboardExpensesAll)
+    .reduce((s, e) => s + e.amount, 0);
+
+  const dashboardPeriodRevenue = dashboardReceipts.reduce((s, r) => s + r.total, 0);
+  const dashboardPeriodOrders = dashboardReceipts.length;
+  const avgOrderValue = dashboardPeriodOrders > 0 ? dashboardPeriodRevenue / dashboardPeriodOrders : 0;
+  const netProfit = dashboardPeriodRevenue - dashboardExpenseTotal;
+  const dashboardDiscountTotal = dashboardReceipts.reduce((s, r) => s + (r.discountAmount || 0), 0);
+
+  // Trend chart: a bar per day when viewing a whole month, a bar per hour when viewing a single
+  // day (a single day has no "days" of its own to chart, so hour-of-day is the useful breakdown
+  // instead — also doubles as a simple peak-hours read for staffing).
+  const daysInDashboardMonth = (() => {
+    const [y, m] = dashboardActiveMonthKey.split("-").map(Number);
+    return dashboardActiveMonthKey === thisMonthKey() ? new Date().getDate() : new Date(y, m, 0).getDate();
+  })();
+  const dailyRevenue = Array.from({ length: daysInDashboardMonth }, (_, i) => {
     const dayStr = String(i + 1).padStart(2, "0");
-    return { day: i + 1, total: dashboardReceipts.filter((r) => r.timestamp.slice(8, 10) === dayStr).reduce((s, r) => s + r.total, 0) };
+    return { key: i + 1, total: dashboardMonthReceiptsAll.filter((r) => r.timestamp.slice(8, 10) === dayStr).reduce((s, r) => s + r.total, 0) };
   });
-  const maxDailyRevenue = Math.max(1, ...dailyRevenue.map((d) => d.total));
-  const bestDay = dailyRevenue.reduce((best, d) => (d.total > best.total ? d : best), { day: null, total: 0 });
-  // Yesterday is simply the entry right before today's (the array's always ordered day 1..today,
-  // with today last) — null when today is the 1st of the month, since there's no prior-day entry.
-  const yesterdayRevenue = dailyRevenue.length >= 2 ? dailyRevenue[dailyRevenue.length - 2].total : null;
-  const todayVsYesterdayPct = yesterdayRevenue > 0 ? Math.round(((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100) : null;
+  const hourlyRevenue = Array.from({ length: 24 }, (_, h) => ({
+    key: h,
+    total: dashboardReceipts.filter((r) => new Date(r.timestamp).getHours() === h).reduce((s, r) => s + r.total, 0),
+  }));
+  const trendBars = dashboardMode === "day" ? hourlyRevenue : dailyRevenue;
+  const maxTrendValue = Math.max(1, ...trendBars.map((b) => b.total));
+  const bestTrendBar = trendBars.reduce((best, b) => (b.total > best.total ? b : best), { key: null, total: 0 });
+
+  // "vs previous" only compares within data that's already loaded — the previous day, when it
+  // falls in the same month as the one currently loaded. No extra fetch just for this comparison;
+  // it simply doesn't show when the previous day would be in a different (unloaded) month.
+  const previousDayRevenue = (() => {
+    if (dashboardMode !== "day") return null;
+    const d = new Date(`${effectiveDashboardDay}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - 1);
+    if (d.toISOString().slice(0, 7) !== dashboardActiveMonthKey) return null;
+    const prevDayStr = d.toISOString().slice(0, 10);
+    return dashboardMonthReceiptsAll.filter((r) => r.timestamp.slice(0, 10) === prevDayStr).reduce((s, r) => s + r.total, 0);
+  })();
+  const periodVsPreviousPct = previousDayRevenue > 0 ? Math.round(((dashboardPeriodRevenue - previousDayRevenue) / previousDayRevenue) * 100) : null;
 
   const dashboardItemTotals = {};
   dashboardReceipts.forEach((r) => r.items.forEach((it) => { dashboardItemTotals[it.name] = (dashboardItemTotals[it.name] || 0) + it.qty; }));
@@ -4029,7 +4201,8 @@ function POSPrototype({ tenantId }) {
     .flatMap(receiptMethodAmounts)
     .filter((a) => a.method === "cash")
     .reduce((s, a) => s + a.amount, 0);
-  const shiftDiscountTotal = shiftCompleted.reduce((s, r) => s + (r.discountAmount || 0), 0);
+  const shiftDiscountedOrders = shiftCompleted.filter((r) => (r.discountAmount || 0) > 0);
+  const shiftDiscountTotal = shiftDiscountedOrders.reduce((s, r) => s + (r.discountAmount || 0), 0);
   // Expenses only carry a date (not a timestamp), so "this shift" is approximated as anything
   // logged on or after the shift's start date — exact enough for the normal case of a shift that
   // doesn't span midnight, and still reasonable for one that does.
@@ -4042,6 +4215,20 @@ function POSPrototype({ tenantId }) {
   const expectedCash = openingFloatNum + shiftCashSalesTotal - shiftCashRefundsTotal - shiftCashExpensesTotal;
   const countedCashNum = countedCash === "" ? null : Number(countedCash) || 0;
   const cashVariance = countedCashNum === null ? null : Math.round((countedCashNum - expectedCash) * 100) / 100;
+
+  // Visa / InstaPay / Wallet don't have a physical drawer to count, but a manager can still check
+  // what actually landed in the bank or gateway statement against what the shift expects for that
+  // method (sales minus refunds) — same idea as the cash count above, just no opening float, since
+  // an electronic balance doesn't carry a physical float over from one shift to the next.
+  const shiftElectronicMethods = PAYMENT_METHODS.filter((m) => m.id !== "cash").map((m) => {
+    const sales = shiftByMethod.find((x) => x.id === m.id)?.total || 0;
+    const refunds = shiftRefunded.flatMap(receiptMethodAmounts).filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0);
+    const expected = Math.round((sales - refunds) * 100) / 100;
+    const confirmedRaw = confirmedElectronic[m.id];
+    const confirmedNum = confirmedRaw === undefined || confirmedRaw === "" ? null : Number(confirmedRaw) || 0;
+    const variance = confirmedNum === null ? null : Math.round((confirmedNum - expected) * 100) / 100;
+    return { ...m, sales, refunds, expected, confirmedNum, variance };
+  });
 
   // Personal stats for whoever is currently clocked in — same receipts, filtered to just theirs.
   const myShiftCompleted = currentEmployee ? shiftCompleted.filter((r) => r.servedBy?.id === currentEmployee.id) : [];
@@ -4104,7 +4291,7 @@ function POSPrototype({ tenantId }) {
       <div class="dashed">
         <div class="row" style="font-size:12px;"><span>${escapeHtml(t("grossSales"))}</span><span>${money(shiftGross)}</span></div>
         <div class="row" style="font-size:12px;"><span>${escapeHtml(t("refunds"))}</span><span>-${money(shiftRefundsTotal)}</span></div>
-        ${shiftDiscountTotal > 0 ? `<div class="row" style="font-size:12px;"><span>${escapeHtml(t("discountsGiven"))}</span><span>-${money(shiftDiscountTotal)}</span></div>` : ""}
+        ${shiftDiscountTotal > 0 ? `<div class="row" style="font-size:12px;"><span>${escapeHtml(t("discountedCountNote", { n: shiftDiscountedOrders.length }))}</span><span>-${money(shiftDiscountTotal)}</span></div>` : ""}
         <div class="row" style="font-size:15px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("net"))}</span><span>${money(shiftGross - shiftRefundsTotal)}</span></div>
       </div>
       <div class="dashed" style="font-size:12px;">
@@ -4192,6 +4379,7 @@ function POSPrototype({ tenantId }) {
     setShiftStart(now);
     setOpeningFloat("0");
     setCountedCash("");
+    setConfirmedElectronic({});
     setLoginSelectedId(null);
     setLoginPin("");
     setLoginError(false);
@@ -4264,6 +4452,7 @@ function POSPrototype({ tenantId }) {
     setShiftStart(null);
     setOpeningFloat("0");
     setCountedCash("");
+    setConfirmedElectronic({});
     setUnlockedTabs(new Set());
     try {
       await storage.delete("current-employee", false);
@@ -4377,6 +4566,15 @@ function POSPrototype({ tenantId }) {
   // cash collected against fee share earned across ALL their orders — not just cash ones — makes
   // both directions fall out of one number: positive means they owe the restaurant, negative
   // means the restaurant owes them.
+  // What the rider keeps out of a given delivery fee, after the restaurant's cut — either a
+  // percentage of the fee, or a flat amount (clamped so it never exceeds the fee itself, which
+  // would otherwise leave the rider owing money just for having delivered something cheap).
+  const agentFeeShare = (fee) => {
+    const restaurantCut = deliveryFeeRetentionMode === "fixed"
+      ? Math.min(Math.max(deliveryFeeRetentionFixed, 0), fee)
+      : Math.round(fee * (deliveryFeeRetentionPercent / 100) * 100) / 100;
+    return Math.round((fee - restaurantCut) * 100) / 100;
+  };
   const deliveryReconciliation = useMemo(() => {
     const outstanding = dashboardReceipts.filter((r) => r.tableId === "delivery" && r.paid !== false && !r.deliverySettled);
     return dutyRoster
@@ -4384,10 +4582,10 @@ function POSPrototype({ tenantId }) {
       .map((p) => {
         const orders = outstanding.filter((r) => r.assignedTo?.id === p.id);
         const cashTotal = orders.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
-        const feesTotal = orders.reduce((s, r) => s + Math.round((r.deliveryFee || 0) * (deliveryAgentSharePercent / 100) * 100) / 100, 0);
+        const feesTotal = orders.reduce((s, r) => s + agentFeeShare(r.deliveryFee || 0), 0);
         return { ...p, orders: orders.length, cashTotal, feesTotal, net: Math.round((cashTotal - feesTotal) * 100) / 100 };
       });
-  }, [dutyRoster, dashboardReceipts, deliveryAgentSharePercent]);
+  }, [dutyRoster, dashboardReceipts, deliveryFeeRetentionMode, deliveryFeeRetentionPercent, deliveryFeeRetentionFixed]);
 
   // Marks every currently-outstanding delivery order for this rider (exactly the ones counted
   // into their card above) as settled, once the manager has actually collected/paid out the net
@@ -4660,7 +4858,7 @@ function POSPrototype({ tenantId }) {
           borderRadius: "50%",
           border: "none",
           background: theme.primary,
-          color: COLORS.paper,
+          color: "#FBF8F2",
           fontSize: 22,
           cursor: "grab",
           touchAction: "none",
@@ -4685,8 +4883,8 @@ function POSPrototype({ tenantId }) {
             maxWidth: "calc(100vw - 40px)",
             height: 440,
             maxHeight: "calc(100vh - 120px)",
-            background: COLORS.inkSoft,
-            border: "1px solid #3A404C",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
             borderRadius: 14,
             boxShadow: "0 12px 32px rgba(0,0,0,0.5)",
             display: "flex",
@@ -4694,19 +4892,19 @@ function POSPrototype({ tenantId }) {
             overflow: "hidden",
           }}
         >
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid #3A404C", fontFamily: isRtl ? "Tajawal, sans-serif" : "Fraunces, serif", fontSize: 14, fontWeight: 600 }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontFamily: isRtl ? "Tajawal, sans-serif" : "Fraunces, serif", fontSize: 14, fontWeight: 600 }}>
             {t("helpChatTitle")}
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
             {helpChatMessages.length === 0 && (
               <>
-                <div style={{ fontSize: 12.5, color: "#9CA1AC", lineHeight: 1.5 }}>{t("helpChatWelcome")}</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("helpChatWelcome")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
                   {["helpChatSuggestion1", "helpChatSuggestion2", "helpChatSuggestion3", "helpChatSuggestion4"].map((key) => (
                     <button
                       key={key}
                       onClick={() => sendHelpMessage(t(key))}
-                      style={{ textAlign: isRtl ? "right" : "left", fontSize: 12, padding: "8px 10px", borderRadius: 8, border: "1px solid #3A404C", background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}
+                      style={{ textAlign: isRtl ? "right" : "left", fontSize: 12, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}
                     >
                       {t(key)}
                     </button>
@@ -4720,8 +4918,8 @@ function POSPrototype({ tenantId }) {
                 style={{
                   alignSelf: m.role === "user" ? (isRtl ? "flex-start" : "flex-end") : (isRtl ? "flex-end" : "flex-start"),
                   maxWidth: "85%",
-                  background: m.role === "user" ? theme.primary : "#2E3440",
-                  color: m.role === "user" ? COLORS.paper : COLORS.paper,
+                  background: m.role === "user" ? theme.primary : "var(--track)",
+                  color: m.role === "user" ? "#FBF8F2" : "var(--text-primary)",
                   borderRadius: 10,
                   padding: "8px 11px",
                   fontSize: 12.5,
@@ -4732,9 +4930,9 @@ function POSPrototype({ tenantId }) {
                 {m.content}
               </div>
             ))}
-            {helpChatSending && <div style={{ fontSize: 11.5, color: "#8A8F99" }}>{t("helpChatThinking")}</div>}
+            {helpChatSending && <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>{t("helpChatThinking")}</div>}
           </div>
-          <div style={{ display: "flex", gap: 6, padding: 10, borderTop: "1px solid #3A404C" }}>
+          <div style={{ display: "flex", gap: 6, padding: 10, borderTop: "1px solid var(--border)" }}>
             <input
               type="text"
               value={helpChatInput}
@@ -4743,12 +4941,12 @@ function POSPrototype({ tenantId }) {
                 if (e.key === "Enter") sendHelpMessage(helpChatInput);
               }}
               placeholder={t("helpChatPlaceholder")}
-              style={{ flex: 1, background: "#FFFFFF", border: "1px solid #3A404C", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13, fontFamily: isRtl ? "'Tajawal', sans-serif" : "'Inter', sans-serif" }}
+              style={{ flex: 1, background: "#FFFFFF", border: "1px solid var(--border)", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13, fontFamily: isRtl ? "'Tajawal', sans-serif" : "'Inter', sans-serif" }}
             />
             <button
               onClick={() => sendHelpMessage(helpChatInput)}
               disabled={helpChatSending || !helpChatInput.trim()}
-              style={{ padding: "0 14px", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 12.5, fontWeight: 600, cursor: helpChatSending ? "default" : "pointer", opacity: helpChatSending || !helpChatInput.trim() ? 0.6 : 1 }}
+              style={{ padding: "0 14px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 12.5, fontWeight: 600, cursor: helpChatSending ? "default" : "pointer", opacity: helpChatSending || !helpChatInput.trim() ? 0.6 : 1 }}
             >
               {t("helpChatSend")}
             </button>
@@ -4765,9 +4963,9 @@ function POSPrototype({ tenantId }) {
   // loading in behind them.
   if (!currentEmployeeLoaded || !employeesLoaded) {
     return (
-      <div dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: COLORS.ink, minHeight: "100vh", color: COLORS.paper, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div data-theme={uiTheme} dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: "var(--bg)", minHeight: "100vh", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <style>{FONTS}</style>
-        <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("loading")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("loading")}</div>
       </div>
     );
   }
@@ -4775,7 +4973,7 @@ function POSPrototype({ tenantId }) {
   if (!currentEmployee) {
     const selectedEmp = employees.find((e) => e.id === loginSelectedId);
     return (
-      <div dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: COLORS.ink, minHeight: "100vh", color: COLORS.paper, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div data-theme={uiTheme} dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: "var(--bg)", minHeight: "100vh", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
         <style>{FONTS}</style>
         <style>{`
           button { transition: filter .12s ease, background .15s ease, border-color .15s ease, transform .08s ease; }
@@ -4792,20 +4990,20 @@ function POSPrototype({ tenantId }) {
           {rosterLoadFailed ? (
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, fontFamily: "Fraunces, serif" }}>{t("offlineBadge")}</div>
-              <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 18, lineHeight: 1.5 }}>{t("rosterLoadFailedHint")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 18, lineHeight: 1.5 }}>{t("rosterLoadFailedHint")}</div>
               <button onClick={retryRosterLoad} style={{ padding: "10px 20px", borderRadius: 8, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("retrySync")}</button>
             </div>
           ) : employees.length === 0 || loginAddMode ? (
             <div>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, fontFamily: "Fraunces, serif", textAlign: "center" }}>{t("loginWelcome")}</div>
-              <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 18, textAlign: "center" }}>{employees.length === 0 ? t("loginNoStaffYet") : t("loginSubtitle")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 18, textAlign: "center" }}>{employees.length === 0 ? t("loginNoStaffYet") : t("loginSubtitle")}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <input
                   type="text"
                   value={loginNewName}
                   onChange={(e) => setLoginNewName(e.target.value)}
                   placeholder={t("yourNamePlaceholder")}
-                  style={{ background: "#FFFFFF", border: "1px solid #3A404C", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13, fontFamily: isRtl ? "'Tajawal', sans-serif" : "'Inter', sans-serif" }}
+                  style={{ background: "#FFFFFF", border: "1px solid var(--border)", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13, fontFamily: isRtl ? "'Tajawal', sans-serif" : "'Inter', sans-serif" }}
                 />
                 <input
                   type="text"
@@ -4814,18 +5012,18 @@ function POSPrototype({ tenantId }) {
                   value={loginNewPin}
                   onChange={(e) => setLoginNewPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
                   placeholder={t("choosePinPlaceholder")}
-                  style={{ background: "#FFFFFF", border: "1px solid #3A404C", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13, fontFamily: "IBM Plex Mono, monospace", letterSpacing: 4, textAlign: "center" }}
+                  style={{ background: "#FFFFFF", border: "1px solid var(--border)", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13, fontFamily: "IBM Plex Mono, monospace", letterSpacing: 4, textAlign: "center" }}
                 />
-                <button onClick={addEmployeeFromLogin} style={{ padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("createPinAndStart")}</button>
+                <button onClick={addEmployeeFromLogin} style={{ padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("createPinAndStart")}</button>
                 {employees.length > 0 && (
-                  <button onClick={() => { setLoginAddMode(false); setLoginNewName(""); setLoginNewPin(""); }} style={{ padding: "10px 0", borderRadius: 8, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 13, cursor: "pointer" }}>{t("loginBackToNames")}</button>
+                  <button onClick={() => { setLoginAddMode(false); setLoginNewName(""); setLoginNewPin(""); }} style={{ padding: "10px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 13, cursor: "pointer" }}>{t("loginBackToNames")}</button>
                 )}
               </div>
             </div>
           ) : selectedEmp ? (
             <div style={{ textAlign: "center" }}>
               <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{selectedEmp.name}</div>
-              <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 20 }}>{t("enterPin")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 20 }}>{t("enterPin")}</div>
               <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: loginError ? 6 : 22 }}>
                 {[0, 1, 2, 3].map((i) => (
                   <div key={i} style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${theme.secondary}`, background: i < loginPin.length ? theme.secondary : "transparent" }} />
@@ -4839,31 +5037,31 @@ function POSPrototype({ tenantId }) {
                   <button
                     key={d}
                     onClick={() => { setLoginError(false); setLoginPin((p) => (p.length < 4 ? p + d : p)); }}
-                    style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: COLORS.inkSoft, color: COLORS.paper, fontSize: 18, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}
+                    style={{ padding: "16px 0", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontSize: 18, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}
                   >
                     {d}
                   </button>
                 ))}
-                <button onClick={() => { setLoginSelectedId(null); setLoginPin(""); setLoginError(false); }} style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 12, cursor: "pointer" }}>{t("loginBackToNames")}</button>
+                <button onClick={() => { setLoginSelectedId(null); setLoginPin(""); setLoginError(false); }} style={{ padding: "16px 0", borderRadius: 10, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12, cursor: "pointer" }}>{t("loginBackToNames")}</button>
                 <button
                   onClick={() => { setLoginError(false); setLoginPin((p) => (p.length < 4 ? p + "0" : p)); }}
-                  style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: COLORS.inkSoft, color: COLORS.paper, fontSize: 18, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}
+                  style={{ padding: "16px 0", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontSize: 18, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}
                 >
                   0
                 </button>
-                <button onClick={() => setLoginPin((p) => p.slice(0, -1))} style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 16, cursor: "pointer" }}>&larr;</button>
+                <button onClick={() => setLoginPin((p) => p.slice(0, -1))} style={{ padding: "16px 0", borderRadius: 10, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 16, cursor: "pointer" }}>&larr;</button>
               </div>
             </div>
           ) : (
             <div>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, fontFamily: "Fraunces, serif", textAlign: "center" }}>{t("loginWelcome")}</div>
-              <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 18, textAlign: "center" }}>{t("loginSubtitle")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 18, textAlign: "center" }}>{t("loginSubtitle")}</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
                 {employees.map((emp) => (
                   <button
                     key={emp.id}
                     onClick={() => { setLoginSelectedId(emp.id); setLoginPin(""); setLoginError(false); }}
-                    style={{ padding: "16px 8px", borderRadius: 10, border: "1px solid #3A404C", background: COLORS.inkSoft, color: COLORS.paper, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}
+                    style={{ padding: "16px 8px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}
                   >
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#3A2A2D", color: theme.secondaryLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600, fontFamily: "IBM Plex Mono, monospace" }}>
                       {initials(emp.name)}
@@ -4872,7 +5070,7 @@ function POSPrototype({ tenantId }) {
                   </button>
                 ))}
               </div>
-              <button onClick={() => setLoginAddMode(true)} style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "1px dashed #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 12.5, cursor: "pointer" }}>{t("loginAddYourself")}</button>
+              <button onClick={() => setLoginAddMode(true)} style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "1px dashed var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("loginAddYourself")}</button>
             </div>
           )}
           <div style={{ textAlign: "center", marginTop: 28, fontSize: 10, letterSpacing: 0.6, color: "#4A4F5A" }}>G&amp;B</div>
@@ -4883,7 +5081,7 @@ function POSPrototype({ tenantId }) {
   }
 
   return (
-    <div dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: COLORS.ink, minHeight: "100vh", color: COLORS.paper }}>
+    <div data-theme={uiTheme} dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: "var(--bg)", minHeight: "100vh", color: "var(--text-primary)" }}>
       <style>{FONTS}</style>
       <style>{`
         .menu-card { transition: transform .12s ease, border-color .12s ease; }
@@ -4896,9 +5094,9 @@ function POSPrototype({ tenantId }) {
         @keyframes noticeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes billPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(142,184,214,0.5); } 50% { box-shadow: 0 0 0 5px rgba(142,184,214,0); } }
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #3A404C; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
         .stock-input::-webkit-inner-spin-button { opacity: 1; }
-        .field { background: #FFFFFF; border: 1px solid #3A404C; border-radius: 7px; padding: 9px 12px; color: #111111; font-size: 13px; font-family: ${isRtl ? "'Tajawal', sans-serif" : "'Inter', sans-serif"}; }
+        .field { background: #FFFFFF; border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; color: #111111; font-size: 13px; font-family: ${isRtl ? "'Tajawal', sans-serif" : "'Inter', sans-serif"}; }
         .field::placeholder { color: #6B6F78; }
         .field:focus { outline: none; border-color: ${theme.primary}; box-shadow: 0 0 0 3px ${theme.primary}33; }
         button { transition: filter .12s ease, background .15s ease, border-color .15s ease, transform .08s ease; }
@@ -4916,7 +5114,7 @@ function POSPrototype({ tenantId }) {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 20, flexWrap: "wrap", width: isMobile ? "100%" : undefined }}>
-          <div style={{ display: "flex", background: COLORS.inkSoft, borderRadius: 999, padding: 3, border: "1px solid #3A404C", flexWrap: isCompact ? "nowrap" : "wrap", overflowX: isCompact ? "auto" : undefined, maxWidth: isCompact ? "100%" : undefined, WebkitOverflowScrolling: "touch" }}>
+          <div style={{ display: "flex", background: "var(--surface)", borderRadius: 999, padding: 3, border: "1px solid var(--border)", flexWrap: isCompact ? "nowrap" : "wrap", overflowX: isCompact ? "auto" : undefined, maxWidth: isCompact ? "100%" : undefined, WebkitOverflowScrolling: "touch" }}>
             {["order", "menu", "stock", "tables", "delivery", "receipts", "expenses", "dashboard", "customers", "shift", "staff", "settings"]
               .filter((key) => {
                 if (key === "order" || key === "settings") return true;
@@ -4939,7 +5137,7 @@ function POSPrototype({ tenantId }) {
                       borderRadius: 999,
                       border: "none",
                       background: view === key ? theme.primary : "transparent",
-                      color: view === key ? COLORS.paper : "#9CA1AC",
+                      color: view === key ? "#FBF8F2" : "var(--text-muted)",
                       fontSize: isMobile ? 12.5 : 13,
                       fontWeight: 500,
                       cursor: "pointer",
@@ -4952,7 +5150,7 @@ function POSPrototype({ tenantId }) {
                 );
               })}
           </div>
-          <div style={{ display: "flex", background: COLORS.inkSoft, borderRadius: 999, padding: 3, border: "1px solid #3A404C" }} title={t("langToggleLabel")}>
+          <div style={{ display: "flex", background: "var(--surface)", borderRadius: 999, padding: 3, border: "1px solid var(--border)" }} title={t("langToggleLabel")}>
             {["en", "ar"].map((code) => (
               <button
                 key={code}
@@ -4963,7 +5161,7 @@ function POSPrototype({ tenantId }) {
                   borderRadius: 999,
                   border: "none",
                   background: lang === code ? theme.primary : "transparent",
-                  color: lang === code ? COLORS.paper : "#9CA1AC",
+                  color: lang === code ? "#FBF8F2" : "var(--text-muted)",
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -4984,7 +5182,7 @@ function POSPrototype({ tenantId }) {
             <button
               onClick={flushSyncQueue}
               title={syncQueue.map((task) => task.label).join(", ")}
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
             >
               {tCount("syncPendingPill", syncQueue.length)} &middot; {t("retrySync")}
             </button>
@@ -5007,10 +5205,10 @@ function POSPrototype({ tenantId }) {
               {tCount("billRequestedPill", checkoutRequests.length)}
             </button>
           )}
-          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 24, fontSize: isMobile ? 12 : 13, color: "#9CA1AC", flexWrap: "wrap" }}>
-            <span>{t("orderingForLabel")} <b style={{ color: COLORS.paper, fontWeight: 500 }}>{tableLabel(activeTableId)}</b></span>
-            {!isMobile && hasFeature("staff") && <span>{t("serverLabel")} <b style={{ color: COLORS.paper, fontWeight: 500 }}>{currentEmployee?.name}</b></span>}
-            {hasFeature("shift") && <button onClick={clockOut} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("clockOut")}</button>}
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 24, fontSize: isMobile ? 12 : 13, color: "var(--text-muted)", flexWrap: "wrap" }}>
+            <span>{t("orderingForLabel")} <b style={{ color: "var(--text-primary)", fontWeight: 500 }}>{tableLabel(activeTableId)}</b></span>
+            {!isMobile && hasFeature("staff") && <span>{t("serverLabel")} <b style={{ color: "var(--text-primary)", fontWeight: 500 }}>{currentEmployee?.name}</b></span>}
+            {hasFeature("shift") && <button onClick={clockOut} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("clockOut")}</button>}
           </div>
         </div>
       </div>
@@ -5037,9 +5235,9 @@ function POSPrototype({ tenantId }) {
                   style={{
                     padding: "9px 20px",
                     borderRadius: 999,
-                    border: `1px solid ${active === cat ? theme.primary : "#3A404C"}`,
+                    border: `1px solid ${active === cat ? theme.primary : "var(--border)"}`,
                     background: active === cat ? theme.primary : "transparent",
-                    color: active === cat ? COLORS.paper : "#9CA1AC",
+                    color: active === cat ? "#FBF8F2" : "var(--text-muted)",
                     fontSize: 13.5,
                     fontWeight: 500,
                     cursor: "pointer",
@@ -5062,8 +5260,8 @@ function POSPrototype({ tenantId }) {
                     className="menu-card"
                     style={{
                       textAlign: "left",
-                      background: COLORS.inkSoft,
-                      border: `1px solid ${out ? "#4A2E2C" : "#363C47"}`,
+                      background: "var(--surface)",
+                      border: `1px solid ${out ? "#4A2E2C" : "var(--border)"}`,
                       borderRadius: 12,
                       padding: 16,
                       cursor: out ? "not-allowed" : "pointer",
@@ -5080,15 +5278,15 @@ function POSPrototype({ tenantId }) {
                       <span style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 14, color: theme.secondary }}>{money(item.price)}</span>
                     </div>
                     <div>
-                      <div style={{ fontSize: 14.5, fontWeight: 500, color: COLORS.paper, marginBottom: 2 }}>{item.name}</div>
-                      <div style={{ fontSize: 12, color: "#8A8F99", marginBottom: 6 }}>{item.tag}</div>
+                      <div style={{ fontSize: 14.5, fontWeight: 500, color: "var(--text-primary)", marginBottom: 2 }}>{item.name}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 6 }}>{item.tag}</div>
                       <span style={{ fontSize: 10.5, padding: "3px 8px", borderRadius: 999, background: badge.color, color: badge.fg, fontWeight: 500, letterSpacing: 0.3 }}>{badge.text}</span>
                     </div>
                   </button>
                 );
               })}
               {(menu[active] || []).length === 0 && (
-                <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noItemsInCategory")}</div>
+                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noItemsInCategory")}</div>
               )}
             </div>
           </div>
@@ -5097,7 +5295,7 @@ function POSPrototype({ tenantId }) {
             <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, marginBottom: 2 }}>
               <button
                 onClick={() => switchTable(null)}
-                style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === null ? theme.secondary : "#3A404C"}`, background: activeTableId === null ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === null ? theme.secondaryLight : "#9CA1AC", fontSize: 11.5, fontWeight: activeTableId === null ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap", position: "relative" }}
+                style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === null ? theme.secondary : "var(--border)"}`, background: activeTableId === null ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === null ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === null ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap", position: "relative" }}
               >
                 {t("takeawayLabel")}
                 {tableItemCount(null) > 0 && <span style={{ marginLeft: 5, fontSize: 9.5, background: theme.secondary, color: COLORS.ink, borderRadius: 999, padding: "1px 5px" }}>{tableItemCount(null)}</span>}
@@ -5105,7 +5303,7 @@ function POSPrototype({ tenantId }) {
               {hasFeature("deliveryZones") && (
                 <button
                   onClick={() => switchTable("delivery")}
-                  style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === "delivery" ? theme.secondary : "#3A404C"}`, background: activeTableId === "delivery" ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === "delivery" ? theme.secondaryLight : "#9CA1AC", fontSize: 11.5, fontWeight: activeTableId === "delivery" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
+                  style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === "delivery" ? theme.secondary : "var(--border)"}`, background: activeTableId === "delivery" ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === "delivery" ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === "delivery" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
                 >
                   {t("deliveryLabel")}
                   {tableItemCount("delivery") > 0 && <span style={{ marginLeft: 5, fontSize: 9.5, background: theme.secondary, color: COLORS.ink, borderRadius: 999, padding: "1px 5px" }}>{tableItemCount("delivery")}</span>}
@@ -5116,7 +5314,7 @@ function POSPrototype({ tenantId }) {
                   <button
                     key={id}
                     onClick={() => switchTable(id)}
-                    style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === id ? theme.secondary : "#3A404C"}`, background: activeTableId === id ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === id ? theme.secondaryLight : "#9CA1AC", fontSize: 11.5, fontWeight: activeTableId === id ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
+                    style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === id ? theme.secondary : "var(--border)"}`, background: activeTableId === id ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === id ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === id ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
                   >
                     {tableLabel(id)}
                     {tableItemCount(id) > 0 && <span style={{ marginLeft: 5, fontSize: 9.5, background: theme.secondary, color: COLORS.ink, borderRadius: 999, padding: "1px 5px" }}>{tableItemCount(id)}</span>}
@@ -5127,7 +5325,7 @@ function POSPrototype({ tenantId }) {
                 // bucket alongside Takeaway/Delivery, instead of a numbered-table list.
                 <button
                   onClick={() => switchTable("dine-in")}
-                  style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === "dine-in" ? theme.secondary : "#3A404C"}`, background: activeTableId === "dine-in" ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === "dine-in" ? theme.secondaryLight : "#9CA1AC", fontSize: 11.5, fontWeight: activeTableId === "dine-in" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
+                  style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === "dine-in" ? theme.secondary : "var(--border)"}`, background: activeTableId === "dine-in" ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === "dine-in" ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === "dine-in" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
                 >
                   {t("dineInLabel")}
                   {tableItemCount("dine-in") > 0 && <span style={{ marginLeft: 5, fontSize: 9.5, background: theme.secondary, color: COLORS.ink, borderRadius: 999, padding: "1px 5px" }}>{tableItemCount("dine-in")}</span>}
@@ -5180,14 +5378,14 @@ function POSPrototype({ tenantId }) {
                           placeholder={t("notePlaceholder")}
                           style={{ flex: 1, fontSize: 11.5, border: `1px solid ${COLORS.line}`, borderRadius: 5, padding: "4px 6px", background: "transparent", fontFamily: "Inter, sans-serif" }}
                         />
-                        <button onClick={() => setEditingNoteLineId(null)} style={{ fontSize: 11, background: theme.primary, color: COLORS.paper, border: "none", borderRadius: 5, padding: "4px 9px", cursor: "pointer" }}>{t("apply")}</button>
+                        <button onClick={() => setEditingNoteLineId(null)} style={{ fontSize: 11, background: theme.primary, color: "#FBF8F2", border: "none", borderRadius: 5, padding: "4px 9px", cursor: "pointer" }}>{t("apply")}</button>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
 
-              {hasFeature("discounts") && isManager && (
+              {hasFeature("discounts") && (
                 <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
                   {!discount && !discountOpen && (
                     <button onClick={() => setDiscountOpen(true)} style={{ fontSize: 11.5, color: theme.primary, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>{t("addDiscount")}</button>
@@ -5199,7 +5397,7 @@ function POSPrototype({ tenantId }) {
                         <option value="fixed">$</option>
                       </select>
                       <input type="number" value={discountDraft.value} onChange={(e) => setDiscountDraft((d) => ({ ...d, value: e.target.value }))} placeholder="0" style={{ width: 54, fontSize: 11.5, border: `1px solid ${COLORS.line}`, borderRadius: 5, padding: "4px 6px", background: "transparent" }} />
-                      <button onClick={applyDiscount} style={{ fontSize: 11, background: theme.primary, color: COLORS.paper, border: "none", borderRadius: 5, padding: "5px 9px", cursor: "pointer" }}>{t("apply")}</button>
+                      <button onClick={applyDiscount} style={{ fontSize: 11, background: theme.primary, color: "#FBF8F2", border: "none", borderRadius: 5, padding: "5px 9px", cursor: "pointer" }}>{t("apply")}</button>
                       <button onClick={() => setDiscountOpen(false)} style={{ fontSize: 11, background: "none", color: COLORS.charcoalSoft, border: "none", cursor: "pointer" }}>{t("cancel")}</button>
                     </div>
                   )}
@@ -5230,7 +5428,7 @@ function POSPrototype({ tenantId }) {
                       placeholder={t("numberOfPeoplePlaceholder")}
                       style={{ width: 120, fontSize: 11.5, border: `1px solid ${COLORS.line}`, borderRadius: 5, padding: "4px 6px", background: "transparent" }}
                     />
-                    <button onClick={applySplit} style={{ fontSize: 11, background: theme.primary, color: COLORS.paper, border: "none", borderRadius: 5, padding: "5px 9px", cursor: "pointer" }}>{t("apply")}</button>
+                    <button onClick={applySplit} style={{ fontSize: 11, background: theme.primary, color: "#FBF8F2", border: "none", borderRadius: 5, padding: "5px 9px", cursor: "pointer" }}>{t("apply")}</button>
                     <button onClick={() => setSplitOpen(false)} style={{ fontSize: 11, background: "none", color: COLORS.charcoalSoft, border: "none", cursor: "pointer" }}>{t("cancel")}</button>
                   </div>
                 )}
@@ -5273,7 +5471,7 @@ function POSPrototype({ tenantId }) {
 
             {hasFeature("teamTracking") && dutyRoster.length > 0 && (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("assignedToLabel")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("assignedToLabel")}</div>
                 <select
                   value={assignedTo?.id || ""}
                   onChange={(e) => {
@@ -5303,9 +5501,9 @@ function POSPrototype({ tenantId }) {
 
             {activeTableId === "delivery" && (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("chooseDeliveryZone")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("chooseDeliveryZone")}</div>
                 {deliveryZones.length === 0 ? (
-                  <div style={{ fontSize: 12, color: "#8A8F99" }}>{t("noZonesYet")}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-faint)" }}>{t("noZonesYet")}</div>
                 ) : (
                   <select
                     value={deliveryZones.find((z) => z.label === deliveryZoneLabel)?.id || ""}
@@ -5329,7 +5527,7 @@ function POSPrototype({ tenantId }) {
 
             {activeTableId === "delivery" && (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("customerOptional")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("customerOptional")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={t("namePlaceholder")} className="field" />
                   <div style={{ position: "relative" }}>
@@ -5344,14 +5542,14 @@ function POSPrototype({ tenantId }) {
                       style={{ width: "100%", boxSizing: "border-box" }}
                     />
                     {showCustomerSuggestions && customerPhone && (
-                      <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: COLORS.inkSoft, border: "1px solid #3A404C", borderRadius: 8, zIndex: 20, overflow: "hidden", boxShadow: "0 8px 20px rgba(0,0,0,0.4)" }}>
+                      <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, zIndex: 20, overflow: "hidden", boxShadow: "0 8px 20px rgba(0,0,0,0.4)" }}>
                         {customerMatches.length === 0 ? (
-                          <div style={{ padding: "10px 12px", fontSize: 12, color: "#8A8F99" }}>{t("noMatchesNewCustomer")}</div>
+                          <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-faint)" }}>{t("noMatchesNewCustomer")}</div>
                         ) : (
                           customerMatches.map((c) => (
-                            <button key={c.phone} onMouseDown={() => selectCustomer(c)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderBottom: "1px solid #333945", padding: "9px 12px", cursor: "pointer", color: COLORS.paper }}>
+                            <button key={c.phone} onMouseDown={() => selectCustomer(c)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderBottom: "1px solid #333945", padding: "9px 12px", cursor: "pointer", color: "var(--text-primary)" }}>
                               <div style={{ fontSize: 13 }}>{c.name || t("unnamed")}</div>
-                              <div style={{ fontSize: 11, color: "#9CA1AC", fontFamily: "IBM Plex Mono, monospace" }}>{c.phone}{c.address ? ` · ${c.address}` : ""}</div>
+                              <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "IBM Plex Mono, monospace" }}>{c.phone}{c.address ? ` · ${c.address}` : ""}</div>
                             </button>
                           ))
                         )}
@@ -5364,13 +5562,13 @@ function POSPrototype({ tenantId }) {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 6, marginTop: 14 }}>
+            <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>
               {PAYMENT_METHODS.map((m) => (
-                <button key={m.id} onClick={() => setPaymentMethod(m.id)} className="pay-pill" style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === m.id ? theme.secondary : "#3A404C"}`, background: paymentMethod === m.id ? "#3A2E22" : "transparent", color: paymentMethod === m.id ? theme.secondaryLight : "#9CA1AC", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
+                <button key={m.id} onClick={() => setPaymentMethod(m.id)} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === m.id ? theme.secondary : "var(--border)"}`, background: paymentMethod === m.id ? "#3A2E22" : "transparent", color: paymentMethod === m.id ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
                   {t(`payment_${m.id}`)}
                 </button>
               ))}
-              <button onClick={() => { setPaymentMethod("split"); setPaidNow(true); }} className="pay-pill" style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === "split" ? theme.secondary : "#3A404C"}`, background: paymentMethod === "split" ? "#3A2E22" : "transparent", color: paymentMethod === "split" ? theme.secondaryLight : "#9CA1AC", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
+              <button onClick={() => { setPaymentMethod("split"); setPaidNow(true); }} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === "split" ? theme.secondary : "var(--border)"}`, background: paymentMethod === "split" ? "#3A2E22" : "transparent", color: paymentMethod === "split" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
                 {t("splitPaymentOption")}
               </button>
             </div>
@@ -5382,7 +5580,7 @@ function POSPrototype({ tenantId }) {
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: 10 }}>
                   {PAYMENT_METHODS.map((m) => (
                     <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <span style={{ fontSize: 12.5, color: "#9CA1AC" }}>{t(`payment_${m.id}`)}</span>
+                      <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t(`payment_${m.id}`)}</span>
                       <input
                         type="number"
                         value={splitAmounts[m.id] || ""}
@@ -5402,23 +5600,23 @@ function POSPrototype({ tenantId }) {
 
             {paymentMethod !== "split" && (
               <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                <button onClick={() => setPaidNow(true)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${paidNow ? "#3F5B45" : "#3A404C"}`, background: paidNow ? "#22301F" : "transparent", color: paidNow ? "#9FCB8E" : "#9CA1AC", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+                <button onClick={() => setPaidNow(true)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${paidNow ? "#3F5B45" : "var(--border)"}`, background: paidNow ? "#22301F" : "transparent", color: paidNow ? "#9FCB8E" : "var(--text-muted)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
                   {t("paidNowOption")}
                 </button>
-                <button onClick={() => setPaidNow(false)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${!paidNow ? "#5B4F3F" : "#3A404C"}`, background: !paidNow ? "#33301F" : "transparent", color: !paidNow ? "#E3C98A" : "#9CA1AC", fontSize: 12, fontWeight: 500, cursor: "pointer" }} title={t("payLaterHint")}>
+                <button onClick={() => setPaidNow(false)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${!paidNow ? "#5B4F3F" : "var(--border)"}`, background: !paidNow ? "#33301F" : "transparent", color: !paidNow ? "#E3C98A" : "var(--text-muted)", fontSize: 12, fontWeight: 500, cursor: "pointer" }} title={t("payLaterHint")}>
                   {t("payLaterOption")}
                 </button>
               </div>
             )}
 
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-              <button disabled={cart.length === 0} onClick={printOrderReceipt} title={t("printReceiptTooltip")} style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "#3A404C" : theme.secondary}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : theme.secondaryLight, fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
+              <button disabled={cart.length === 0} onClick={printOrderReceipt} title={t("printReceiptTooltip")} style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "var(--border)" : theme.secondary}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : theme.secondaryLight, fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
                 {t("printReceipt")}
               </button>
-              <button disabled={cart.length === 0} onClick={downloadOrderReceipt} title={t("downloadReceiptTooltip")} style={{ padding: "13px 16px", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "#3A404C" : "#3A404C"}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : "#9CA1AC", fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
+              <button disabled={cart.length === 0} onClick={downloadOrderReceipt} title={t("downloadReceiptTooltip")} style={{ padding: "13px 16px", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "var(--border)" : "var(--border)"}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : "var(--text-muted)", fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
                 {t("download")}
               </button>
-              <button disabled={cart.length === 0} onClick={saveOrder} className="save-btn" style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: "none", background: cart.length === 0 ? "#4A2C33" : paidNow ? theme.primary : "#8A6A2E", color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.6 : 1 }}>
+              <button disabled={cart.length === 0} onClick={saveOrder} className="save-btn" style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: "none", background: cart.length === 0 ? "#4A2C33" : paidNow ? theme.primary : "#8A6A2E", color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.6 : 1 }}>
                 {paidNow ? t("saveOrder") : t("saveOrderUnpaid")}
               </button>
             </div>
@@ -5430,14 +5628,14 @@ function POSPrototype({ tenantId }) {
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 900 }}>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("menuEditorTitle")}</div>
-            <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("menuEditorSubtitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("menuEditorSubtitle")}</div>
           </div>
 
           {hasFeature("menuScan") && (
-            <div style={{ background: COLORS.inkSoft, border: `1px dashed ${theme.secondary}`, borderRadius: 10, padding: 16, marginBottom: 20, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ background: "var(--surface)", border: `1px dashed ${theme.secondary}`, borderRadius: 10, padding: 16, marginBottom: 20, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 220 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 3 }}>{t("scanMenuButton")}</div>
-                <div style={{ fontSize: 11.5, color: "#8A8F99" }}>{t("scanMenuHint")}</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>{t("scanMenuHint")}</div>
               </div>
               <label style={{ fontSize: 12.5, padding: "9px 16px", borderRadius: 7, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer", fontWeight: 500, flexShrink: 0 }}>
                 {t("scanMenuButton")}
@@ -5448,7 +5646,7 @@ function POSPrototype({ tenantId }) {
 
           <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
             <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder={t("newCategoryPlaceholder")} className="field" style={{ flex: 1 }} />
-            <button onClick={addCategory} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addCategory")}</button>
+            <button onClick={addCategory} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addCategory")}</button>
           </div>
 
           {categories.map((cat) => (
@@ -5463,30 +5661,30 @@ function POSPrototype({ tenantId }) {
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {(menu[cat] || []).map((item) => (
-                  <div key={item.id} style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "12px 16px" }}>
+                  <div key={item.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 500 }}>{item.name} <span style={{ color: theme.secondary, fontFamily: "IBM Plex Mono, monospace", fontWeight: 400 }}>{money(item.price)}</span></div>
-                        <div style={{ fontSize: 12, color: "#8A8F99", marginTop: 2 }}>{item.tag}</div>
-                        <div style={{ fontSize: 11.5, color: "#9CA1AC", marginTop: 6 }}>
+                        <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 2 }}>{item.tag}</div>
+                        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 6 }}>
                           {item.recipe.length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtQty(r.qty)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                        <button onClick={() => openEditItem(cat, item)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("edit")}</button>
+                        <button onClick={() => openEditItem(cat, item)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
                         <button onClick={() => deleteMenuItem(cat, item)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
                       </div>
                     </div>
                   </div>
                 ))}
-                {(menu[cat] || []).length === 0 && <div style={{ fontSize: 12.5, color: "#8A8F99" }}>{t("noItemsYet")}</div>}
+                {(menu[cat] || []).length === 0 && <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noItemsYet")}</div>}
               </div>
             </div>
           ))}
 
           {itemEditor && (
             <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }}>
-              <div style={{ background: COLORS.inkSoft, border: "1px solid #3A404C", borderRadius: 14, padding: 24, width: "100%", maxWidth: 460, maxHeight: "85vh", overflowY: "auto" }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24, width: "100%", maxWidth: 460, maxHeight: "85vh", overflowY: "auto" }}>
                 <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 16 }}>
                   {itemEditor.mode === "new" ? t("addItemToCategory", { category: itemEditor.category }) : t("editItemTitle", { name: itemEditor.name })}
                 </div>
@@ -5497,15 +5695,15 @@ function POSPrototype({ tenantId }) {
                   <input type="number" value={itemEditor.price} onChange={(e) => setItemEditor((p) => ({ ...p, price: e.target.value }))} placeholder={t("pricePlaceholder")} className="field" />
                 </div>
 
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("recipeLabel")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("recipeLabel")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
                   {itemEditor.recipe.map((r) => (
-                    <div key={r.ingredientId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, background: COLORS.ink, borderRadius: 6, padding: "7px 10px" }}>
+                    <div key={r.ingredientId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, background: "var(--bg)", borderRadius: 6, padding: "7px 10px" }}>
                       <span>{fmtQty(r.qty)} {ingredients[r.ingredientId]?.unit} &middot; {ingredients[r.ingredientId]?.name}</span>
                       <button onClick={() => removeRecipeLine(r.ingredientId)} style={{ background: "none", border: "none", color: "#E3A79C", cursor: "pointer", fontSize: 13 }}>&times;</button>
                     </div>
                   ))}
-                  {itemEditor.recipe.length === 0 && <div style={{ fontSize: 12, color: "#8A8F99" }}>{t("noIngredientsAdded")}</div>}
+                  {itemEditor.recipe.length === 0 && <div style={{ fontSize: 12, color: "var(--text-faint)" }}>{t("noIngredientsAdded")}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
                   <select value={recipeDraftIng} onChange={(e) => setRecipeDraftIng(e.target.value)} className="field" style={{ flex: 1 }}>
@@ -5519,8 +5717,8 @@ function POSPrototype({ tenantId }) {
                 </div>
 
                 <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-                  <button onClick={saveItemEditor} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>{t("saveItem")}</button>
-                  <button onClick={closeItemEditor} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 13.5, cursor: "pointer" }}>{t("cancel")}</button>
+                  <button onClick={saveItemEditor} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>{t("saveItem")}</button>
+                  <button onClick={closeItemEditor} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 13.5, cursor: "pointer" }}>{t("cancel")}</button>
                 </div>
               </div>
             </div>
@@ -5528,13 +5726,13 @@ function POSPrototype({ tenantId }) {
 
           {menuScanImage && (
             <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }}>
-              <div style={{ background: COLORS.inkSoft, border: "1px solid #3A404C", borderRadius: 14, padding: 24, width: "100%", maxWidth: 520, maxHeight: "85vh", overflowY: "auto" }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24, width: "100%", maxWidth: 520, maxHeight: "85vh", overflowY: "auto" }}>
                 <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 16 }}>{t("scanMenuModalTitle")}</div>
 
                 <div style={{ display: "flex", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
-                  <img src={menuScanImage} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 8, border: "1px solid #363C47", flexShrink: 0 }} />
+                  <img src={menuScanImage} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)", flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 180 }}>
-                    {menuScanning && <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("scanMenuScanning")}</div>}
+                    {menuScanning && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("scanMenuScanning")}</div>}
                     {menuScanError && <div style={{ fontSize: 13, color: "#E3A79C" }}>{menuScanError}</div>}
                     {menuScanResults && !menuScanning && (
                       <div style={{ fontSize: 13, color: theme.secondaryLight }}>{t("scanMenuReviewTitle", { n: menuScanResults.length })}</div>
@@ -5544,10 +5742,10 @@ function POSPrototype({ tenantId }) {
 
                 {menuScanResults && !menuScanning && (
                   <>
-                    <div style={{ fontSize: 11.5, color: "#8A8F99", marginBottom: 12 }}>{t("scanMenuReviewHint")}</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginBottom: 12 }}>{t("scanMenuReviewHint")}</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
                       {menuScanResults.map((it, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: COLORS.ink, borderRadius: 8, padding: "8px 10px", opacity: it.include ? 1 : 0.5 }}>
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--bg)", borderRadius: 8, padding: "8px 10px", opacity: it.include ? 1 : 0.5 }}>
                           <input type="checkbox" checked={it.include} onChange={(e) => updateMenuScanResult(i, { include: e.target.checked })} style={{ flexShrink: 0, width: 16, height: 16, cursor: "pointer" }} />
                           <input
                             type="text"
@@ -5579,16 +5777,16 @@ function POSPrototype({ tenantId }) {
                 <div style={{ display: "flex", gap: 10 }}>
                   {menuScanResults && !menuScanning ? (
                     <>
-                      <button onClick={addScannedItems} style={{ flex: 2, padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+                      <button onClick={addScannedItems} style={{ flex: 2, padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
                         {t("scanMenuAddButton", { n: menuScanResults.filter((it) => it.include).length })}
                       </button>
-                      <label style={{ flex: 1, textAlign: "center", padding: "11px 0", borderRadius: 8, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 13, cursor: "pointer" }}>
+                      <label style={{ flex: 1, textAlign: "center", padding: "11px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 13, cursor: "pointer" }}>
                         {t("scanMenuTryAgain")}
                         <input type="file" accept="image/*" onChange={(e) => handleMenuScanFile(e.target.files?.[0])} style={{ display: "none" }} />
                       </label>
                     </>
                   ) : (
-                    <button onClick={closeMenuScan} disabled={menuScanning} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 13.5, cursor: menuScanning ? "default" : "pointer", opacity: menuScanning ? 0.6 : 1 }}>
+                    <button onClick={closeMenuScan} disabled={menuScanning} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 13.5, cursor: menuScanning ? "default" : "pointer", opacity: menuScanning ? 0.6 : 1 }}>
                       {t("cancel")}
                     </button>
                   )}
@@ -5603,7 +5801,7 @@ function POSPrototype({ tenantId }) {
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 780 }}>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("stockTitle")}</div>
-            <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("stockSubtitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("stockSubtitle")}</div>
           </div>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -5620,9 +5818,9 @@ function POSPrototype({ tenantId }) {
               <input type="text" value={newIngUnitCustom} onChange={(e) => setNewIngUnitCustom(e.target.value)} placeholder={t("customUnitPlaceholder")} className="field" style={{ flex: 1, minWidth: 100 }} />
             )}
             <input type="number" value={newIngStock} onChange={(e) => setNewIngStock(e.target.value)} placeholder={t("startingStockPlaceholder")} className="field" style={{ flex: 1, minWidth: 110 }} />
-            <button onClick={addIngredient} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("add")}</button>
+            <button onClick={addIngredient} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("add")}</button>
           </div>
-          <div style={{ fontSize: 11.5, color: "#8A8F99", marginTop: -12, marginBottom: 20 }}>
+          <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: -12, marginBottom: 20 }}>
             {t("unitHint")}
           </div>
 
@@ -5632,7 +5830,7 @@ function POSPrototype({ tenantId }) {
               const low = ing.stock > 0 && ing.stock <= 2;
               const tagColor = out ? { bg: "#3A2A28", fg: "#E3A79C", text: t("outOfStock") } : low ? { bg: "#3A331F", fg: "#E3C98A", text: t("low") } : { bg: "#22301F", fg: "#9FCB8E", text: t("inStock") };
               return (
-                <div key={ing.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "14px 18px", flexWrap: "wrap", gap: 10 }}>
+                <div key={ing.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 18px", flexWrap: "wrap", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     <div style={{ width: 32, height: 32, borderRadius: 8, background: "#3A2A2D", color: theme.secondaryLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, fontFamily: "IBM Plex Mono, monospace" }}>
                       {initials(ing.name)}
@@ -5644,14 +5842,14 @@ function POSPrototype({ tenantId }) {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     {isManager && (
-                      <button onClick={() => updateIngredientStock(ing.id, -1)} title={t("stockDecreaseTooltip")} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: COLORS.paper, cursor: "pointer", fontSize: 14 }}>&minus;</button>
+                      <button onClick={() => updateIngredientStock(ing.id, -1)} title={t("stockDecreaseTooltip")} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 14 }}>&minus;</button>
                     )}
                     {isManager ? (
-                      <input className="stock-input" type="number" value={ing.stock} onChange={(e) => setIngredientStockValue(ing.id, e.target.value)} style={{ width: 64, textAlign: "center", background: "transparent", border: "1px solid #3A404C", borderRadius: 6, color: COLORS.paper, fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }} />
+                      <input className="stock-input" type="number" value={ing.stock} onChange={(e) => setIngredientStockValue(ing.id, e.target.value)} style={{ width: 64, textAlign: "center", background: "transparent", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }} />
                     ) : (
-                      <span style={{ width: 64, textAlign: "center", color: COLORS.paper, fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }}>{fmtQty(ing.stock)}</span>
+                      <span style={{ width: 64, textAlign: "center", color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }}>{fmtQty(ing.stock)}</span>
                     )}
-                    <button onClick={() => updateIngredientStock(ing.id, 1)} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: COLORS.paper, cursor: "pointer", fontSize: 14 }}>+</button>
+                    <button onClick={() => updateIngredientStock(ing.id, 1)} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 14 }}>+</button>
                     <button onClick={() => updateIngredientStock(ing.id, 10)} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer", fontSize: 11.5, fontWeight: 500 }}>{t("restock10")}</button>
                     {isManager && (
                       <button onClick={() => deleteIngredient(ing.id)} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer", fontSize: 11.5 }}>{t("delete")}</button>
@@ -5668,18 +5866,18 @@ function POSPrototype({ tenantId }) {
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 820 }}>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("receiptsTitle")}</div>
-            <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("receiptsSubtitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("receiptsSubtitle")}</div>
           </div>
 
           {!monthsLoaded ? (
-            <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loadingHistory")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loadingHistory")}</div>
           ) : (
             <>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
                 <select value={currentMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="field">
                   {availableMonths.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
                 </select>
-                <div style={{ display: "flex", gap: 20, fontSize: 13, color: "#9CA1AC" }}>
+                <div style={{ display: "flex", gap: 20, fontSize: 13, color: "var(--text-muted)" }}>
                   <span>{tCount("orderCount", monthReceipts.filter((r) => r.status === "completed").length)}</span>
                   <span style={{ color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{money(monthRevenue)}</span>
                 </div>
@@ -5692,9 +5890,9 @@ function POSPrototype({ tenantId }) {
               )}
 
               {loadingMonth ? (
-                <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loadingMonth", { month: monthLabel(currentMonth) })}</div>
+                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loadingMonth", { month: monthLabel(currentMonth) })}</div>
               ) : monthReceipts.length === 0 ? (
-                <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noSavedOrdersForMonth", { month: monthLabel(currentMonth) })}</div>
+                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noSavedOrdersForMonth", { month: monthLabel(currentMonth) })}</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {monthReceipts.map((r) => {
@@ -5704,7 +5902,7 @@ function POSPrototype({ tenantId }) {
                     const unpaid = !voided && r.paid === false;
                     const editing = editingReceiptId === r.id;
                     return (
-                      <div key={r.id} style={{ background: COLORS.inkSoft, border: `1px solid ${voided ? "#4A2E2C" : unpaid ? "#5B4F3F" : "#363C47"}`, borderRadius: 10, padding: "14px 18px", opacity: voided ? 0.7 : 1 }}>
+                      <div key={r.id} style={{ background: "var(--surface)", border: `1px solid ${voided ? "#4A2E2C" : unpaid ? "#5B4F3F" : "var(--border)"}`, borderRadius: 10, padding: "14px 18px", opacity: voided ? 0.7 : 1 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
                           <span style={{ fontSize: 13, fontFamily: "IBM Plex Mono, monospace" }}>
                             {t("ticketHash", { n: r.ticketNo })} &middot; {new Date(r.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
@@ -5718,18 +5916,18 @@ function POSPrototype({ tenantId }) {
                               </span>
                             )}
                             {r.assignedTo?.name && r.assignedTo.role !== "waiter" && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A2E3A", color: "#B0A8E3" }}>{t("assignedToBadge", { role: t("roleDelivery"), name: r.assignedTo.name })}</span>}
-                            {r.paymentMethod && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2E3440", color: "#9CA1AC" }}>{t(`payment_${r.paymentMethod}`)}</span>}
+                            {r.paymentMethod && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "var(--track)", color: "var(--text-muted)" }}>{t(`payment_${r.paymentMethod}`)}</span>}
                             {cancelled && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#33301F", color: "#E3C98A" }}>{t("cancelledBadge")}</span>}
                             {refunded && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#3A2A28", color: "#E3A79C" }}>{t("refundedBadge")}</span>}
                             {unpaid && <span title={t("unpaidOrderTooltip")} style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#5B4F3F", color: "#F0D9A0", fontWeight: 700 }}>{t("unpaidBadge")}</span>}
                           </span>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: voided ? "#8A8F99" : theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace", textDecoration: voided ? "line-through" : "none" }}>{money(r.total)}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: voided ? "var(--text-faint)" : theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace", textDecoration: voided ? "line-through" : "none" }}>{money(r.total)}</span>
                         </div>
                         {r.splitCount > 1 && (
                           <div style={{ fontSize: 11, color: theme.secondaryLight, marginBottom: 6 }}>{t("splitLabel", { n: r.splitCount })} &middot; {t("eachPays", { amount: money(r.total / r.splitCount) })}</div>
                         )}
                         {r.paymentMethod === "split" && Array.isArray(r.splitPayments) && (
-                          <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>
                             {r.splitPayments.map((sp, i) => (
                               <span key={sp.method}>
                                 {t(`payment_${sp.method}`)} {money(sp.amount)}{i < r.splitPayments.length - 1 ? " + " : ""}
@@ -5738,14 +5936,14 @@ function POSPrototype({ tenantId }) {
                           </div>
                         )}
                         {r.customer && (r.customer.name || r.customer.phone) && (
-                          <div style={{ fontSize: 11.5, color: "#9CA1AC", marginBottom: 8 }}>
+                          <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 8 }}>
                             {r.customer.name}{r.customer.name && r.customer.phone ? " · " : ""}{r.customer.phone}{r.customer.address ? ` · ${r.customer.address}` : ""}
                           </div>
                         )}
 
                         {!voided && r.customer?.phone && hasFeature("whatsappUpdates") && (
                           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-                            <span style={{ fontSize: 10.5, color: "#8A8F99" }}>{t("statusColon")}</span>
+                            <span style={{ fontSize: 10.5, color: "var(--text-faint)" }}>{t("statusColon")}</span>
                             {FULFILLMENT_STATUSES.map((s) => {
                               const isCurrent = (r.fulfillmentStatus || "placed") === s.id;
                               return (
@@ -5758,9 +5956,9 @@ function POSPrototype({ tenantId }) {
                                     fontSize: 11,
                                     padding: "5px 10px",
                                     borderRadius: 999,
-                                    border: `1px solid ${isCurrent ? theme.secondary : "#3A404C"}`,
+                                    border: `1px solid ${isCurrent ? theme.secondary : "var(--border)"}`,
                                     background: isCurrent ? "rgba(176,141,87,0.18)" : "transparent",
-                                    color: isCurrent ? theme.secondaryLight : "#9CA1AC",
+                                    color: isCurrent ? theme.secondaryLight : "var(--text-muted)",
                                     cursor: isCurrent ? "default" : "pointer",
                                     fontWeight: isCurrent ? 600 : 400,
                                   }}
@@ -5786,7 +5984,7 @@ function POSPrototype({ tenantId }) {
                         )}
 
                         {!editing ? (
-                          <div style={{ fontSize: 12, color: "#8A8F99", marginBottom: voided ? 0 : 10 }}>
+                          <div style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: voided ? 0 : 10 }}>
                             {r.items.map((it, idx) => (
                               <span key={idx}>
                                 {it.qty}&times; {it.name}
@@ -5801,9 +5999,9 @@ function POSPrototype({ tenantId }) {
                               <div key={index} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, marginBottom: 6 }}>
                                 <span>{it.name}{it.note && <em style={{ color: "#7C8A6E", fontSize: 11 }}> ({it.note})</em>}</span>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <button onClick={() => changeEditQty(index, -1, r.items[index]?.qty)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid #3A404C", background: "transparent", color: COLORS.paper, cursor: "pointer" }}>−</button>
+                                  <button onClick={() => changeEditQty(index, -1, r.items[index]?.qty)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>−</button>
                                   <span style={{ fontFamily: "IBM Plex Mono, monospace", minWidth: 14, textAlign: "center" }}>{it.qty}</span>
-                                  <button onClick={() => changeEditQty(index, 1, r.items[index]?.qty)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid #3A404C", background: "transparent", color: COLORS.paper, cursor: "pointer" }}>+</button>
+                                  <button onClick={() => changeEditQty(index, 1, r.items[index]?.qty)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>+</button>
                                 </div>
                               </div>
                             ))}
@@ -5815,13 +6013,13 @@ function POSPrototype({ tenantId }) {
                               rows={2}
                               style={{ width: "100%", resize: "vertical", fontSize: 12, marginTop: 4 }}
                             />
-                            <div style={{ fontSize: 10.5, color: "#8A8F99", marginTop: 3 }}>{t("editReasonLabel")}</div>
+                            <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 3 }}>{t("editReasonLabel")}</div>
                           </div>
                         )}
 
                         {!editing && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: voided ? 0 : 8 }}>
-                            <button onClick={() => printSavedReceipt(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("printReceipt")}</button>
+                            <button onClick={() => printSavedReceipt(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("printReceipt")}</button>
                           </div>
                         )}
 
@@ -5829,15 +6027,15 @@ function POSPrototype({ tenantId }) {
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             {editing ? (
                               <>
-                                <button onClick={() => saveEditReceipt(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "none", background: theme.primary, color: COLORS.paper, cursor: "pointer", fontWeight: 500 }}>{t("saveChanges")}</button>
-                                <button onClick={cancelEditReceipt} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("cancelEdit")}</button>
+                                <button onClick={() => saveEditReceipt(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "none", background: theme.primary, color: "#FBF8F2", cursor: "pointer", fontWeight: 500 }}>{t("saveChanges")}</button>
+                                <button onClick={cancelEditReceipt} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("cancelEdit")}</button>
                               </>
                             ) : (
                               <>
                                 {unpaid && (
-                                  <button onClick={() => markReceiptPaid(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: COLORS.paper, cursor: "pointer", fontWeight: 600 }}>{t("markOrderPaid")}</button>
+                                  <button onClick={() => markReceiptPaid(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: "#FBF8F2", cursor: "pointer", fontWeight: 600 }}>{t("markOrderPaid")}</button>
                                 )}
-                                <button onClick={() => startEditReceipt(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("edit")}</button>
+                                <button onClick={() => startEditReceipt(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
                                 <button onClick={() => cancelReceipt(r)} title={t("cancelOrderTooltip")} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid #C9A24A", background: "transparent", color: "#E3C98A", cursor: "pointer" }}>{t("cancelOrder")}</button>
                                 <button onClick={() => refundReceipt(r)} title={t("refundOrderTooltip")} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("refundOrder")}</button>
                               </>
@@ -5847,7 +6045,7 @@ function POSPrototype({ tenantId }) {
 
                         {!voided && isManager && hasFeature("teamTracking") && dutyRoster.length > 0 && (
                           <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ fontSize: 10.5, color: "#8A8F99" }}>{t("reassignLabel")}</span>
+                            <span style={{ fontSize: 10.5, color: "var(--text-faint)" }}>{t("reassignLabel")}</span>
                             <select
                               value={r.assignedTo?.id || ""}
                               onChange={(e) => assignReceiptTo(r, dutyRoster.find((m) => m.id === e.target.value) || null)}
@@ -5880,8 +6078,8 @@ function POSPrototype({ tenantId }) {
                             {expandedHistoryId === r.id && (
                               <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                                 {r.editHistory.map((h, i) => (
-                                  <div key={i} style={{ fontSize: 11, background: "#20242C", border: "1px solid #363C47", borderRadius: 8, padding: "8px 10px" }}>
-                                    <div style={{ color: "#9CA1AC", marginBottom: 3 }}>
+                                  <div key={i} style={{ fontSize: 11, background: "#20242C", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px" }}>
+                                    <div style={{ color: "var(--text-muted)", marginBottom: 3 }}>
                                       {t("editHistoryEntry", {
                                         name: h.editedBy?.name || t("editHistoryUnknownEditor"),
                                         time: new Date(h.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
@@ -5891,7 +6089,7 @@ function POSPrototype({ tenantId }) {
                                       {h.reason || t("editHistoryNoReason")}
                                     </div>
                                     {(h.changes || []).map((c, ci) => (
-                                      <div key={ci} style={{ color: "#8A8F99", fontFamily: "IBM Plex Mono, monospace", fontSize: 10.5 }}>
+                                      <div key={ci} style={{ color: "var(--text-faint)", fontFamily: "IBM Plex Mono, monospace", fontSize: 10.5 }}>
                                         {t("editHistoryChange", { item: c.name, from: c.from, to: c.to })}
                                       </div>
                                     ))}
@@ -5916,11 +6114,11 @@ function POSPrototype({ tenantId }) {
           <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
             <div>
               <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("expensesTitle")}</div>
-              <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("expensesSubtitle")}</div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("expensesSubtitle")}</div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setShowSupplierManager(true)} style={{ padding: "9px 14px", borderRadius: 7, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>{t("manageSuppliers")}</button>
-              <button onClick={openNewExpense} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addExpense")}</button>
+              <button onClick={() => setShowSupplierManager(true)} style={{ padding: "9px 14px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>{t("manageSuppliers")}</button>
+              <button onClick={openNewExpense} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addExpense")}</button>
             </div>
           </div>
 
@@ -5932,22 +6130,22 @@ function POSPrototype({ tenantId }) {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: isCompact ? "1fr" : "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
-                <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16 }}>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("totalExpensesLabel")}</div>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("totalExpensesLabel")}</div>
                   <div style={{ fontSize: 22, fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(expenseTotalThisMonth)}</div>
                 </div>
-                <div style={{ background: COLORS.inkSoft, border: `1px solid ${outstandingTotal > 0 ? "#C9A24A" : "#363C47"}`, borderRadius: 10, padding: 16 }}>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("outstandingPayables")}</div>
+                <div style={{ background: "var(--surface)", border: `1px solid ${outstandingTotal > 0 ? "#C9A24A" : "var(--border)"}`, borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("outstandingPayables")}</div>
                   <div style={{ fontSize: 22, fontFamily: "IBM Plex Mono, monospace", color: outstandingTotal > 0 ? "#E3C98A" : theme.secondaryLight }}>{money(outstandingTotal)}</div>
                 </div>
-                <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16 }}>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 8 }}>{t("byCategory")}</div>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>{t("byCategory")}</div>
                   {expenseByCategory.length === 0 ? (
-                    <div style={{ fontSize: 11.5, color: "#8A8F99" }}>—</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>—</div>
                   ) : (
                     expenseByCategory.map((c) => (
                       <div key={c.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 3 }}>
-                        <span style={{ color: "#9CA1AC" }}>{t(`category_${c.id}`)}</span>
+                        <span style={{ color: "var(--text-muted)" }}>{t(`category_${c.id}`)}</span>
                         <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(c.total)}</span>
                       </div>
                     ))
@@ -5956,26 +6154,26 @@ function POSPrototype({ tenantId }) {
               </div>
 
               {loadingExpenseMonth ? (
-                <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loadingExpenses")}</div>
+                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loadingExpenses")}</div>
               ) : monthExpenses.length === 0 ? (
-                <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noExpensesForMonth", { month: monthLabel(currentExpenseMonth) })}</div>
+                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noExpensesForMonth", { month: monthLabel(currentExpenseMonth) })}</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {monthExpenses.map((e) => (
-                    <div key={e.id} style={{ background: COLORS.inkSoft, border: `1px solid ${e.status === "unpaid" ? "#C9A24A" : "#363C47"}`, borderRadius: 10, padding: "14px 18px" }}>
+                    <div key={e.id} style={{ background: "var(--surface)", border: `1px solid ${e.status === "unpaid" ? "#C9A24A" : "var(--border)"}`, borderRadius: 10, padding: "14px 18px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                         <div>
                           <div style={{ fontSize: 13.5, fontWeight: 500 }}>
                             {e.supplierName || t("noSupplierOption")}
-                            <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2E3440", color: "#9CA1AC" }}>{t(`category_${e.category}`)}</span>
+                            <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "var(--track)", color: "var(--text-muted)" }}>{t(`category_${e.category}`)}</span>
                             {e.status === "unpaid" && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#33301F", color: "#E3C98A" }}>{t("statusUnpaid")}</span>}
                           </div>
-                          <div style={{ fontSize: 11.5, color: "#8A8F99", marginTop: 3 }}>
+                          <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 3 }}>
                             {new Date(e.date).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", year: "numeric" })}
                             {e.paymentMethod && ` · ${t(`payment_${e.paymentMethod}`)}`}
                             {e.recordedBy?.name && ` · ${t("recordedByLabel", { name: e.recordedBy.name })}`}
                           </div>
-                          {e.note && <div style={{ fontSize: 11.5, color: "#8A8F99", marginTop: 3, fontStyle: "italic" }}>{e.note}</div>}
+                          {e.note && <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 3, fontStyle: "italic" }}>{e.note}</div>}
                         </div>
                         <div style={{ fontSize: 15, fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight, flexShrink: 0 }}>{money(e.amount)}</div>
                       </div>
@@ -5983,7 +6181,7 @@ function POSPrototype({ tenantId }) {
                         {e.status === "unpaid" && (
                           <button onClick={() => markExpensePaid(currentExpenseMonth, e)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("markAsPaid")}</button>
                         )}
-                        <button onClick={() => openEditExpense(currentExpenseMonth, e)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("edit")}</button>
+                        <button onClick={() => openEditExpense(currentExpenseMonth, e)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
                         <button onClick={() => deleteExpense(currentExpenseMonth, e)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("deleteExpense")}</button>
                       </div>
                     </div>
@@ -5996,7 +6194,7 @@ function POSPrototype({ tenantId }) {
 
       {showSupplierManager && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }} onClick={() => setShowSupplierManager(false)}>
-          <div style={{ background: COLORS.inkSoft, border: "1px solid #3A404C", borderRadius: 14, padding: 24, width: "100%", maxWidth: 440, maxHeight: "85vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24, width: "100%", maxWidth: 440, maxHeight: "85vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 16 }}>{t("manageSuppliers")}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               <input type="text" value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} placeholder={t("supplierName")} className="field" />
@@ -6004,66 +6202,66 @@ function POSPrototype({ tenantId }) {
                 {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{t(`category_${c}`)}</option>)}
               </select>
               <input type="tel" value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} placeholder={t("supplierPhone")} className="field" />
-              <button onClick={addSupplierRecord} style={{ padding: "9px 0", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addSupplier")}</button>
+              <button onClick={addSupplierRecord} style={{ padding: "9px 0", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addSupplier")}</button>
             </div>
             {!suppliersLoaded ? (
-              <div style={{ fontSize: 12.5, color: "#8A8F99" }}>{t("loading")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("loading")}</div>
             ) : suppliers.length === 0 ? (
-              <div style={{ fontSize: 12.5, color: "#8A8F99" }}>{t("noSuppliersYet")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noSuppliersYet")}</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {suppliers.map((s) => (
-                  <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.ink, borderRadius: 8, padding: "8px 12px" }}>
+                  <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg)", borderRadius: 8, padding: "8px 12px" }}>
                     <div>
                       <div style={{ fontSize: 13 }}>{s.name}</div>
-                      <div style={{ fontSize: 10.5, color: "#8A8F99" }}>{t(`category_${s.category}`)}{s.phone ? ` · ${s.phone}` : ""}</div>
+                      <div style={{ fontSize: 10.5, color: "var(--text-faint)" }}>{t(`category_${s.category}`)}{s.phone ? ` · ${s.phone}` : ""}</div>
                     </div>
                     <button onClick={() => removeSupplierRecord(s)} style={{ fontSize: 11, color: "#E3A79C", background: "none", border: "none", cursor: "pointer" }}>{t("removeSupplier")}</button>
                   </div>
                 ))}
               </div>
             )}
-            <button onClick={() => setShowSupplierManager(false)} style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "none", background: "transparent", color: "#9CA1AC", fontSize: 12.5, cursor: "pointer", marginTop: 16 }}>{t("close")}</button>
+            <button onClick={() => setShowSupplierManager(false)} style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "none", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer", marginTop: 16 }}>{t("close")}</button>
           </div>
         </div>
       )}
 
       {expenseEditor && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }} onClick={closeExpenseEditor}>
-          <div style={{ background: COLORS.inkSoft, border: "1px solid #3A404C", borderRadius: 14, padding: 24, width: "100%", maxWidth: 440, maxHeight: "85vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24, width: "100%", maxWidth: 440, maxHeight: "85vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 16 }}>
               {expenseEditor.mode === "new" ? t("addExpense") : t("editExpense")}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 4 }}>{t("expenseAmount")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("expenseAmount")}</div>
                 <input type="number" value={expenseEditor.amount} onChange={(e) => setExpenseEditor((p) => ({ ...p, amount: e.target.value }))} placeholder="0.00" className="field" style={{ width: "100%", boxSizing: "border-box" }} />
               </div>
               <div>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 4 }}>{t("expenseDate")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("expenseDate")}</div>
                 <input type="date" value={expenseEditor.date} onChange={(e) => setExpenseEditor((p) => ({ ...p, date: e.target.value }))} className="field" style={{ width: "100%", boxSizing: "border-box" }} />
               </div>
               <div>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 4 }}>{t("expenseCategory")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("expenseCategory")}</div>
                 <select value={expenseEditor.category} onChange={(e) => setExpenseEditor((p) => ({ ...p, category: e.target.value }))} className="field" style={{ width: "100%", boxSizing: "border-box" }}>
                   {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{t(`category_${c}`)}</option>)}
                 </select>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 4 }}>{t("expenseSupplier")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("expenseSupplier")}</div>
                 <select value={expenseEditor.supplierId} onChange={(e) => setExpenseEditor((p) => ({ ...p, supplierId: e.target.value }))} className="field" style={{ width: "100%", boxSizing: "border-box" }}>
                   <option value="">{t("noSupplierOption")}</option>
                   {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 4 }}>{t("paymentStatus")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("paymentStatus")}</div>
                 <div style={{ display: "flex", gap: 6 }}>
                   {["paid", "unpaid"].map((s) => (
                     <button
                       key={s}
                       onClick={() => setExpenseEditor((p) => ({ ...p, status: s }))}
-                      style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${expenseEditor.status === s ? theme.secondary : "#3A404C"}`, background: expenseEditor.status === s ? "rgba(176,141,87,0.18)" : "transparent", color: expenseEditor.status === s ? theme.secondaryLight : "#9CA1AC", fontSize: 12.5, cursor: "pointer" }}
+                      style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${expenseEditor.status === s ? theme.secondary : "var(--border)"}`, background: expenseEditor.status === s ? "rgba(176,141,87,0.18)" : "transparent", color: expenseEditor.status === s ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}
                     >
                       {s === "paid" ? t("statusPaid") : t("statusUnpaid")}
                     </button>
@@ -6072,7 +6270,7 @@ function POSPrototype({ tenantId }) {
               </div>
               {expenseEditor.status === "paid" && (
                 <div>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 4 }}>{t("paymentStatus")} — {t("statusPaid")}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("paymentStatus")} — {t("statusPaid")}</div>
                   <select value={expenseEditor.paymentMethod} onChange={(e) => setExpenseEditor((p) => ({ ...p, paymentMethod: e.target.value }))} className="field" style={{ width: "100%", boxSizing: "border-box" }}>
                     {PAYMENT_METHODS.map((m) => <option key={m.id} value={m.id}>{t(`payment_${m.id}`)}</option>)}
                   </select>
@@ -6080,18 +6278,18 @@ function POSPrototype({ tenantId }) {
               )}
               {expenseEditor.status === "unpaid" && (
                 <div>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 4 }}>{t("dueDate")}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("dueDate")}</div>
                   <input type="date" value={expenseEditor.dueDate} onChange={(e) => setExpenseEditor((p) => ({ ...p, dueDate: e.target.value }))} className="field" style={{ width: "100%", boxSizing: "border-box" }} />
                 </div>
               )}
               <div>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 4 }}>{t("expenseNote")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("expenseNote")}</div>
                 <input type="text" value={expenseEditor.note} onChange={(e) => setExpenseEditor((p) => ({ ...p, note: e.target.value }))} placeholder={t("expenseNotePlaceholder")} className="field" style={{ width: "100%", boxSizing: "border-box" }} />
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-              <button onClick={saveExpenseEditor} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>{t("saveChanges")}</button>
-              <button onClick={closeExpenseEditor} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 13.5, cursor: "pointer" }}>{t("cancel")}</button>
+              <button onClick={saveExpenseEditor} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>{t("saveChanges")}</button>
+              <button onClick={closeExpenseEditor} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 13.5, cursor: "pointer" }}>{t("cancel")}</button>
             </div>
           </div>
         </div>
@@ -6099,57 +6297,103 @@ function POSPrototype({ tenantId }) {
 
       {view === "dashboard" && (
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 1000 }}>
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("dashboardTitle")}</div>
-            <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("dashboardSubtitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("dashboardSubtitle")}</div>
           </div>
 
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                onClick={() => setDashboardMode("month")}
+                style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${dashboardMode === "month" ? theme.secondary : "var(--border)"}`, background: dashboardMode === "month" ? "rgba(176,141,87,0.18)" : "transparent", color: dashboardMode === "month" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+              >
+                {t("dashboardModeMonth")}
+              </button>
+              <button
+                onClick={() => setDashboardMode("day")}
+                style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${dashboardMode === "day" ? theme.secondary : "var(--border)"}`, background: dashboardMode === "day" ? "rgba(176,141,87,0.18)" : "transparent", color: dashboardMode === "day" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+              >
+                {t("dashboardModeDay")}
+              </button>
+            </div>
+            {dashboardMode === "month" ? (
+              <input
+                type="month"
+                value={effectiveDashboardMonth}
+                max={thisMonthKey()}
+                onChange={(e) => e.target.value && setDashboardMonth(e.target.value)}
+                className="field"
+                style={{ colorScheme: "dark" }}
+              />
+            ) : (
+              <input
+                type="date"
+                value={effectiveDashboardDay}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => e.target.value && setDashboardDay(e.target.value)}
+                className="field"
+                style={{ colorScheme: "dark" }}
+              />
+            )}
+          </div>
+
+          {!dashboardMonthDataLoaded ? (
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
+          ) : (
+          <>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)", gap: 12, marginBottom: 24 }}>
             {[
               {
-                label: t("todayRevenue"),
-                value: money(todayRevenue),
-                hint: todayVsYesterdayPct === null ? null : t("vsYesterdayChange", { pct: todayVsYesterdayPct > 0 ? `+${todayVsYesterdayPct}` : todayVsYesterdayPct }),
-                hintColor: todayVsYesterdayPct >= 0 ? "#9FCB8E" : "#E3A79C",
+                label: t("periodRevenueLabel"),
+                value: money(dashboardPeriodRevenue),
+                hint: periodVsPreviousPct === null ? null : t("vsPreviousDayChange", { pct: periodVsPreviousPct > 0 ? `+${periodVsPreviousPct}` : periodVsPreviousPct }),
+                hintColor: periodVsPreviousPct >= 0 ? "#9FCB8E" : "#E3A79C",
               },
-              { label: t("monthRevenue"), value: money(dashboardMonthRevenue) },
-              { label: t("monthOrders"), value: String(dashboardMonthOrders) },
+              { label: t("periodOrdersLabel"), value: String(dashboardPeriodOrders) },
               { label: t("avgOrderValueLabel"), value: money(avgOrderValue) },
               { label: t("netProfitLabel"), value: money(netProfit), accent: netProfit >= 0 ? "#9FCB8E" : "#E3A79C", hint: t("netProfitHint") },
+              { label: t("discountsGivenLabel"), value: money(dashboardDiscountTotal) },
             ].map((card, i) => (
-              <div key={i} style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16 }}>
-                <div style={{ fontSize: 10.5, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{card.label}</div>
+              <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
+                <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{card.label}</div>
                 <div style={{ fontSize: 19, fontFamily: "IBM Plex Mono, monospace", color: card.accent || theme.secondaryLight }}>{card.value}</div>
                 {card.hint && <div style={{ fontSize: 9.5, color: card.hintColor || "#6B6F78", marginTop: 4 }}>{card.hint}</div>}
               </div>
             ))}
           </div>
 
-          <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 18, marginBottom: 20 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 18, marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-              <div style={{ fontSize: 12, color: "#9CA1AC", textTransform: "uppercase", letterSpacing: 0.4 }}>{t("revenueTrendTitle")}</div>
-              {bestDay.day !== null && bestDay.total > 0 && (
-                <div style={{ fontSize: 11.5, color: theme.secondaryLight }}>{t("bestDayLabel", { day: bestDay.day, amount: money(bestDay.total) })}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{t(dashboardMode === "day" ? "revenueTrendTitleDay" : "revenueTrendTitleMonth")}</div>
+              {bestTrendBar.key !== null && bestTrendBar.total > 0 && (
+                <div style={{ fontSize: 11.5, color: theme.secondaryLight }}>
+                  {dashboardMode === "day"
+                    ? t("bestHourLabel", { time: formatHour(bestTrendBar.key), amount: money(bestTrendBar.total) })
+                    : t("bestDayLabel", { day: bestTrendBar.key, amount: money(bestTrendBar.total) })}
+                </div>
               )}
             </div>
-            {dailyRevenue.length === 0 ? (
-              <div style={{ fontSize: 12.5, color: "#8A8F99" }}>{t("noSalesYetDashboard")}</div>
+            {trendBars.every((b) => b.total === 0) ? (
+              <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noSalesYetDashboard")}</div>
             ) : (
               <>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: dailyRevenue.length > 20 ? 2 : 4, height: 110 }}>
-                  {dailyRevenue.map((d) => (
-                    <div key={d.day} title={`${t("expenseDate")} ${d.day}: ${money(d.total)}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
-                      <div style={{ background: d.day === bestDay.day && d.total > 0 ? theme.primary : d.total > 0 ? theme.secondary : "#2E3440", borderRadius: "3px 3px 0 0", height: `${Math.max(2, (d.total / maxDailyRevenue) * 100)}%`, transition: "height .2s ease" }} />
+                <div style={{ display: "flex", alignItems: "flex-end", gap: trendBars.length > 20 ? 2 : 4, height: 110 }}>
+                  {trendBars.map((b) => (
+                    <div key={b.key} title={dashboardMode === "day" ? `${formatHour(b.key)}: ${money(b.total)}` : `${t("expenseDate")} ${b.key}: ${money(b.total)}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
+                      <div style={{ background: b.key === bestTrendBar.key && b.total > 0 ? theme.primary : b.total > 0 ? theme.secondary : "var(--track)", borderRadius: "3px 3px 0 0", height: `${Math.max(2, (b.total / maxTrendValue) * 100)}%`, transition: "height .2s ease" }} />
                     </div>
                   ))}
                 </div>
-                <div style={{ display: "flex", gap: dailyRevenue.length > 20 ? 2 : 4, marginTop: 6 }}>
-                  {dailyRevenue.map((d) => {
-                    const interval = dailyRevenue.length <= 10 ? 1 : dailyRevenue.length <= 20 ? 2 : 5;
-                    const showLabel = d.day === 1 || d.day === dailyRevenue.length || d.day % interval === 0;
+                <div style={{ display: "flex", gap: trendBars.length > 20 ? 2 : 4, marginTop: 6 }}>
+                  {trendBars.map((b) => {
+                    const interval = dashboardMode === "day" ? 6 : trendBars.length <= 10 ? 1 : trendBars.length <= 20 ? 2 : 5;
+                    const showLabel = dashboardMode === "day"
+                      ? b.key === 0 || b.key === trendBars.length - 1 || b.key % interval === 0
+                      : b.key === 1 || b.key === trendBars.length || b.key % interval === 0;
                     return (
-                      <div key={d.day} style={{ flex: 1, textAlign: "center", fontSize: 9, color: "#6B6F78", fontFamily: "IBM Plex Mono, monospace" }}>
-                        {showLabel ? d.day : ""}
+                      <div key={b.key} style={{ flex: 1, textAlign: "center", fontSize: 9, color: "#6B6F78", fontFamily: "IBM Plex Mono, monospace" }}>
+                        {showLabel ? b.key : ""}
                       </div>
                     );
                   })}
@@ -6159,19 +6403,19 @@ function POSPrototype({ tenantId }) {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: isCompact ? "1fr" : "1fr 1fr", gap: 20, marginBottom: 20 }}>
-            <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 18 }}>
-              <div style={{ fontSize: 12, color: "#9CA1AC", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("topSellersTitle")}</div>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 18 }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("topSellersTitle")}</div>
               {topSellers.length === 0 ? (
-                <div style={{ fontSize: 12.5, color: "#8A8F99" }}>{t("noSalesYetDashboard")}</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noSalesYetDashboard")}</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {topSellers.map((s, i) => (
                     <div key={s.name}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
                         <span>{i + 1}. {s.name}</span>
-                        <span style={{ color: "#8A8F99" }}>{t("unitsSold", { n: s.qty })}</span>
+                        <span style={{ color: "var(--text-faint)" }}>{t("unitsSold", { n: s.qty })}</span>
                       </div>
-                      <div style={{ background: "#2E3440", borderRadius: 999, height: 6, overflow: "hidden" }}>
+                      <div style={{ background: "var(--track)", borderRadius: 999, height: 6, overflow: "hidden" }}>
                         <div style={{ background: theme.primary, width: `${(s.qty / maxTopSellerQty) * 100}%`, height: "100%" }} />
                       </div>
                     </div>
@@ -6180,8 +6424,8 @@ function POSPrototype({ tenantId }) {
               )}
             </div>
 
-            <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 18 }}>
-              <div style={{ fontSize: 12, color: "#9CA1AC", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMixTitle")}</div>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 18 }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMixTitle")}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {dashboardByMethod.map((m) => (
                   <div key={m.id}>
@@ -6189,7 +6433,7 @@ function POSPrototype({ tenantId }) {
                       <span>{t(`payment_${m.id}`)}</span>
                       <span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(m.total)}</span>
                     </div>
-                    <div style={{ background: "#2E3440", borderRadius: 999, height: 6, overflow: "hidden" }}>
+                    <div style={{ background: "var(--track)", borderRadius: 999, height: 6, overflow: "hidden" }}>
                       <div style={{ background: theme.secondary, width: `${(m.total / maxMethodTotal) * 100}%`, height: "100%" }} />
                     </div>
                   </div>
@@ -6198,8 +6442,8 @@ function POSPrototype({ tenantId }) {
             </div>
           </div>
 
-          <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#9CA1AC", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("orderSourceTitle")}</div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 18 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("orderSourceTitle")}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
                 { label: t("sourceDineIn"), count: sourceCounts.dineIn },
@@ -6209,15 +6453,17 @@ function POSPrototype({ tenantId }) {
                 <div key={s.label}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
                     <span>{s.label}</span>
-                    <span style={{ color: "#8A8F99" }}>{tCount("orderCount", s.count)}</span>
+                    <span style={{ color: "var(--text-faint)" }}>{tCount("orderCount", s.count)}</span>
                   </div>
-                  <div style={{ background: "#2E3440", borderRadius: 999, height: 6, overflow: "hidden" }}>
+                  <div style={{ background: "var(--track)", borderRadius: 999, height: 6, overflow: "hidden" }}>
                     <div style={{ background: theme.primary, width: `${(s.count / maxSourceCount) * 100}%`, height: "100%" }} />
                   </div>
                 </div>
               ))}
             </div>
           </div>
+          </>
+          )}
         </div>
       )}
 
@@ -6225,24 +6471,24 @@ function POSPrototype({ tenantId }) {
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 780 }}>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("customersTitle")}</div>
-            <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("customersSubtitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("customersSubtitle")}</div>
           </div>
           {!customersLoaded ? (
-            <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loading")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
           ) : Object.keys(customers).length === 0 ? (
-            <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noCustomersSaved")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noCustomersSaved")}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {Object.values(customers).sort((a, b) => (b.lastOrder || "").localeCompare(a.lastOrder || "")).map((c) => (
-                <div key={c.phone} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "14px 18px", flexWrap: "wrap", gap: 10 }}>
+                <div key={c.phone} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 18px", flexWrap: "wrap", gap: 10 }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 3 }}>{c.name || t("unnamedCustomer")}</div>
-                    <div style={{ fontSize: 12, color: "#9CA1AC", fontFamily: "IBM Plex Mono, monospace" }}>{c.phone}</div>
-                    {c.address && <div style={{ fontSize: 12, color: "#8A8F99", marginTop: 3 }}>{c.address}</div>}
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "IBM Plex Mono, monospace" }}>{c.phone}</div>
+                    {c.address && <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 3 }}>{c.address}</div>}
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 13, color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{tCount("orderCount", c.orderCount)}</div>
-                    <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 3 }}>{t("lastOrderDate", { date: c.lastOrder ? new Date(c.lastOrder).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", year: "numeric" }) : "—" })}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 3 }}>{t("lastOrderDate", { date: c.lastOrder ? new Date(c.lastOrder).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", year: "numeric" }) : "—" })}</div>
                   </div>
                 </div>
               ))}
@@ -6255,39 +6501,39 @@ function POSPrototype({ tenantId }) {
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 620 }}>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("yourShift")}</div>
-            <div style={{ fontSize: 13, color: "#9CA1AC" }}>{shiftLoaded && shiftStart ? t("clockedInSince", { time: new Date(shiftStart).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) }) : t("loading")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{shiftLoaded && shiftStart ? t("clockedInSince", { time: new Date(shiftStart).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) }) : t("loading")}</div>
           </div>
           {shiftLoaded && (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
-                <div style={{ background: COLORS.inkSoft, border: `1px solid ${theme.secondary}`, borderRadius: 10, padding: 16 }}>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("hoursWorked")}</div>
+                <div style={{ background: "var(--surface)", border: `1px solid ${theme.secondary}`, borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("hoursWorked")}</div>
                   <div style={{ fontSize: 20, fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{hoursWorkedSoFar || "—"}</div>
                 </div>
-                <div style={{ background: COLORS.inkSoft, border: `1px solid ${theme.secondary}`, borderRadius: 10, padding: 16 }}>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("yourOrders")}</div>
+                <div style={{ background: "var(--surface)", border: `1px solid ${theme.secondary}`, borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("yourOrders")}</div>
                   <div style={{ fontSize: 20, fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{myShiftCompleted.length}</div>
                 </div>
-                <div style={{ background: COLORS.inkSoft, border: `1px solid ${theme.secondary}`, borderRadius: 10, padding: 16 }}>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("yourRevenue")}</div>
+                <div style={{ background: "var(--surface)", border: `1px solid ${theme.secondary}`, borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("yourRevenue")}</div>
                   <div style={{ fontSize: 20, fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(myShiftRevenue)}</div>
                 </div>
               </div>
-              <button onClick={clockOut} style={{ width: "100%", padding: "13px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 28 }}>{t("clockOut")}</button>
+              <button onClick={clockOut} style={{ width: "100%", padding: "13px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 28 }}>{t("clockOut")}</button>
 
-              <div style={{ fontSize: 12, color: "#8A8F99", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>{t("registerTotals")}</div>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>{t("registerTotals")}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-                <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16 }}>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("ordersCompleted")}</div>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("ordersCompleted")}</div>
                   <div style={{ fontSize: 24, fontFamily: "IBM Plex Mono, monospace" }}>{shiftCompleted.length}</div>
                 </div>
-                <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16 }}>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("netSales")}</div>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("netSales")}</div>
                   <div style={{ fontSize: 24, fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(shiftGross - shiftRefundsTotal)}</div>
                 </div>
               </div>
-              <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16, marginBottom: 20 }}>
-                <div style={{ fontSize: 12, color: "#9CA1AC", marginBottom: 10 }}>{t("byPaymentMethod")}</div>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>{t("byPaymentMethod")}</div>
                 {shiftByMethod.map((m) => (
                   <div key={m.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
                     <span>{t(`payment_${m.id}`)} &middot; {tCount("orderCount", m.count)}</span>
@@ -6295,7 +6541,7 @@ function POSPrototype({ tenantId }) {
                   </div>
                 ))}
                 {shiftRefunded.length > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 8, paddingTop: 8, borderTop: "1px dashed #3A404C", color: "#E3A79C" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--border)", color: "#E3A79C" }}>
                     <span>{t("refundedCount", { n: shiftRefunded.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftRefundsTotal)}</span>
                   </div>
                 )}
@@ -6305,16 +6551,16 @@ function POSPrototype({ tenantId }) {
                   </div>
                 )}
                 {shiftDiscountTotal > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 8, paddingTop: 8, borderTop: "1px dashed #3A404C" }}>
-                    <span>{t("discountsGiven")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftDiscountTotal)}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--border)" }}>
+                    <span>{t("discountedCountNote", { n: shiftDiscountedOrders.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftDiscountTotal)}</span>
                   </div>
                 )}
               </div>
 
-              <div style={{ background: shiftUnpaid.length > 0 ? "#2A2717" : COLORS.inkSoft, border: `1px solid ${shiftUnpaid.length > 0 ? "#5B4F3F" : "#363C47"}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
-                <div style={{ fontSize: 12, color: "#9CA1AC", marginBottom: 10 }}>{t("unpaidThisShiftLabel")}</div>
+              <div style={{ background: shiftUnpaid.length > 0 ? "#2A2717" : "var(--surface)", border: `1px solid ${shiftUnpaid.length > 0 ? "#5B4F3F" : "var(--border)"}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>{t("unpaidThisShiftLabel")}</div>
                 {shiftUnpaid.length === 0 ? (
-                  <div style={{ fontSize: 12.5, color: "#8A8F99" }}>{t("noUnpaidThisShift")}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noUnpaidThisShift")}</div>
                 ) : (
                   <>
                     {shiftUnpaid.map((r) => (
@@ -6331,9 +6577,9 @@ function POSPrototype({ tenantId }) {
               </div>
 
               {isManager && (
-                <div style={{ background: COLORS.inkSoft, border: `1px solid ${theme.secondary}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                <div style={{ background: "var(--surface)", border: `1px solid ${theme.secondary}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
                   <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("cashReconciliationTitle")}</div>
-                  <div style={{ fontSize: 11.5, color: "#9CA1AC", marginBottom: 14 }}>{t("cashReconciliationSubtitle")}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 14 }}>{t("cashReconciliationSubtitle")}</div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, marginBottom: 8 }}>
                     <span title={t("openingFloatHint")}>{t("openingFloatLabel")}</span>
@@ -6359,10 +6605,10 @@ function POSPrototype({ tenantId }) {
                     </div>
                   )}
 
-                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #3A404C" }}>
-                    <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("cashExpensesLabel")}</div>
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--border)" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("cashExpensesLabel")}</div>
                     {shiftCashExpenses.length === 0 ? (
-                      <div style={{ fontSize: 12, color: "#8A8F99" }}>{t("noCashExpensesThisShift")}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-faint)" }}>{t("noCashExpensesThisShift")}</div>
                     ) : (
                       <>
                         {shiftCashExpenses.map((e) => (
@@ -6404,30 +6650,76 @@ function POSPrototype({ tenantId }) {
                 </div>
               )}
 
+              {isManager && (
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                  <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("electronicReconciliationTitle")}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 14 }}>{t("electronicReconciliationSubtitle")}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {shiftElectronicMethods.map((m) => (
+                      <div key={m.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px" }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t(`payment_${m.id}`)}</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
+                          <span>{t("salesLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(m.sales)}</span>
+                        </div>
+                        {m.refunds > 0 && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4, color: "#E3A79C" }}>
+                            <span>{t("refundsLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(m.refunds)}</span>
+                          </div>
+                        )}
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600, marginTop: 4, paddingTop: 6, borderTop: "1px dashed var(--border)" }}>
+                          <span>{t("expectedSettlementLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(m.expected)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, marginTop: 10 }}>
+                          <span>{t("confirmedOnStatementLabel")}</span>
+                          <input
+                            type="number"
+                            value={confirmedElectronic[m.id] || ""}
+                            onChange={(e) => setConfirmedElectronic((prev) => ({ ...prev, [m.id]: e.target.value }))}
+                            placeholder={t("confirmedElectronicPlaceholder")}
+                            className="field"
+                            style={{ width: 140, textAlign: "right", fontFamily: "IBM Plex Mono, monospace" }}
+                          />
+                        </div>
+                        {m.variance !== null && (
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, fontWeight: 600, marginTop: 8 }}>
+                            <span>{t("varianceLabel")}</span>
+                            <span style={{ fontFamily: "IBM Plex Mono, monospace", color: m.variance === 0 ? "#9FCB8E" : m.variance > 0 ? "#E3C98A" : "#E3A79C" }}>
+                              {m.variance === 0 ? t("varianceMatch") : `${m.variance > 0 ? "+" : ""}${money(m.variance)} (${m.variance > 0 ? t("varianceOver") : t("varianceShort")})`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {hasFeature("teamTracking") && isManager && deliveryReconciliation.length > 0 && (
-                <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginBottom: 20 }}>
                   <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("deliveryReconciliationTitle")}</div>
-                  <div style={{ fontSize: 11.5, color: "#9CA1AC", marginBottom: 14 }}>{t("deliveryReconciliationSubtitle", { pct: deliveryAgentSharePercent })}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 14 }}>
+                    {t("deliveryReconciliationSubtitle", { cut: deliveryFeeRetentionMode === "fixed" ? money(deliveryFeeRetentionFixed) : `${deliveryFeeRetentionPercent}%` })}
+                  </div>
                   {deliveryReconciliation.every((p) => p.orders === 0) ? (
-                    <div style={{ fontSize: 12.5, color: "#8A8F99" }}>{t("noDeliveryReconciliationYet")}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noDeliveryReconciliationYet")}</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {deliveryReconciliation.filter((p) => p.orders > 0).sort((a, b) => b.net - a.net).map((p) => (
-                        <div key={p.id} style={{ background: COLORS.ink, border: "1px solid #363C47", borderRadius: 10, padding: "12px 16px" }}>
+                        <div key={p.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px" }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                             <div style={{ fontSize: 13.5 }}>{p.name}</div>
                             <span>{tCount("orderCount", p.orders)}</span>
                           </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "#9CA1AC" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "var(--text-muted)" }}>
                             <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationCash")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(p.cashTotal)}</span></div>
                             <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationFees")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(p.feesTotal)}</span></div>
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, fontWeight: 700, color: p.net < 0 ? "#E3A79C" : theme.secondaryLight, marginTop: 3, paddingTop: 5, borderTop: "1px dashed #3A404C" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, fontWeight: 700, color: p.net < 0 ? "#E3A79C" : theme.secondaryLight, marginTop: 3, paddingTop: 5, borderTop: "1px dashed var(--border)" }}>
                               <span>{p.net < 0 ? t("deliveryReconciliationOwedToAgent") : t("deliveryReconciliationOwed")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(Math.abs(p.net))}</span>
                             </div>
                           </div>
                           <button
                             onClick={() => settleDeliveryCash(p)}
-                            style={{ marginTop: 10, fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: COLORS.paper, cursor: "pointer", fontWeight: 600 }}
+                            style={{ marginTop: 10, fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: "#FBF8F2", cursor: "pointer", fontWeight: 600 }}
                           >
                             {t("settleDeliveryCash")}
                           </button>
@@ -6439,8 +6731,8 @@ function POSPrototype({ tenantId }) {
               )}
 
               {hasFeature("teamTracking") && isManager && teamPerformance.some((p) => p.orders > 0) && (
-                <div style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, color: "#9CA1AC", marginBottom: 10 }}>{t("teamPerformanceTitle")}</div>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>{t("teamPerformanceTitle")}</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {teamPerformance.filter((p) => p.orders > 0).sort((a, b) => b.revenue - a.revenue).map((p) => (
                       <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -6450,7 +6742,7 @@ function POSPrototype({ tenantId }) {
                             {p.role === "delivery" ? t("roleDelivery") : t("roleWaiter")}
                           </span>
                         </div>
-                        <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#9CA1AC" }}>
+                        <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--text-muted)" }}>
                           <span>{tCount("orderCount", p.orders)}</span>
                           <span style={{ color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{money(p.revenue)}</span>
                         </div>
@@ -6462,7 +6754,7 @@ function POSPrototype({ tenantId }) {
 
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={printShiftReport} title={t("printReceiptTooltip")} style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>{t("printShiftReport")}</button>
-                <button onClick={downloadShiftReport} title={t("downloadReportTooltip")} style={{ padding: "13px 16px", borderRadius: 8, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>{t("download")}</button>
+                <button onClick={downloadShiftReport} title={t("downloadReportTooltip")} style={{ padding: "13px 16px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>{t("download")}</button>
               </div>
             </>
           )}
@@ -6473,15 +6765,15 @@ function POSPrototype({ tenantId }) {
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 900 }}>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("tablesTitle")}</div>
-            <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("tablesSubtitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("tablesSubtitle")}</div>
           </div>
 
           {!tablesLoaded ? (
-            <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loading")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
           ) : (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
-                <div style={{ fontSize: 11, color: "#9CA1AC", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("numberOfTablesLabel")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("numberOfTablesLabel")}</div>
                 <input
                   type="number"
                   min={0}
@@ -6500,14 +6792,14 @@ function POSPrototype({ tenantId }) {
                   const isActive = activeTableId === id;
                   const pendingHere = pendingOrdersForTable(id);
                   return (
-                    <div key={id} style={{ background: COLORS.inkSoft, border: `1px solid ${pendingHere.length > 0 ? "#C9A24A" : checkoutReq ? "#8EB8D6" : isActive ? theme.secondary : "#363C47"}`, borderRadius: 10, padding: 14 }}>
+                    <div key={id} style={{ background: "var(--surface)", border: `1px solid ${pendingHere.length > 0 ? "#C9A24A" : checkoutReq ? "#8EB8D6" : isActive ? theme.secondary : "var(--border)"}`, borderRadius: 10, padding: 14 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                         <input
                           type="text"
                           value={tableNames[id] || ""}
                           onChange={(e) => updateTableName(id, e.target.value)}
                           placeholder={t("tableNumbered", { n: id })}
-                          style={{ background: "#FFFFFF", border: "1px solid #3A404C", borderRadius: 5, color: "#111111", fontSize: 14, fontWeight: 500, padding: "3px 6px", width: "70%", fontFamily: "Fraunces, serif" }}
+                          style={{ background: "#FFFFFF", border: "1px solid var(--border)", borderRadius: 5, color: "#111111", fontSize: 14, fontWeight: 500, padding: "3px 6px", width: "70%", fontFamily: "Fraunces, serif" }}
                         />
                         <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 999, background: occupied ? "#3A2A28" : "#22301F", color: occupied ? "#E3A79C" : "#9FCB8E", fontWeight: 500, flexShrink: 0 }}>
                           {occupied ? t("tableOccupied") : t("tableAvailable")}
@@ -6552,7 +6844,7 @@ function POSPrototype({ tenantId }) {
                         {hasFeature("tableQrOrdering") && (
                           <button
                             onClick={() => setQrTableId(id)}
-                            style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}
+                            style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}
                           >
                             {t("qrCode")}
                           </button>
@@ -6572,10 +6864,10 @@ function POSPrototype({ tenantId }) {
           {hasFeature("onlineOrderingLink") && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("storeLinkTitle")}</div>
-            <div style={{ fontSize: 13, color: "#9CA1AC", marginBottom: 14 }}>{t("storeLinkSubtitle")}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "12px 14px", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 200, fontSize: 12, fontFamily: "IBM Plex Mono, monospace", color: "#9CA1AC", wordBreak: "break-all" }}>{storeOrderUrl()}</div>
-              <button onClick={copyStoreLink} style={{ padding: "8px 16px", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 12.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14 }}>{t("storeLinkSubtitle")}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 200, fontSize: 12, fontFamily: "IBM Plex Mono, monospace", color: "var(--text-muted)", wordBreak: "break-all" }}>{storeOrderUrl()}</div>
+              <button onClick={copyStoreLink} style={{ padding: "8px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 12.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
                 {storeLinkCopied ? t("linkCopied") : t("copyLink")}
               </button>
             </div>
@@ -6587,23 +6879,23 @@ function POSPrototype({ tenantId }) {
           <>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("deliveryZonesTitle")}</div>
-            <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("deliveryZonesSubtitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("deliveryZonesSubtitle")}</div>
           </div>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
             <input type="text" value={newZoneLabel} onChange={(e) => setNewZoneLabel(e.target.value)} placeholder={t("zoneLabelPlaceholder")} className="field" style={{ flex: 2, minWidth: 160 }} />
             <input type="number" min={0} step="0.01" value={newZoneFee} onChange={(e) => setNewZoneFee(e.target.value)} placeholder={t("zoneFee")} className="field" style={{ flex: 1, minWidth: 100 }} />
-            <button onClick={addDeliveryZone} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addZone")}</button>
+            <button onClick={addDeliveryZone} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addZone")}</button>
           </div>
 
           {!deliveryZonesLoaded ? (
-            <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loading")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
           ) : deliveryZones.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noZonesYet")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noZonesYet")}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {deliveryZones.map((zone) => (
-                <div key={zone.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "12px 16px", flexWrap: "wrap", gap: 8 }}>
+                <div key={zone.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px", flexWrap: "wrap", gap: 8 }}>
                   {editingZoneId === zone.id ? (
                     <>
                       <div style={{ display: "flex", gap: 8, flex: 1, minWidth: 200 }}>
@@ -6611,8 +6903,8 @@ function POSPrototype({ tenantId }) {
                         <input type="number" min={0} step="0.01" value={editingZoneFee} onChange={(e) => setEditingZoneFee(e.target.value)} className="field" style={{ flex: 1 }} />
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={saveEditZone} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "none", background: theme.primary, color: COLORS.paper, cursor: "pointer" }}>{t("apply")}</button>
-                        <button onClick={() => setEditingZoneId(null)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("cancel")}</button>
+                        <button onClick={saveEditZone} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "none", background: theme.primary, color: "#FBF8F2", cursor: "pointer" }}>{t("apply")}</button>
+                        <button onClick={() => setEditingZoneId(null)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("cancel")}</button>
                       </div>
                     </>
                   ) : (
@@ -6621,7 +6913,7 @@ function POSPrototype({ tenantId }) {
                         {zone.label} <span style={{ color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace", fontSize: 12.5 }}>{money(zone.fee)}</span>
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => startEditZone(zone)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("editZone")}</button>
+                        <button onClick={() => startEditZone(zone)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("editZone")}</button>
                         <button onClick={() => removeDeliveryZone(zone)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("removeZone")}</button>
                       </div>
                     </>
@@ -6633,19 +6925,48 @@ function POSPrototype({ tenantId }) {
 
           <div style={{ marginTop: 24 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{t("deliveryAgentShareTitle")}</div>
-            <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 10 }}>{t("deliveryAgentShareSubtitle")}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={deliveryAgentSharePercent}
-                onChange={(e) => setDeliveryAgentSharePercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                className="field"
-                style={{ width: 90 }}
-              />
-              <span style={{ fontSize: 13, color: "#9CA1AC" }}>%</span>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 10 }}>{t("deliveryAgentShareSubtitle")}</div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              <button
+                onClick={() => setDeliveryFeeRetentionMode("percentage")}
+                style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${deliveryFeeRetentionMode === "percentage" ? theme.secondary : "var(--border)"}`, background: deliveryFeeRetentionMode === "percentage" ? "rgba(176,141,87,0.18)" : "transparent", color: deliveryFeeRetentionMode === "percentage" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+              >
+                {t("retentionModePercentage")}
+              </button>
+              <button
+                onClick={() => setDeliveryFeeRetentionMode("fixed")}
+                style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${deliveryFeeRetentionMode === "fixed" ? theme.secondary : "var(--border)"}`, background: deliveryFeeRetentionMode === "fixed" ? "rgba(176,141,87,0.18)" : "transparent", color: deliveryFeeRetentionMode === "fixed" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+              >
+                {t("retentionModeFixed")}
+              </button>
             </div>
+            {deliveryFeeRetentionMode === "percentage" ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={deliveryFeeRetentionPercent}
+                  onChange={(e) => setDeliveryFeeRetentionPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                  className="field"
+                  style={{ width: 90 }}
+                />
+                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>%</span>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={deliveryFeeRetentionFixed}
+                  onChange={(e) => setDeliveryFeeRetentionFixed(Math.max(0, Number(e.target.value) || 0))}
+                  className="field"
+                  style={{ width: 110 }}
+                />
+                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("perDeliveryLabel")}</span>
+              </div>
+            )}
           </div>
           </>
           )}
@@ -6667,7 +6988,7 @@ function POSPrototype({ tenantId }) {
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => printQrFlyer(qrTableId)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: `1px solid ${theme.primary}`, background: "transparent", color: theme.primary, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("printQr")}</button>
               <button onClick={() => downloadQrFlyer(qrTableId)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("download")}</button>
-              <button onClick={() => setQrTableId(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("close")}</button>
+              <button onClick={() => setQrTableId(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("close")}</button>
             </div>
           </div>
         </div>
@@ -6699,7 +7020,7 @@ function POSPrototype({ tenantId }) {
                     <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(order.items.reduce((s, it) => s + it.price * it.qty, 0))}</span>
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                    <button onClick={() => confirmPendingOrder(order)} style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>{t("confirmOrder")}</button>
+                    <button onClick={() => confirmPendingOrder(order)} style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>{t("confirmOrder")}</button>
                     <button onClick={() => rejectPendingOrder(order)} style={{ padding: "9px 14px", borderRadius: 7, border: `1px solid ${COLORS.red}`, background: "transparent", color: COLORS.red, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>{t("rejectOrder")}</button>
                   </div>
                 </div>
@@ -6739,19 +7060,19 @@ function POSPrototype({ tenantId }) {
               </div>
               <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {PAYMENT_METHODS.map((m) => (
                     <button
                       key={m.id}
                       onClick={() => setPayTableModal((p) => ({ ...p, paymentMethod: m.id }))}
-                      style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: `1px solid ${payTableModal.paymentMethod === m.id ? theme.secondary : "#DCD5C4"}`, background: payTableModal.paymentMethod === m.id ? "rgba(176,141,87,0.18)" : "transparent", color: payTableModal.paymentMethod === m.id ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                      style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${payTableModal.paymentMethod === m.id ? theme.secondary : "#DCD5C4"}`, background: payTableModal.paymentMethod === m.id ? "rgba(176,141,87,0.18)" : "transparent", color: payTableModal.paymentMethod === m.id ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
                     >
                       {t(`payment_${m.id}`)}
                     </button>
                   ))}
                   <button
                     onClick={() => setPayTableModal((p) => ({ ...p, paymentMethod: "split" }))}
-                    style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: `1px solid ${payTableModal.paymentMethod === "split" ? theme.secondary : "#DCD5C4"}`, background: payTableModal.paymentMethod === "split" ? "rgba(176,141,87,0.18)" : "transparent", color: payTableModal.paymentMethod === "split" ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                    style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${payTableModal.paymentMethod === "split" ? theme.secondary : "#DCD5C4"}`, background: payTableModal.paymentMethod === "split" ? "rgba(176,141,87,0.18)" : "transparent", color: payTableModal.paymentMethod === "split" ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
                   >
                     {t("splitPaymentOption")}
                   </button>
@@ -6779,7 +7100,7 @@ function POSPrototype({ tenantId }) {
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
                 <button onClick={() => setPayTableModal(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("cancel")}</button>
-                <button onClick={confirmTablePayment} style={{ flex: 2, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("confirmPaymentButton")}</button>
+                <button onClick={confirmTablePayment} style={{ flex: 2, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("confirmPaymentButton")}</button>
               </div>
             </div>
           </div>
@@ -6790,7 +7111,7 @@ function POSPrototype({ tenantId }) {
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 780 }}>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("staffTitle")}</div>
-            <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("staffSubtitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("staffSubtitle")}</div>
           </div>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
@@ -6805,15 +7126,15 @@ function POSPrototype({ tenantId }) {
               className="field"
               style={{ width: 160, fontFamily: "IBM Plex Mono, monospace" }}
             />
-            <button onClick={addStaffMember} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addEmployee")}</button>
+            <button onClick={addStaffMember} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addEmployee")}</button>
           </div>
 
           {!employeesLoaded ? (
-            <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loading")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
               {employees.map((emp) => (
-                <div key={emp.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.inkSoft, border: `1px solid ${currentEmployee?.id === emp.id ? theme.secondary : "#363C47"}`, borderRadius: 10, padding: "12px 16px", flexWrap: "wrap", gap: 8 }}>
+                <div key={emp.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: `1px solid ${currentEmployee?.id === emp.id ? theme.secondary : "var(--border)"}`, borderRadius: 10, padding: "12px 16px", flexWrap: "wrap", gap: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#3A2A2D", color: theme.secondaryLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, fontFamily: "IBM Plex Mono, monospace" }}>
                       {initials(emp.name)}
@@ -6821,7 +7142,7 @@ function POSPrototype({ tenantId }) {
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
                         {emp.name}
-                        <span style={{ fontSize: 9.5, padding: "2px 6px", borderRadius: 999, background: (emp.role || "manager") !== "staff" ? "rgba(176,141,87,0.18)" : "#2E3440", color: (emp.role || "manager") !== "staff" ? theme.secondaryLight : "#9CA1AC", fontWeight: 600 }}>
+                        <span style={{ fontSize: 9.5, padding: "2px 6px", borderRadius: 999, background: (emp.role || "manager") !== "staff" ? "rgba(176,141,87,0.18)" : "var(--track)", color: (emp.role || "manager") !== "staff" ? theme.secondaryLight : "var(--text-muted)", fontWeight: 600 }}>
                           {(emp.role || "manager") !== "staff" ? t("roleManager") : t("roleStaff")}
                         </span>
                       </div>
@@ -6830,7 +7151,7 @@ function POSPrototype({ tenantId }) {
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     {isManager && (
-                      <button onClick={() => toggleEmployeeRole(emp)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>
+                      <button onClick={() => toggleEmployeeRole(emp)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>
                         {(emp.role || "manager") !== "staff" ? t("makeStaff") : t("makeManager")}
                       </button>
                     )}
@@ -6846,10 +7167,10 @@ function POSPrototype({ tenantId }) {
                             className="field"
                             style={{ width: 90, fontFamily: "IBM Plex Mono, monospace" }}
                           />
-                          <button onClick={() => saveEditedPin(emp.id)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "none", background: theme.primary, color: COLORS.paper, cursor: "pointer" }}>{t("apply")}</button>
+                          <button onClick={() => saveEditedPin(emp.id)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "none", background: theme.primary, color: "#FBF8F2", cursor: "pointer" }}>{t("apply")}</button>
                         </>
                       ) : (
-                        <button onClick={() => { setEditingPinId(emp.id); setEditingPinValue(emp.pin); }} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", cursor: "pointer" }}>{t("editPin")}</button>
+                        <button onClick={() => { setEditingPinId(emp.id); setEditingPinValue(emp.pin); }} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("editPin")}</button>
                       )
                     ) : (
                       <span style={{ fontSize: 11.5, color: "#5A5F6A", fontFamily: "IBM Plex Mono, monospace" }}>••••</span>
@@ -6861,20 +7182,20 @@ function POSPrototype({ tenantId }) {
             </div>
           )}
 
-          <div style={{ fontSize: 12, color: "#8A8F99", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>{t("leaderboardTitle")}</div>
+          <div style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>{t("leaderboardTitle")}</div>
           {!shiftLogLoaded ? (
-            <div style={{ fontSize: 13, color: "#8A8F99", marginBottom: 28 }}>{t("loading")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 28 }}>{t("loading")}</div>
           ) : leaderboard.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#8A8F99", marginBottom: 28 }}>{t("noLeaderboardData")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 28 }}>{t("noLeaderboardData")}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 28 }}>
               {leaderboard.map((entry, i) => (
-                <div key={entry.name + i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 8, padding: "10px 14px" }}>
+                <div key={entry.name + i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 12, color: "#8A8F99", fontFamily: "IBM Plex Mono, monospace", width: 16 }}>{i + 1}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: "IBM Plex Mono, monospace", width: 16 }}>{i + 1}</span>
                     <span style={{ fontSize: 13.5 }}>{entry.name}</span>
                   </div>
-                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#9CA1AC" }}>
+                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--text-muted)" }}>
                     <span>{tCount("orderCount", entry.orders)}</span>
                     <span style={{ color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{money(entry.revenue)}</span>
                   </div>
@@ -6887,24 +7208,24 @@ function POSPrototype({ tenantId }) {
             <>
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{t("teamRosterTitle")}</div>
-                <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 12 }}>{t("teamRosterSubtitle")}</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 12 }}>{t("teamRosterSubtitle")}</div>
                 <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
                   <input type="text" value={newDutyName} onChange={(e) => setNewDutyName(e.target.value)} placeholder={t("newTeamMemberPlaceholder")} className="field" style={{ flex: 1, minWidth: 140 }} />
                   <select value={newDutyRole} onChange={(e) => setNewDutyRole(e.target.value)} className="field" style={{ width: 140 }}>
                     <option value="waiter">{t("roleWaiter")}</option>
                     <option value="delivery">{t("roleDelivery")}</option>
                   </select>
-                  <button onClick={addDutyMember} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addTeamMember")}</button>
+                  <button onClick={addDutyMember} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addTeamMember")}</button>
                 </div>
 
                 {!dutyRosterLoaded ? (
-                  <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loading")}</div>
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
                 ) : dutyRoster.length === 0 ? (
-                  <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noTeamMembersYet")}</div>
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noTeamMembersYet")}</div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {dutyRoster.map((m) => (
-                      <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "10px 16px", flexWrap: "wrap", gap: 8 }}>
+                      <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 16px", flexWrap: "wrap", gap: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#2A2E3A", color: "#B0A8E3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 600, fontFamily: "IBM Plex Mono, monospace" }}>
                             {initials(m.name)}
@@ -6925,15 +7246,15 @@ function POSPrototype({ tenantId }) {
 
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{t("teamPerformanceTitle")}</div>
-                <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 12 }}>{t("teamPerformanceSubtitle")}</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 12 }}>{t("teamPerformanceSubtitle")}</div>
                 {teamPerformance.length === 0 ? (
-                  <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noTeamMembersYet")}</div>
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noTeamMembersYet")}</div>
                 ) : teamPerformance.every((p) => p.orders === 0) ? (
-                  <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noTeamPerformanceYet")}</div>
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noTeamPerformanceYet")}</div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {teamPerformance.filter((p) => p.orders > 0).sort((a, b) => b.revenue - a.revenue).map((p) => (
-                      <div key={p.id} style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "12px 16px" }}>
+                      <div key={p.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                           <div style={{ fontSize: 13.5, display: "flex", alignItems: "center", gap: 6 }}>
                             {p.name}
@@ -6941,7 +7262,7 @@ function POSPrototype({ tenantId }) {
                               {p.role === "delivery" ? t("roleDelivery") : t("roleWaiter")}
                             </span>
                           </div>
-                          <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#9CA1AC" }}>
+                          <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--text-muted)" }}>
                             <span>{tCount("orderCount", p.orders)}</span>
                             <span style={{ color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{money(p.revenue)}</span>
                           </div>
@@ -6955,7 +7276,7 @@ function POSPrototype({ tenantId }) {
                         {expandedDutyId === p.id && (
                           <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                             {p.tickets.map((tk, i) => (
-                              <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#9CA1AC", fontFamily: "IBM Plex Mono, monospace" }}>
+                              <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--text-muted)", fontFamily: "IBM Plex Mono, monospace" }}>
                                 <span>{t("ticketHash", { n: tk.ticketNo })} &middot; {new Date(tk.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })}</span>
                                 <span>{money(tk.total)}</span>
                               </div>
@@ -6970,20 +7291,20 @@ function POSPrototype({ tenantId }) {
             </>
           )}
 
-          <div style={{ fontSize: 12, color: "#8A8F99", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>{t("shiftHistoryTitle")}</div>
+          <div style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>{t("shiftHistoryTitle")}</div>
           {!shiftLogLoaded ? (
-            <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loading")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
           ) : recentShiftLog.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noShiftHistory")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noShiftHistory")}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {recentShiftLog.map((s) => (
-                <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 8, padding: "10px 14px", flexWrap: "wrap", gap: 6 }}>
+                <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", flexWrap: "wrap", gap: 6 }}>
                   <div>
                     <div style={{ fontSize: 13 }}>{s.employeeName}</div>
-                    <div style={{ fontSize: 11, color: "#8A8F99" }}>{new Date(s.clockIn).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} &ndash; {new Date(s.clockOut).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{new Date(s.clockIn).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} &ndash; {new Date(s.clockOut).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })}</div>
                   </div>
-                  <div style={{ fontSize: 12, color: "#9CA1AC" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     {t("shiftHistoryLine", { orders: s.orders, revenue: money(s.revenue), hours: formatDuration(new Date(s.clockOut) - new Date(s.clockIn)) })}
                   </div>
                 </div>
@@ -7022,7 +7343,7 @@ function POSPrototype({ tenantId }) {
             ) : (
               <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 18 }}>{t("noSalesThisShift")}</div>
             )}
-            <button onClick={finishClockOut} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("done")}</button>
+            <button onClick={finishClockOut} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("done")}</button>
           </div>
         </div>
       )}
@@ -7035,7 +7356,7 @@ function POSPrototype({ tenantId }) {
             <div style={{ fontSize: 13.5, color: COLORS.charcoalSoft, lineHeight: 1.5, marginBottom: 22 }}>
               {t(`renewalNoticeBody_${tenantStatus.days_remaining}`, { date: tenantStatus.paid_until })}
             </div>
-            <button onClick={dismissRenewalNotice} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("renewalNoticeDismiss")}</button>
+            <button onClick={dismissRenewalNotice} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("renewalNoticeDismiss")}</button>
           </div>
         </div>
       )}
@@ -7052,7 +7373,7 @@ function POSPrototype({ tenantId }) {
                   setConfirmDialog(null);
                   action();
                 }}
-                style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 {t("confirmAction")}
               </button>
@@ -7063,9 +7384,9 @@ function POSPrototype({ tenantId }) {
 
       {tabPinPrompt && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 20 }} onClick={() => setTabPinPrompt(null)}>
-          <div style={{ background: COLORS.ink, border: "1px solid #3A404C", borderRadius: 14, padding: 28, width: "100%", maxWidth: 320, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 17, fontWeight: 600, marginBottom: 6, color: COLORS.paper }}>{t("enterManagerPinTitle")}</div>
-            <div style={{ fontSize: 12.5, color: "#9CA1AC", marginBottom: 20 }}>{t("enterManagerPinHint", { tab: t(`tab_${tabPinPrompt}`) })}</div>
+          <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 14, padding: 28, width: "100%", maxWidth: 320, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 17, fontWeight: 600, marginBottom: 6, color: "var(--text-primary)" }}>{t("enterManagerPinTitle")}</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 20 }}>{t("enterManagerPinHint", { tab: t(`tab_${tabPinPrompt}`) })}</div>
             <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: tabPinError ? 6 : 22 }}>
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${theme.secondary}`, background: i < tabPinInput.length ? theme.secondary : "transparent" }} />
@@ -7077,19 +7398,19 @@ function POSPrototype({ tenantId }) {
                 <button
                   key={d}
                   onClick={() => { setTabPinError(false); setTabPinInput((p) => (p.length < 4 ? p + d : p)); }}
-                  style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: COLORS.inkSoft, color: COLORS.paper, fontSize: 18, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}
+                  style={{ padding: "16px 0", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontSize: 18, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}
                 >
                   {d}
                 </button>
               ))}
-              <button onClick={() => setTabPinPrompt(null)} style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 12, cursor: "pointer" }}>{t("cancel")}</button>
+              <button onClick={() => setTabPinPrompt(null)} style={{ padding: "16px 0", borderRadius: 10, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12, cursor: "pointer" }}>{t("cancel")}</button>
               <button
                 onClick={() => { setTabPinError(false); setTabPinInput((p) => (p.length < 4 ? p + "0" : p)); }}
-                style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: COLORS.inkSoft, color: COLORS.paper, fontSize: 18, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}
+                style={{ padding: "16px 0", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontSize: 18, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}
               >
                 0
               </button>
-              <button onClick={() => setTabPinInput((p) => p.slice(0, -1))} style={{ padding: "16px 0", borderRadius: 10, border: "1px solid #3A404C", background: "transparent", color: "#9CA1AC", fontSize: 16, cursor: "pointer" }}>&larr;</button>
+              <button onClick={() => setTabPinInput((p) => p.slice(0, -1))} style={{ padding: "16px 0", borderRadius: 10, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 16, cursor: "pointer" }}>&larr;</button>
             </div>
           </div>
         </div>
@@ -7107,7 +7428,7 @@ function POSPrototype({ tenantId }) {
                 href={`https://wa.me/${whatsappFallback.phone}?text=${encodeURIComponent(whatsappFallback.message)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ display: "block", textAlign: "center", padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13.5, fontWeight: 600, textDecoration: "none" }}
+                style={{ display: "block", textAlign: "center", padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13.5, fontWeight: 600, textDecoration: "none" }}
               >
                 {t("openWhatsApp")}
               </a>
@@ -7124,22 +7445,22 @@ function POSPrototype({ tenantId }) {
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 620 }}>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("settingsTitle")}</div>
-            <div style={{ fontSize: 13, color: "#9CA1AC" }}>{t("settingsSubtitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("settingsSubtitle")}</div>
           </div>
 
           {!brandingLoaded ? (
-            <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loading")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               <div>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("restaurantNameLabel")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("restaurantNameLabel")}</div>
                 <input type="text" value={restaurantName} onChange={(e) => updateRestaurantName(e.target.value)} onFocus={handleNameFocus} onBlur={handleNameBlur} placeholder={t("restaurantNamePlaceholder")} className="field" style={{ width: "100%", boxSizing: "border-box" }} />
               </div>
 
               <div>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("logoLabel")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("logoLabel")}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{ width: 64, height: 64, borderRadius: 10, background: COLORS.inkSoft, border: "1px solid #363C47", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
                     {logoUrl ? (
                       <img src={logoUrl} alt={restaurantName} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                     ) : (
@@ -7156,43 +7477,62 @@ function POSPrototype({ tenantId }) {
                     )}
                   </div>
                 </div>
-                {!logoUrl && <div style={{ fontSize: 11.5, color: "#8A8F99", marginTop: 8 }}>{t("noLogoUploaded")}</div>}
+                {!logoUrl && <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 8 }}>{t("noLogoUploaded")}</div>}
               </div>
 
               {hasFeature("googleMapsDirections") && (
               <div>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("locationLabel")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("locationLabel")}</div>
                 <input type="text" value={mapsLink} onChange={(e) => updateMapsLink(e.target.value)} placeholder={t("locationPlaceholder")} className="field" style={{ width: "100%", boxSizing: "border-box" }} />
-                <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 6, lineHeight: 1.5 }}>{t("locationHint")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("locationHint")}</div>
               </div>
               )}
 
               <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("primaryColorLabel")}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("primaryColorLabel")}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <input type="color" value={primaryColor} onChange={(e) => updatePrimaryColor(e.target.value)} style={{ width: 44, height: 36, padding: 0, border: "1px solid #3A404C", borderRadius: 6, background: "transparent", cursor: "pointer" }} />
+                    <input type="color" value={primaryColor} onChange={(e) => updatePrimaryColor(e.target.value)} style={{ width: 44, height: 36, padding: 0, border: "1px solid var(--border)", borderRadius: 6, background: "transparent", cursor: "pointer" }} />
                     <input type="text" value={primaryColor} onChange={(e) => updatePrimaryColor(e.target.value)} className="field" style={{ width: 100, fontFamily: "IBM Plex Mono, monospace" }} />
                   </div>
-                  <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 6 }}>{t("primaryColorHint")}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>{t("primaryColorHint")}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("secondaryColorLabel")}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("secondaryColorLabel")}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <input type="color" value={secondaryColor} onChange={(e) => updateSecondaryColor(e.target.value)} style={{ width: 44, height: 36, padding: 0, border: "1px solid #3A404C", borderRadius: 6, background: "transparent", cursor: "pointer" }} />
+                    <input type="color" value={secondaryColor} onChange={(e) => updateSecondaryColor(e.target.value)} style={{ width: 44, height: 36, padding: 0, border: "1px solid var(--border)", borderRadius: 6, background: "transparent", cursor: "pointer" }} />
                     <input type="text" value={secondaryColor} onChange={(e) => updateSecondaryColor(e.target.value)} className="field" style={{ width: 100, fontFamily: "IBM Plex Mono, monospace" }} />
                   </div>
-                  <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 6 }}>{t("secondaryColorHint")}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>{t("secondaryColorHint")}</div>
                 </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("themeLabel")}</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={() => setUiTheme("dark")}
+                    style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${uiTheme === "dark" ? theme.secondary : "var(--border)"}`, background: uiTheme === "dark" ? "rgba(176,141,87,0.18)" : "transparent", color: uiTheme === "dark" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                  >
+                    {t("themeDark")}
+                  </button>
+                  <button
+                    onClick={() => setUiTheme("light")}
+                    style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${uiTheme === "light" ? theme.secondary : "var(--border)"}`, background: uiTheme === "light" ? "rgba(176,141,87,0.18)" : "transparent", color: uiTheme === "light" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                  >
+                    {t("themeLight")}
+                  </button>
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>{t("themeHint")}</div>
               </div>
 
               {hasFeature("vatService") && (
                 <div>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("taxesTitle")}</div>
-                  <div style={{ fontSize: 11.5, color: "#8A8F99", marginBottom: 10 }}>{t("taxesHint")}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("taxesTitle")}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginBottom: 10 }}>{t("taxesHint")}</div>
                   <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
                     <div style={{ flex: 1, minWidth: 160 }}>
-                      <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("vatPercentLabel")}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("vatPercentLabel")}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <input
                           type="number"
@@ -7204,11 +7544,11 @@ function POSPrototype({ tenantId }) {
                           className="field"
                           style={{ width: 90 }}
                         />
-                        <span style={{ fontSize: 13, color: "#9CA1AC" }}>%</span>
+                        <span style={{ fontSize: 13, color: "var(--text-muted)" }}>%</span>
                       </div>
                     </div>
                     <div style={{ flex: 1, minWidth: 160 }}>
-                      <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6 }}>{t("servicePercentLabel")}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("servicePercentLabel")}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <input
                           type="number"
@@ -7220,19 +7560,19 @@ function POSPrototype({ tenantId }) {
                           className="field"
                           style={{ width: 90 }}
                         />
-                        <span style={{ fontSize: 13, color: "#9CA1AC" }}>%</span>
+                        <span style={{ fontSize: 13, color: "var(--text-muted)" }}>%</span>
                       </div>
                     </div>
                   </div>
-                  <div style={{ fontSize: 11, color: "#8A8F99", marginTop: 8 }}>{t("taxesOrderNote")}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>{t("taxesOrderNote")}</div>
                 </div>
               )}
 
               {isManager && hasFeature("tabAccessControl") && (
                 <div>
-                  <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("tabAccessTitle")}</div>
-                  <div style={{ fontSize: 11.5, color: "#8A8F99", marginBottom: 12 }}>{t("tabAccessHint")}</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2, background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, overflow: "hidden" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("tabAccessTitle")}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginBottom: 12 }}>{t("tabAccessHint")}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
                     {GATEABLE_TABS.map((key, i) => {
                       const gated = pinGatedTabs.includes(key);
                       return (
@@ -7254,7 +7594,7 @@ function POSPrototype({ tenantId }) {
                               height: 22,
                               borderRadius: 999,
                               border: "none",
-                              background: gated ? theme.primary : "#3A404C",
+                              background: gated ? theme.primary : "var(--border)",
                               position: "relative",
                               cursor: "pointer",
                               padding: 0,
@@ -7282,11 +7622,11 @@ function POSPrototype({ tenantId }) {
               )}
 
               <div>
-                <div style={{ fontSize: 11, color: "#9CA1AC", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("previewLabel")}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: 16, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("previewLabel")}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16, flexWrap: "wrap" }}>
                   {logoUrl && <img src={logoUrl} alt={restaurantName} style={{ height: 28, width: "auto", maxWidth: 120, objectFit: "contain", borderRadius: 4 }} />}
                   <span style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 600 }}>{restaurantName}</span>
-                  <button style={{ padding: "8px 16px", borderRadius: 7, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 13, fontWeight: 600 }}>{t("saveOrder")}</button>
+                  <button style={{ padding: "8px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600 }}>{t("saveOrder")}</button>
                   <span style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 999, background: theme.secondaryLight, color: "#5A431F" }}>{t("available", { n: 12 })}</span>
                 </div>
               </div>
@@ -7574,7 +7914,7 @@ function CustomerMenuView({ tableId, tenantId }) {
   };
 
   return (
-    <div dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: COLORS.ink, minHeight: "100vh", color: COLORS.paper, paddingBottom: cartCount > 0 ? 90 : 0 }}>
+    <div dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: COLORS.ink, minHeight: "100vh", color: "var(--text-primary)", paddingBottom: cartCount > 0 ? 90 : 0 }}>
       <style>{FONTS}</style>
       <style>{`
         button { transition: filter .12s ease, background .15s ease, border-color .15s ease, transform .08s ease; }
@@ -7582,7 +7922,7 @@ function CustomerMenuView({ tableId, tenantId }) {
         button:not(:disabled):active { transform: scale(0.98); }
         select:focus, input:focus { outline: none; border-color: ${theme.secondary} !important; box-shadow: 0 0 0 3px ${theme.secondary}33; }
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #3A404C; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
       `}</style>
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "32px 20px 60px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
@@ -7593,12 +7933,12 @@ function CustomerMenuView({ tableId, tenantId }) {
           <div style={{ fontSize: 14, color: theme.secondaryLight, fontWeight: 500 }}>
             {isGeneralLink ? t("onlineOrderingHeading") : t("viewingMenuFor", { table: t("tableNumbered", { n: tableId }) })}
           </div>
-          <div style={{ display: "flex", background: COLORS.inkSoft, borderRadius: 999, padding: 3, border: "1px solid #3A404C" }}>
+          <div style={{ display: "flex", background: "var(--surface)", borderRadius: 999, padding: 3, border: "1px solid var(--border)" }}>
             {["en", "ar"].map((code) => (
               <button
                 key={code}
                 onClick={() => setLang(code)}
-                style={{ padding: "5px 11px", borderRadius: 999, border: "none", background: lang === code ? theme.primary : "transparent", color: lang === code ? COLORS.paper : "#9CA1AC", fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "IBM Plex Mono, monospace" }}
+                style={{ padding: "5px 11px", borderRadius: 999, border: "none", background: lang === code ? theme.primary : "transparent", color: lang === code ? COLORS.paper : "var(--text-muted)", fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "IBM Plex Mono, monospace" }}
               >
                 {code === "en" ? "EN" : "AR"}
               </button>
@@ -7618,14 +7958,14 @@ function CustomerMenuView({ tableId, tenantId }) {
         )}
 
         {isGeneralLink && (
-          <div style={{ background: COLORS.inkSoft, border: `1px solid ${zoneChoiceError ? COLORS.red : "#3A404C"}`, borderRadius: 10, padding: 14, marginBottom: 20, marginTop: 10 }}>
+          <div style={{ background: "var(--surface)", border: `1px solid ${zoneChoiceError ? COLORS.red : "var(--border)"}`, borderRadius: 10, padding: 14, marginBottom: 20, marginTop: 10 }}>
             <div style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 8 }}>{t("fulfillmentMethod")}</div>
             <div style={{ display: "flex", gap: 8, marginBottom: deliveryMethodChoice === "delivery" ? 10 : 0 }}>
               {["pickup", "delivery"].map((mth) => (
                 <button
                   key={mth}
                   onClick={() => { setDeliveryMethodChoice(mth); if (mth === "pickup") setSelectedZoneId(""); }}
-                  style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: `1px solid ${deliveryMethodChoice === mth ? theme.secondary : "#3A404C"}`, background: deliveryMethodChoice === mth ? "rgba(176,141,87,0.18)" : "transparent", color: deliveryMethodChoice === mth ? theme.secondaryLight : "#9CA1AC", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
+                  style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: `1px solid ${deliveryMethodChoice === mth ? theme.secondary : "var(--border)"}`, background: deliveryMethodChoice === mth ? "rgba(176,141,87,0.18)" : "transparent", color: deliveryMethodChoice === mth ? theme.secondaryLight : "var(--text-muted)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
                 >
                   {mth === "pickup" ? t("pickupOption") : t("deliveryOption")}
                 </button>
@@ -7633,14 +7973,14 @@ function CustomerMenuView({ tableId, tenantId }) {
             </div>
             {deliveryMethodChoice === "delivery" && (
               <div>
-                <div style={{ fontSize: 11.5, color: "#9CA1AC", marginBottom: 6 }}>{t("chooseDeliveryZone")}</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 6 }}>{t("chooseDeliveryZone")}</div>
                 {deliveryZones.length === 0 ? (
-                  <div style={{ fontSize: 12, color: "#8A8F99" }}>{t("noZonesYet")}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-faint)" }}>{t("noZonesYet")}</div>
                 ) : (
                   <select
                     value={selectedZoneId}
                     onChange={(e) => setSelectedZoneId(e.target.value)}
-                    style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid #3A404C", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
+                    style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid var(--border)", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
                   >
                     <option value="">{t("selectZonePlaceholder")}</option>
                     {deliveryZones.map((z) => (
@@ -7649,27 +7989,27 @@ function CustomerMenuView({ tableId, tenantId }) {
                   </select>
                 )}
                 <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ fontSize: 11.5, color: "#9CA1AC" }}>{t("deliveryDetailsLabel")}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("deliveryDetailsLabel")}</div>
                   <input
                     type="text"
                     value={onlineCustomerName}
                     onChange={(e) => setOnlineCustomerName(e.target.value)}
                     placeholder={t("namePlaceholder")}
-                    style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid #3A404C", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
+                    style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid var(--border)", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
                   />
                   <input
                     type="tel"
                     value={onlineCustomerPhone}
                     onChange={(e) => setOnlineCustomerPhone(e.target.value)}
                     placeholder={t("phonePlaceholder")}
-                    style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid #3A404C", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
+                    style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid var(--border)", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
                   />
                   <input
                     type="text"
                     value={onlineCustomerAddress}
                     onChange={(e) => setOnlineCustomerAddress(e.target.value)}
                     placeholder={t("addressPlaceholder")}
-                    style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid #3A404C", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
+                    style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid var(--border)", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
                   />
                 </div>
               </div>
@@ -7679,7 +8019,7 @@ function CustomerMenuView({ tableId, tenantId }) {
           </div>
         )}
 
-        <div style={{ fontSize: 12.5, color: "#8A8F99", marginBottom: 6 }}>{t("customerMenuHint")}</div>
+        <div style={{ fontSize: 12.5, color: "var(--text-faint)", marginBottom: 6 }}>{t("customerMenuHint")}</div>
         <div style={{ fontSize: 11, color: "#6E7580", marginBottom: !isGeneralLink ? 14 : 28, paddingBottom: !isGeneralLink ? 0 : 20, borderBottom: !isGeneralLink ? "none" : "1px solid #333945", display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#6FA86F", display: "inline-block" }} />
           {t("liveMenuNote")}
@@ -7694,7 +8034,7 @@ function CustomerMenuView({ tableId, tenantId }) {
         )}
 
         {!loaded ? (
-          <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("loading")}</div>
+          <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
         ) : (
           categories.map((cat) => (
             <div key={cat} style={{ marginBottom: 30 }}>
@@ -7707,11 +8047,11 @@ function CustomerMenuView({ tableId, tenantId }) {
                   // available rather than blocking ordering on a transient load gap.
                   const available = availability[item.id] !== false;
                   return (
-                    <div key={item.id} style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "13px 16px", opacity: available ? 1 : 0.6 }}>
+                    <div key={item.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "13px 16px", opacity: available ? 1 : 0.6 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 14.5, fontWeight: 500 }}>{item.name}</div>
-                          {item.tag && <div style={{ fontSize: 12, color: "#8A8F99", marginTop: 3 }}>{item.tag}</div>}
+                          {item.tag && <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 3 }}>{item.tag}</div>}
                           <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 13.5, color: theme.secondaryLight, marginTop: 6 }}>{money(item.price)}</div>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 10.5, padding: "2px 8px", borderRadius: 999, background: available ? "#22301F" : "#3A2A28", color: available ? "#9FCB8E" : "#E3A79C", fontWeight: 500 }}>
                             <span style={{ width: 5, height: 5, borderRadius: "50%", background: available ? "#9FCB8E" : "#E3A79C", display: "inline-block" }} />
@@ -7721,14 +8061,14 @@ function CustomerMenuView({ tableId, tenantId }) {
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                           {qty > 0 && (
                             <>
-                              <button onClick={() => changeQty(item, -1)} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #3A404C", background: "transparent", color: COLORS.paper, cursor: "pointer", fontSize: 14 }}>&minus;</button>
+                              <button onClick={() => changeQty(item, -1)} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 14 }}>&minus;</button>
                               <span style={{ fontFamily: "IBM Plex Mono, monospace", minWidth: 16, textAlign: "center" }}>{qty}</span>
                             </>
                           )}
                           <button
                             onClick={() => available && changeQty(item, 1)}
                             disabled={!available}
-                            style={{ padding: qty > 0 ? "6px 10px" : "8px 14px", borderRadius: 6, border: "none", background: available ? theme.primary : "#4A4F5A", color: COLORS.paper, cursor: available ? "pointer" : "not-allowed", fontSize: qty > 0 ? 14 : 12, fontWeight: 500, opacity: available ? 1 : 0.7 }}
+                            style={{ padding: qty > 0 ? "6px 10px" : "8px 14px", borderRadius: 6, border: "none", background: available ? theme.primary : "#4A4F5A", color: "var(--text-primary)", cursor: available ? "pointer" : "not-allowed", fontSize: qty > 0 ? 14 : 12, fontWeight: 500, opacity: available ? 1 : 0.7 }}
                           >
                             {qty > 0 ? "+" : t("addToOrder")}
                           </button>
@@ -7747,14 +8087,14 @@ function CustomerMenuView({ tableId, tenantId }) {
                                 if (e.key === "Enter") setEditingNoteItemId(null);
                               }}
                               placeholder={t("notePlaceholder")}
-                              style={{ flex: 1, fontSize: 12.5, border: "1px solid #3A404C", borderRadius: 6, padding: "7px 9px", background: "#FFFFFF", color: "#111111", fontFamily: isRtl ? "Tajawal, sans-serif" : "Inter, sans-serif" }}
+                              style={{ flex: 1, fontSize: 12.5, border: "1px solid var(--border)", borderRadius: 6, padding: "7px 9px", background: "#FFFFFF", color: "#111111", fontFamily: isRtl ? "Tajawal, sans-serif" : "Inter, sans-serif" }}
                             />
-                            <button onClick={() => setEditingNoteItemId(null)} style={{ fontSize: 12, background: theme.primary, color: COLORS.paper, border: "none", borderRadius: 6, padding: "0 12px", cursor: "pointer" }}>{t("apply")}</button>
+                            <button onClick={() => setEditingNoteItemId(null)} style={{ fontSize: 12, background: theme.primary, color: "#FBF8F2", border: "none", borderRadius: 6, padding: "0 12px", cursor: "pointer" }}>{t("apply")}</button>
                           </div>
                         ) : (
                           <button
                             onClick={() => setEditingNoteItemId(item.id)}
-                            style={{ display: "block", marginTop: 8, fontSize: 12, color: note ? theme.secondaryLight : "#8A8F99", background: "none", border: "none", cursor: "pointer", padding: 0, fontStyle: note ? "italic" : "normal", textAlign: isRtl ? "right" : "left" }}
+                            style={{ display: "block", marginTop: 8, fontSize: 12, color: note ? theme.secondaryLight : "var(--text-faint)", background: "none", border: "none", cursor: "pointer", padding: 0, fontStyle: note ? "italic" : "normal", textAlign: isRtl ? "right" : "left" }}
                           >
                             {note || t("addNote")}
                           </button>
@@ -7763,7 +8103,7 @@ function CustomerMenuView({ tableId, tenantId }) {
                     </div>
                   );
                 })}
-                {(menu[cat] || []).length === 0 && <div style={{ fontSize: 12.5, color: "#8A8F99" }}>{t("noItemsYet")}</div>}
+                {(menu[cat] || []).length === 0 && <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noItemsYet")}</div>}
               </div>
             </div>
           ))
@@ -7772,11 +8112,11 @@ function CustomerMenuView({ tableId, tenantId }) {
       </div>
 
       {cartCount > 0 && (
-        <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: COLORS.inkSoft, borderTop: `1px solid ${!isOnline ? COLORS.red : theme.secondary}`, padding: "14px 20px", boxShadow: "0 -8px 24px rgba(0,0,0,0.4)" }}>
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "var(--surface)", borderTop: `1px solid ${!isOnline ? COLORS.red : theme.secondary}`, padding: "14px 20px", boxShadow: "0 -8px 24px rgba(0,0,0,0.4)" }}>
           <div style={{ maxWidth: 640, margin: "0 auto" }}>
             {sendError && <div style={{ fontSize: 11.5, color: "#E3A79C", marginBottom: 8 }}>{t("notice_orderSendFailed")}</div>}
             {!isOnline && !sendError && <div style={{ fontSize: 11.5, color: "#E3A79C", marginBottom: 8 }}>{t("offlineOrderingHint")}</div>}
-            <div style={{ fontSize: 11.5, color: "#9CA1AC", marginBottom: 4 }}>
+            <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 4 }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("subtotal")}</span><span>{money(cartTotal)}</span></div>
               {servicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("serviceCharge")} ({servicePercent}%)</span><span>{money(serviceAmt)}</span></div>}
               {vatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("vat")} ({vatPercent}%)</span><span>{money(vatAmt)}</span></div>}
@@ -7784,13 +8124,13 @@ function CustomerMenuView({ tableId, tenantId }) {
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
               <div>
-                <div style={{ fontSize: 12, color: "#9CA1AC" }}>{cartCount === 1 ? t("itemCount", { n: cartCount }) : t("itemCount_plural", { n: cartCount })} &middot; {t("orderTotal")}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{cartCount === 1 ? t("itemCount", { n: cartCount }) : t("itemCount_plural", { n: cartCount })} &middot; {t("orderTotal")}</div>
                 <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 17, color: theme.secondaryLight }}>{money(orderTotal)}</div>
               </div>
               <button
                 onClick={submitOrder}
                 disabled={sending || (isGeneralLink && !deliveryMethodChoice)}
-                style={{ padding: "13px 22px", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: sending ? "default" : "pointer", opacity: sending || (isGeneralLink && !deliveryMethodChoice) ? 0.6 : 1, flexShrink: 0 }}
+                style={{ padding: "13px 22px", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: sending ? "default" : "pointer", opacity: sending || (isGeneralLink && !deliveryMethodChoice) ? 0.6 : 1, flexShrink: 0 }}
               >
                 {t("sendOrderToKitchen")}
               </button>
@@ -7804,7 +8144,7 @@ function CustomerMenuView({ tableId, tenantId }) {
           <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 26, width: "100%", maxWidth: 340, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 600, marginBottom: 8 }}>{t("orderSentTitle")}</div>
             <div style={{ fontSize: 13, color: COLORS.charcoalSoft, marginBottom: 20, lineHeight: 1.5 }}>{t("orderSentSubtitle")}</div>
-            <button onClick={() => setJustSent(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("orderSentOk")}</button>
+            <button onClick={() => setJustSent(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("orderSentOk")}</button>
           </div>
         </div>
       )}
@@ -7818,7 +8158,7 @@ function CustomerMenuView({ tableId, tenantId }) {
                 <div style={{ fontSize: 13, color: COLORS.charcoalSoft, marginBottom: 6, lineHeight: 1.5 }}>{t("checkoutRequestedBody")}</div>
                 <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 22, margin: "14px 0" }}>{money(checkoutTotal)}</div>
                 <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 20 }}>{t(`payment_${checkoutMethod}`)}</div>
-                <button onClick={() => setCheckoutOpen(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("orderSentOk")}</button>
+                <button onClick={() => setCheckoutOpen(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("orderSentOk")}</button>
               </div>
             ) : (
               <>
@@ -7864,12 +8204,12 @@ function CustomerMenuView({ tableId, tenantId }) {
                     </div>
                     <div style={{ marginTop: 16 }}>
                       <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {PAYMENT_METHODS.map((m) => (
                           <button
                             key={m.id}
                             onClick={() => setCheckoutMethod(m.id)}
-                            style={{ flex: 1, padding: "9px 0", borderRadius: 7, border: `1px solid ${checkoutMethod === m.id ? theme.secondary : "#DCD5C4"}`, background: checkoutMethod === m.id ? "rgba(176,141,87,0.18)" : "transparent", color: checkoutMethod === m.id ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                            style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${checkoutMethod === m.id ? theme.secondary : "#DCD5C4"}`, background: checkoutMethod === m.id ? "rgba(176,141,87,0.18)" : "transparent", color: checkoutMethod === m.id ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
                           >
                             {t(`payment_${m.id}`)}
                           </button>
@@ -7880,7 +8220,7 @@ function CustomerMenuView({ tableId, tenantId }) {
                     <button
                       onClick={submitCheckoutRequest}
                       disabled={checkoutSubmitting}
-                      style={{ width: "100%", marginTop: 16, padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: COLORS.paper, fontSize: 14, fontWeight: 600, cursor: checkoutSubmitting ? "default" : "pointer", opacity: checkoutSubmitting ? 0.7 : 1 }}
+                      style={{ width: "100%", marginTop: 16, padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: checkoutSubmitting ? "default" : "pointer", opacity: checkoutSubmitting ? 0.7 : 1 }}
                     >
                       {t("checkoutRequestButton")}
                     </button>
