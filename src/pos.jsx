@@ -542,12 +542,16 @@ const STRINGS = {
     viewAssignedOrders: "View orders ({{n}})",
     hideAssignedOrders: "Hide orders",
     servedByLabel: "Served by {{name}}",
-    deliveryReconciliationTitle: "Delivery cash reconciliation (today)",
-    deliveryReconciliationSubtitle: "Cash-paid delivery orders today, by rider. Each rider keeps {{pct}}% of the delivery fee out of the cash they collected — what's left is what they owe back.",
-    noDeliveryReconciliationYet: "No cash delivery orders today yet.",
+    deliveryReconciliationTitle: "Delivery cash reconciliation",
+    deliveryReconciliationSubtitle: "Every unsettled delivery order, by rider, until you settle up. Each rider keeps {{pct}}% of the delivery fee — out of the cash they collected on cash orders, or paid out to them for card/InstaPay orders they still delivered.",
+    noDeliveryReconciliationYet: "No unsettled delivery orders right now.",
     deliveryReconciliationCash: "Cash collected",
     deliveryReconciliationFees: "Delivery fees kept",
     deliveryReconciliationOwed: "Owes restaurant",
+    deliveryReconciliationOwedToAgent: "Restaurant owes rider",
+    settleDeliveryCash: "Settle up",
+    confirm_settleDelivery: "Mark all of {{name}}'s outstanding orders as settled?",
+    notice_deliverySettled: "Settled up with {{name}}",
 
     notice_giveCategoryName: "Give the category a name first",
     notice_categoryExists: "A category with that name already exists",
@@ -1111,12 +1115,16 @@ const STRINGS = {
     viewAssignedOrders: "عرض الطلبات ({{n}})",
     hideAssignedOrders: "إخفاء الطلبات",
     servedByLabel: "قدّمه {{name}}",
-    deliveryReconciliationTitle: "تسوية نقدية الدليفري (اليوم)",
-    deliveryReconciliationSubtitle: "طلبات الدليفري المدفوعة نقدًا اليوم، حسب كل عامل. يحتفظ كل عامل بنسبة {{pct}}% من رسوم التوصيل من النقدية التي حصّلها — والباقي هو ما يجب عليه تسليمه.",
-    noDeliveryReconciliationYet: "لا توجد طلبات دليفري مدفوعة نقدًا اليوم بعد.",
+    deliveryReconciliationTitle: "تسوية نقدية الدليفري",
+    deliveryReconciliationSubtitle: "كل طلبات الدليفري غير المُسوّاة بعد، حسب كل عامل، حتى تتم التسوية معه. يحتفظ كل عامل بنسبة {{pct}}% من رسوم التوصيل — إما من النقدية التي حصّلها في الطلبات النقدية، أو تُدفع له عن طلبات الفيزا/إنستاباي التي وصّلها أيضًا.",
+    noDeliveryReconciliationYet: "لا توجد طلبات دليفري غير مُسوّاة حاليًا.",
     deliveryReconciliationCash: "النقدية المحصّلة",
     deliveryReconciliationFees: "رسوم التوصيل المحتفظ بها",
     deliveryReconciliationOwed: "مستحق للمطعم",
+    deliveryReconciliationOwedToAgent: "مستحق للعامل من المطعم",
+    settleDeliveryCash: "تسوية الحساب",
+    confirm_settleDelivery: "تحديد كل طلبات {{name}} غير المُسوّاة كمُسوّاة؟",
+    notice_deliverySettled: "تمت التسوية مع {{name}}",
 
     notice_giveCategoryName: "يرجى إدخال اسم للقسم أولاً",
     notice_categoryExists: "يوجد بالفعل قسم بهذا الاسم",
@@ -4321,27 +4329,48 @@ function POSPrototype({ tenantId }) {
     return Object.values(totals);
   }, [dutyRoster, shiftCompleted]);
 
-  // Delivery cash reconciliation — restaurant-wide for today (not scoped to whoever's
-  // currently clocked in, unlike teamPerformance above), since this is a manager's end-of-day
-  // check across every rider, not a per-shift view. Only cash-paid delivery orders count: if the
-  // customer paid by card/InstaPay, the rider never touched any cash, so there's nothing to
-  // reconcile for that order. For the ones that were cash, the rider collected the full total
-  // (food + delivery fee) from the customer and keeps the fee as their pay, so what they still
-  // owe the restaurant is cash collected minus their own delivery fee.
+  // Delivery cash reconciliation — restaurant-wide (not scoped to whoever's currently clocked
+  // in, unlike teamPerformance above), and covers every not-yet-settled delivery order this
+  // month rather than just today, so a day a manager skips settling on doesn't quietly drop off
+  // — it keeps rolling forward until settleDeliveryCash below marks it settled. Every delivered
+  // order counts, not just cash ones: a cash order has the rider collecting the full total (food
+  // + fee) and keeping their fee share as pay, so they owe the restaurant cash minus that share;
+  // a card/InstaPay order has the rider collecting nothing but still doing the delivery, so the
+  // restaurant already holds their fee share electronically and owes it back to them. Netting
+  // cash collected against fee share earned across ALL their orders — not just cash ones — makes
+  // both directions fall out of one number: positive means they owe the restaurant, negative
+  // means the restaurant owes them.
   const deliveryReconciliation = useMemo(() => {
-    const todaysDeliveries = dashboardReceipts.filter((r) => r.timestamp.slice(0, 10) === todayStr && r.tableId === "delivery");
+    const outstanding = dashboardReceipts.filter((r) => r.tableId === "delivery" && r.paid !== false && !r.deliverySettled);
     return dutyRoster
       .filter((p) => p.role === "delivery")
       .map((p) => {
-        const cashOrders = todaysDeliveries.filter(
-          (r) => r.assignedTo?.id === p.id && r.paid !== false && receiptMethodAmounts(r).some((a) => a.method === "cash" && a.amount > 0)
-        );
-        const cashTotal = cashOrders.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
-        const rawFeesTotal = cashOrders.reduce((s, r) => s + (r.deliveryFee || 0), 0);
-        const feesKept = Math.round(rawFeesTotal * (deliveryAgentSharePercent / 100) * 100) / 100;
-        return { ...p, orders: cashOrders.length, cashTotal, feesTotal: feesKept, owed: cashTotal - feesKept };
+        const orders = outstanding.filter((r) => r.assignedTo?.id === p.id);
+        const cashTotal = orders.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
+        const feesTotal = orders.reduce((s, r) => s + Math.round((r.deliveryFee || 0) * (deliveryAgentSharePercent / 100) * 100) / 100, 0);
+        return { ...p, orders: orders.length, cashTotal, feesTotal, net: Math.round((cashTotal - feesTotal) * 100) / 100 };
       });
-  }, [dutyRoster, dashboardReceipts, todayStr, deliveryAgentSharePercent]);
+  }, [dutyRoster, dashboardReceipts, deliveryAgentSharePercent]);
+
+  // Marks every currently-outstanding delivery order for this rider (exactly the ones counted
+  // into their card above) as settled, once the manager has actually collected/paid out the net
+  // amount — so they drop out of every future reconciliation instead of double-counting.
+  const settleDeliveryCash = (rider) => {
+    setConfirmDialog({
+      message: t("confirm_settleDelivery", { name: rider.name }),
+      onConfirm: () => {
+        const monthKey = thisMonthKey();
+        const list = receiptsByMonth[monthKey] || [];
+        const updated = list.map((r) =>
+          r.tableId === "delivery" && r.status === "completed" && r.assignedTo?.id === rider.id && r.paid !== false && !r.deliverySettled
+            ? { ...r, deliverySettled: true, deliverySettledAt: new Date().toISOString() }
+            : r
+        );
+        persistMonth(monthKey, updated);
+        flashNotice(t("notice_deliverySettled", { name: rider.name }));
+      },
+    });
+  };
 
   // --- Menu / category editor ---
   const addCategory = () => {
@@ -6848,7 +6877,7 @@ function POSPrototype({ tenantId }) {
                     <div style={{ fontSize: 13, color: "#8A8F99" }}>{t("noDeliveryReconciliationYet")}</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {deliveryReconciliation.filter((p) => p.orders > 0).sort((a, b) => b.owed - a.owed).map((p) => (
+                      {deliveryReconciliation.filter((p) => p.orders > 0).sort((a, b) => b.net - a.net).map((p) => (
                         <div key={p.id} style={{ background: COLORS.inkSoft, border: "1px solid #363C47", borderRadius: 10, padding: "12px 16px" }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                             <div style={{ fontSize: 13.5 }}>{p.name}</div>
@@ -6857,10 +6886,16 @@ function POSPrototype({ tenantId }) {
                           <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "#9CA1AC" }}>
                             <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationCash")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(p.cashTotal)}</span></div>
                             <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationFees")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(p.feesTotal)}</span></div>
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, fontWeight: 700, color: theme.secondaryLight, marginTop: 3, paddingTop: 5, borderTop: "1px dashed #3A404C" }}>
-                              <span>{t("deliveryReconciliationOwed")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(p.owed)}</span>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, fontWeight: 700, color: p.net < 0 ? "#E3A79C" : theme.secondaryLight, marginTop: 3, paddingTop: 5, borderTop: "1px dashed #3A404C" }}>
+                              <span>{p.net < 0 ? t("deliveryReconciliationOwedToAgent") : t("deliveryReconciliationOwed")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(Math.abs(p.net))}</span>
                             </div>
                           </div>
+                          <button
+                            onClick={() => settleDeliveryCash(p)}
+                            style={{ marginTop: 10, fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: COLORS.paper, cursor: "pointer", fontWeight: 600 }}
+                          >
+                            {t("settleDeliveryCash")}
+                          </button>
                         </div>
                       ))}
                     </div>
