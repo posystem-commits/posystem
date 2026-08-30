@@ -168,6 +168,24 @@ const STRINGS = {
     noItemsYet: "No items yet.",
     addItemToCategory: "Add item to {{category}}",
     editItemTitle: "Edit {{name}}",
+    uploadPhoto: "Upload photo",
+    changePhoto: "Change photo",
+    removePhoto: "Remove photo",
+    photoUploadedHint: "This photo shows everywhere this item appears.",
+    suggestedPhotoHint: "Showing a generic placeholder based on the name — upload a real photo any time.",
+    priceListsTitle: "Price lists",
+    priceListsSubtitle: "Mirror the menu with different pricing for delivery apps, events, or a separate brand — same items and recipes, your prices.",
+    newProfileNamePlaceholder: "Price list name (e.g. Talabat)",
+    createProfile: "Create price list",
+    noProfilesYet: "No price lists yet — create one to offer different pricing without duplicating your menu.",
+    managePrices: "Manage prices",
+    closeManage: "Close",
+    addExtraItem: "Add extra item",
+    baseLabel: "Base",
+    extraLabel: "Extra",
+    notice_giveProfileName: "Give this price list a name first.",
+    notice_profileCreated: "Price list \"{{name}}\" created.",
+    confirm_deleteMenuProfile: "Delete the price list \"{{name}}\"? This won't affect your main menu.",
     dishNamePlaceholder: "Dish name",
     shortDescriptionPlaceholder: "Short description",
     pricePlaceholder: "Price",
@@ -612,6 +630,8 @@ const STRINGS = {
     deliveryReconciliationFees: "Delivery fees kept",
     deliveryReconciliationOwed: "Owes restaurant",
     deliveryReconciliationOwedToAgent: "Restaurant owes rider",
+    deliveryAddressesLabel: "Delivery addresses",
+    noAddressOnFile: "No address on file",
     settleDeliveryCash: "Settle up",
     confirm_settleDelivery: "Mark all of {{name}}'s outstanding orders as settled?",
     notice_deliverySettled: "Settled up with {{name}}",
@@ -770,6 +790,24 @@ const STRINGS = {
     noItemsYet: "لا توجد أصناف بعد.",
     addItemToCategory: "إضافة صنف إلى {{category}}",
     editItemTitle: "تعديل {{name}}",
+    uploadPhoto: "رفع صورة",
+    changePhoto: "تغيير الصورة",
+    removePhoto: "إزالة الصورة",
+    photoUploadedHint: "تظهر هذه الصورة في كل مكان يظهر فيه هذا الصنف.",
+    suggestedPhotoHint: "تُعرض صورة تقريبية عامة حسب الاسم — يمكنك رفع صورة حقيقية في أي وقت.",
+    priceListsTitle: "قوائم الأسعار",
+    priceListsSubtitle: "اعكس نفس القائمة بأسعار مختلفة لتطبيقات التوصيل أو المناسبات أو علامة تجارية أخرى — نفس الأصناف والمكونات، بأسعارك أنت.",
+    newProfileNamePlaceholder: "اسم قائمة الأسعار (مثال: طلبات)",
+    createProfile: "إنشاء قائمة أسعار",
+    noProfilesYet: "لا توجد قوائم أسعار بعد — أنشئ واحدة لعرض أسعار مختلفة دون تكرار القائمة.",
+    managePrices: "إدارة الأسعار",
+    closeManage: "إغلاق",
+    addExtraItem: "إضافة صنف إضافي",
+    baseLabel: "الأساسي",
+    extraLabel: "إضافي",
+    notice_giveProfileName: "أدخل اسمًا لقائمة الأسعار أولاً.",
+    notice_profileCreated: "تم إنشاء قائمة الأسعار \"{{name}}\".",
+    confirm_deleteMenuProfile: "حذف قائمة الأسعار \"{{name}}\"؟ لن يؤثر ذلك على قائمتك الرئيسية.",
     dishNamePlaceholder: "اسم الطبق",
     shortDescriptionPlaceholder: "وصف مختصر",
     pricePlaceholder: "السعر",
@@ -1214,6 +1252,8 @@ const STRINGS = {
     deliveryReconciliationFees: "رسوم التوصيل المحتفظ بها",
     deliveryReconciliationOwed: "مستحق للمطعم",
     deliveryReconciliationOwedToAgent: "مستحق للعامل من المطعم",
+    deliveryAddressesLabel: "عناوين التوصيل",
+    noAddressOnFile: "لا يوجد عنوان مسجل",
     settleDeliveryCash: "تسوية الحساب",
     confirm_settleDelivery: "تحديد كل طلبات {{name}} غير المُسوّاة كمُسوّاة؟",
     notice_deliverySettled: "تمت التسوية مع {{name}}",
@@ -1514,6 +1554,88 @@ function initials(name) {
     .join("");
 }
 
+// A generic "photo" suggestion for a menu item that has no real photo uploaded yet — matched
+// by keyword against the item's name/description, bilingual (this app's menus mix English and
+// Arabic item names). Deliberately simple keyword matching, not a real image search, since
+// there's no photo-search API wired into this app — it's a placeholder the owner can replace
+// with an actual uploaded photo at any time, not a claim of a real matched photo.
+const FOOD_EMOJI_RULES = [
+  { emoji: "🍔", kw: ["burger", "برجر"] },
+  { emoji: "🍕", kw: ["pizza", "بيتزا"] },
+  { emoji: "🌯", kw: ["shawarma", "شاورما", "wrap", "kebab", "كباب"] },
+  { emoji: "🥙", kw: ["crepe", "كريب"] },
+  { emoji: "🍗", kw: ["chicken", "دجاج", "فراخ", "فرخة"] },
+  { emoji: "🥩", kw: ["steak", "sirloin", "lamb", "beef", "لحم", "لحمة", "ستيك", "مشوي"] },
+  { emoji: "🐟", kw: ["fish", "halibut", "salmon", "سمك", "بلطي"] },
+  { emoji: "🦐", kw: ["shrimp", "prawn", "جمبري", "قريدس"] },
+  { emoji: "🦑", kw: ["squid", "calamari", "كاليماري", "أخطبوط", "octopus"] },
+  { emoji: "🍝", kw: ["pasta", "spaghetti", "مكرونة", "سباجتى", "معكرونة", "لازانيا", "lasagna"] },
+  { emoji: "🥗", kw: ["salad", "سلطة"] },
+  { emoji: "🍲", kw: ["soup", "شوربة", "ريزوتو", "risotto"] },
+  { emoji: "🍰", kw: ["cake", "cheesecake", "tart", "كيك", "تارت", "chocolate", "شوكولاتة"] },
+  { emoji: "🍨", kw: ["ice cream", "affogato", "gelato", "آيس كريم", "جيلاتو"] },
+  { emoji: "☕", kw: ["coffee", "espresso", "قهوة", "اسبريسو"] },
+  { emoji: "🍷", kw: ["wine", "نبيذ"] },
+  { emoji: "🍸", kw: ["martini", "cocktail", "كوكتيل"] },
+  { emoji: "🧃", kw: ["juice", "tea", "شاي", "عصير"] },
+  { emoji: "💧", kw: ["water", "مياه", "ماء"] },
+  { emoji: "🍟", kw: ["fries", "potato", "بطاطس"] },
+  { emoji: "🥪", kw: ["sandwich", "سندوتش", "سندوتشات", "سندويتش"] },
+  { emoji: "🍞", kw: ["bread", "خبز"] },
+  { emoji: "🍚", kw: ["rice", "أرز", "رز"] },
+  { emoji: "🍄", kw: ["mushroom", "مشروم", "فطر"] },
+  { emoji: "🧀", kw: ["cheese", "جبنة", "جبن"] },
+];
+const suggestEmojiForItem = (name, tag) => {
+  const text = `${name || ""} ${tag || ""}`.toLowerCase();
+  const found = FOOD_EMOJI_RULES.find((r) => r.kw.some((k) => text.includes(k)));
+  return found ? found.emoji : "🍽️";
+};
+
+// Downscales an uploaded photo client-side before it's stored — a restaurant menu can have
+// well over a hundred items, so storing full-resolution photos per item would balloon the
+// synced menu payload. A small square thumbnail is all any of the surfaces that show it
+// (order screen cards, the menu editor, the customer-facing menu) actually need.
+const resizeImageToDataUrl = (file, maxDim = 240, quality = 0.72) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("decode failed"));
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+// Shown wherever a menu item appears — a real uploaded photo if there is one, otherwise the
+// keyword-suggested emoji as a placeholder, falling back to initials only if even that yields
+// nothing. No access to per-tenant brand colors here (this renders in both the staff terminal
+// and the customer-facing menu), so it sticks to fixed, theme-independent tones.
+function MenuThumb({ item, size = 34 }) {
+  const base = { width: size, height: size, borderRadius: 8, flexShrink: 0 };
+  if (item.image) {
+    return <img src={item.image} alt="" style={{ ...base, objectFit: "cover" }} />;
+  }
+  const emoji = suggestEmojiForItem(item.name, item.tag);
+  return (
+    <div style={{ ...base, background: "#3A2A2D", color: "#D8C39A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: emoji ? size * 0.55 : size * 0.35, fontFamily: "IBM Plex Mono, monospace", fontWeight: 600 }}>
+      {emoji || initials(item.name)}
+    </div>
+  );
+}
+
 const money = (n) => `${n.toFixed(2)} EGP`;
 const fmtQty = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
@@ -1645,6 +1767,17 @@ function POSPrototype({ tenantId }) {
   const [menu, setMenu] = useState(INITIAL_MENU);
   const [ingredients, setIngredients] = useState(INITIAL_INGREDIENTS);
   const [menuLoaded, setMenuLoaded] = useState(false);
+
+  // Alternate price lists — each one mirrors the base menu (same items, same recipes/stock
+  // consumption) but can override individual items' prices and add its own extra items on top.
+  // A duty-roster-style light record, not a fork: an item with no override here still tracks the
+  // base menu's price automatically, so editing the base item's price/recipe/photo is reflected
+  // everywhere without having to touch every profile.
+  const [menuProfiles, setMenuProfiles] = useState([]); // [{id, name, priceOverrides: {itemId: price}, extraItems: {category: [item,...]}}]
+  const [menuProfilesLoaded, setMenuProfilesLoaded] = useState(false);
+  const [activeMenuProfile, setActiveMenuProfile] = useState(null); // profile id currently governing the order screen's prices, or null for the base menu
+  const [newProfileName, setNewProfileName] = useState("");
+  const [managingProfileId, setManagingProfileId] = useState(null); // which profile's price-management panel is expanded, if any
 
   const [tableCount, setTableCount] = useState(12);
   const [tableNames, setTableNames] = useState({});
@@ -2107,6 +2240,18 @@ function POSPrototype({ tenantId }) {
 
     (async () => {
       try {
+        const result = await getSharedWithRetry(storage, "menu-profiles-config");
+        const parsed = result?.value ? JSON.parse(result.value) : null;
+        if (Array.isArray(parsed)) setMenuProfiles(parsed);
+      } catch (e) {
+        // fall back to no profiles already set
+      } finally {
+        setMenuProfilesLoaded(true);
+      }
+    })();
+
+    (async () => {
+      try {
         const result = await getSharedWithRetry(storage, "tables-config");
         const parsed = result?.value ? JSON.parse(result.value) : null;
         if (parsed) {
@@ -2205,6 +2350,10 @@ function POSPrototype({ tenantId }) {
     if (!menuLoaded) return;
     syncSet("ingredients-config", JSON.stringify(ingredients), true, t("syncLabelStock"));
   }, [ingredients, menuLoaded]);
+  useEffect(() => {
+    if (!menuProfilesLoaded) return;
+    syncSet("menu-profiles-config", JSON.stringify(menuProfiles), true, t("syncLabelMenu"));
+  }, [menuProfiles, menuProfilesLoaded]);
   useEffect(() => {
     if (!tablesLoaded) return;
     syncSet("tables-config", JSON.stringify({ count: tableCount, names: tableNames }), true, t("syncLabelTables"));
@@ -2332,7 +2481,15 @@ function POSPrototype({ tenantId }) {
       setTabPinError(false);
       return;
     }
+    // Clicking the base Order tab always means "back to the base menu" — a price-list profile
+    // tab is really just the Order tab with a profile applied (see openMenuProfileTab), so
+    // switching here has to explicitly drop whichever profile was active.
+    if (key === "order") setActiveMenuProfile(null);
     setView(key);
+  };
+  const openMenuProfileTab = (profileId) => {
+    setActiveMenuProfile(profileId);
+    setView("order");
   };
 
   const submitTabPin = (pin) => {
@@ -2673,7 +2830,7 @@ function POSPrototype({ tenantId }) {
     }
 
     items.forEach((cartItem) => {
-      const menuItem = Object.values(menu).flat().find((m) => m.id === cartItem.id);
+      const menuItem = findMenuItemAnywhere(cartItem.id);
       (menuItem?.recipe || []).forEach((r) => updateIngredientStock(r.ingredientId, -r.qty * cartItem.qty));
     });
 
@@ -2694,7 +2851,7 @@ function POSPrototype({ tenantId }) {
       servedBy: currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null,
       assignedTo: (tableId === activeTableId ? assignedTo : tableDrafts[tableId]?.assignedTo) || null,
       items: items.map((c) => {
-        const menuItem = Object.values(menu).flat().find((m) => m.id === c.id);
+        const menuItem = findMenuItemAnywhere(c.id);
         return { id: c.id, name: c.name, qty: c.qty, price: c.price, note: c.note || "", recipeSnapshot: menuItem?.recipe || [] };
       }),
       subtotal: itemsSubtotal,
@@ -3266,19 +3423,54 @@ function POSPrototype({ tenantId }) {
     });
   };
 
+  // Looks up a menu item's definition (for its recipe, mainly) wherever it might live — the base
+  // menu, or as an extra item exclusive to one of the price-list profiles below. A profile's
+  // extra item never exists in `menu`, so any stock/recipe lookup keyed only off `menu` would
+  // silently treat it as untracked; this is the one lookup every such call site should go through
+  // instead, whether or not a profile is currently active (an order rung up under a profile can
+  // still be getting paid/edited later when a different profile — or none — is active).
+  const findMenuItemAnywhere = (id) => {
+    const base = Object.values(menu).flat().find((m) => m.id === id);
+    if (base) return base;
+    for (const p of menuProfiles) {
+      const found = Object.values(p.extraItems || {}).flat().find((m) => m.id === id);
+      if (found) return found;
+    }
+    return null;
+  };
+  const activeMenuProfileObj = menuProfiles.find((p) => p.id === activeMenuProfile) || null;
+  // The menu as it should actually be browsed/ordered from right now: unchanged when no profile
+  // is active, otherwise the base items with that profile's price overrides applied, plus its
+  // own extra items appended into their category. Recipes/stock always come from the base item
+  // (a profile changes price, not what the dish actually is), except for extra items, which only
+  // exist within the profile to begin with.
+  const effectiveMenu = !activeMenuProfileObj
+    ? menu
+    : Object.fromEntries(
+        categories.map((cat) => [
+          cat,
+          [
+            ...(menu[cat] || []).map((it) =>
+              activeMenuProfileObj.priceOverrides[it.id] !== undefined ? { ...it, price: activeMenuProfileObj.priceOverrides[it.id] } : it
+            ),
+            ...((activeMenuProfileObj.extraItems || {})[cat] || []),
+          ],
+        ])
+      );
+
   // remaining ingredient stock after subtracting what's already reserved by the current cart
   const remainingIngredientStock = useMemo(() => {
     const remaining = {};
     Object.values(ingredients).forEach((ing) => (remaining[ing.id] = ing.stock));
     cart.forEach((cartItem) => {
-      const menuItem = Object.values(menu).flat().find((m) => m.id === cartItem.id);
+      const menuItem = findMenuItemAnywhere(cartItem.id);
       if (!menuItem) return;
       menuItem.recipe.forEach((r) => {
         if (remaining[r.ingredientId] !== undefined) remaining[r.ingredientId] -= r.qty * cartItem.qty;
       });
     });
     return remaining;
-  }, [ingredients, cart, menu]);
+  }, [ingredients, cart, menu, menuProfiles]);
 
   const rawMaxServings = (item) => {
     if (!item.recipe || item.recipe.length === 0) return null; // not tracked
@@ -3328,7 +3520,7 @@ function POSPrototype({ tenantId }) {
     setSaved(false);
     if (delta > 0) {
       const line = cart.find((c) => c.lineId === lineId);
-      const item = line && Object.values(menu).flat().find((m) => m.id === line.id);
+      const item = line && findMenuItemAnywhere(line.id);
       const check = canAddOneMore(item);
       if (!check.ok) {
         flashNotice(check.reason);
@@ -3411,7 +3603,7 @@ function POSPrototype({ tenantId }) {
 
     // deduct ingredient stock per recipe, and snapshot the recipe used at time of sale
     cart.forEach((cartItem) => {
-      const menuItem = Object.values(menu).flat().find((m) => m.id === cartItem.id);
+      const menuItem = findMenuItemAnywhere(cartItem.id);
       (menuItem?.recipe || []).forEach((r) => updateIngredientStock(r.ingredientId, -r.qty * cartItem.qty));
     });
 
@@ -3427,7 +3619,7 @@ function POSPrototype({ tenantId }) {
       servedBy: currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null,
       assignedTo: assignedTo ? { ...assignedTo } : null,
       items: cart.map((c) => {
-        const menuItem = Object.values(menu).flat().find((m) => m.id === c.id);
+        const menuItem = findMenuItemAnywhere(c.id);
         return { id: c.id, name: c.name, qty: c.qty, price: c.price, note: c.note || "", recipeSnapshot: menuItem?.recipe || [] };
       }),
       subtotal,
@@ -4304,7 +4496,41 @@ function POSPrototype({ tenantId }) {
         <div class="row" style="font-weight:700;margin-top:4px;"><span>${escapeHtml(t("expectedCashLabel"))}</span><span>${money(expectedCash)}</span></div>
         ${countedCashNum !== null ? `<div class="row" style="margin-top:3px;"><span>${escapeHtml(t("countedCashLabel"))}</span><span>${money(countedCashNum)}</span></div>` : ""}
         ${cashVariance !== null ? `<div class="row" style="font-weight:700;"><span>${escapeHtml(t("varianceLabel"))}</span><span>${cashVariance >= 0 ? "+" : ""}${money(cashVariance)}</span></div>` : ""}
-      </div>`;
+      </div>
+      ${isManager ? `
+      <div class="dashed" style="font-size:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">${escapeHtml(t("electronicReconciliationTitle"))}</div>
+        ${shiftElectronicMethods
+          .map((m) => {
+            const confirmedVal = confirmedElectronic[m.id];
+            return `
+            <div style="margin-bottom:6px;">
+              <div class="row" style="font-weight:600;"><span>${escapeHtml(t(`payment_${m.id}`))}</span><span>${money(m.expected)}</span></div>
+              ${confirmedVal ? `<div class="row"><span>${escapeHtml(t("confirmedOnStatementLabel"))}</span><span>${money(Number(confirmedVal))}</span></div>` : ""}
+              ${m.variance !== null ? `<div class="row"><span>${escapeHtml(t("varianceLabel"))}</span><span>${m.variance >= 0 ? "+" : ""}${money(m.variance)}</span></div>` : ""}
+            </div>`;
+          })
+          .join("")}
+      </div>` : ""}
+      ${isManager && deliveryReconciliation.some((p) => p.orders > 0) ? `
+      <div class="dashed" style="font-size:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">${escapeHtml(t("deliveryReconciliationTitle"))}</div>
+        ${deliveryReconciliation
+          .filter((p) => p.orders > 0)
+          .map(
+            (p) => `
+            <div style="margin-bottom:8px;">
+              <div class="row" style="font-weight:600;"><span>${escapeHtml(p.name)}</span><span>${money(Math.abs(p.net))} ${p.net < 0 ? escapeHtml(t("deliveryReconciliationOwedToAgent")) : escapeHtml(t("deliveryReconciliationOwed"))}</span></div>
+              ${p.orderList
+                .map(
+                  (r) =>
+                    `<div class="row" style="font-size:10.5px;color:#555;"><span>#${r.ticketNo}</span><span>${escapeHtml(r.customer?.address || t("noAddressOnFile"))}</span></div>`
+                )
+                .join("")}
+            </div>`
+          )
+          .join("")}
+      </div>` : ""}`;
   };
   const printShiftReport = () => {
     printViaHiddenFrame(t("shiftReportTitle"), buildShiftReportBodyHtml(), isRtl);
@@ -4583,7 +4809,7 @@ function POSPrototype({ tenantId }) {
         const orders = outstanding.filter((r) => r.assignedTo?.id === p.id);
         const cashTotal = orders.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
         const feesTotal = orders.reduce((s, r) => s + agentFeeShare(r.deliveryFee || 0), 0);
-        return { ...p, orders: orders.length, cashTotal, feesTotal, net: Math.round((cashTotal - feesTotal) * 100) / 100 };
+        return { ...p, orderList: orders, orders: orders.length, cashTotal, feesTotal, net: Math.round((cashTotal - feesTotal) * 100) / 100 };
       });
   }, [dutyRoster, dashboardReceipts, deliveryFeeRetentionMode, deliveryFeeRetentionPercent, deliveryFeeRetentionFixed]);
 
@@ -4637,17 +4863,35 @@ function POSPrototype({ tenantId }) {
     });
   };
 
-  const openNewItem = (category) => {
-    setItemEditor({ mode: "new", category, id: null, name: "", tag: "", price: "", recipe: [] });
+  const openNewItem = (category, profileId = null) => {
+    setItemEditor({ mode: "new", category, id: null, name: "", tag: "", price: "", recipe: [], image: null, profileId });
     setRecipeDraftIng("");
     setRecipeDraftQty("");
   };
-  const openEditItem = (category, item) => {
-    setItemEditor({ mode: "edit", category, id: item.id, name: item.name, tag: item.tag, price: String(item.price), recipe: item.recipe.map((r) => ({ ...r })) });
+  const openEditItem = (category, item, profileId = null) => {
+    setItemEditor({ mode: "edit", category, id: item.id, name: item.name, tag: item.tag, price: String(item.price), recipe: item.recipe.map((r) => ({ ...r })), image: item.image || null, profileId });
     setRecipeDraftIng("");
     setRecipeDraftQty("");
   };
   const closeItemEditor = () => setItemEditor(null);
+  const MAX_ITEM_PHOTO_SOURCE_BYTES = 8 * 1024 * 1024; // source file cap, before it gets downscaled for storage
+  const handleItemPhotoFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      flashNotice(t("notice_logoInvalidType"));
+      return;
+    }
+    if (file.size > MAX_ITEM_PHOTO_SOURCE_BYTES) {
+      flashNotice(t("notice_menuScanTooLarge"));
+      return;
+    }
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      setItemEditor((p) => (p ? { ...p, image: dataUrl } : p));
+    } catch (e) {
+      flashNotice(t("notice_logoInvalidType"));
+    }
+  };
 
   const addRecipeLine = () => {
     if (!recipeDraftIng || !recipeDraftQty || Number(recipeDraftQty) <= 0) {
@@ -4666,25 +4910,82 @@ function POSPrototype({ tenantId }) {
   };
 
   const saveItemEditor = () => {
-    const { mode, category, id, name, tag, price, recipe } = itemEditor;
+    const { mode, category, id, name, tag, price, recipe, image, profileId } = itemEditor;
     if (!name.trim() || !price || Number(price) <= 0) {
       flashNotice("Give the item a name and a valid price");
       return;
     }
-    const itemData = { id: mode === "new" ? newId("item") : id, name: name.trim(), tag: tag.trim(), price: Number(price), recipe };
-    setMenu((prev) => {
-      const list = prev[category] || [];
-      const nextList = mode === "new" ? [...list, itemData] : list.map((it) => (it.id === id ? itemData : it));
-      return { ...prev, [category]: nextList };
-    });
+    const itemData = { id: mode === "new" ? newId("item") : id, name: name.trim(), tag: tag.trim(), price: Number(price), recipe, image: image || null };
+    if (profileId) {
+      setMenuProfiles((prev) =>
+        prev.map((p) => {
+          if (p.id !== profileId) return p;
+          const list = (p.extraItems || {})[category] || [];
+          const nextList = mode === "new" ? [...list, itemData] : list.map((it) => (it.id === id ? itemData : it));
+          return { ...p, extraItems: { ...p.extraItems, [category]: nextList } };
+        })
+      );
+    } else {
+      setMenu((prev) => {
+        const list = prev[category] || [];
+        const nextList = mode === "new" ? [...list, itemData] : list.map((it) => (it.id === id ? itemData : it));
+        return { ...prev, [category]: nextList };
+      });
+    }
     flashNotice(mode === "new" ? t("notice_itemAdded", { name: itemData.name }) : t("notice_itemUpdated", { name: itemData.name }));
     closeItemEditor();
   };
-  const deleteMenuItem = (category, item) => {
+  const deleteMenuItem = (category, item, profileId = null) => {
     setConfirmDialog({
       message: t("confirm_removeMenuItem", { name: item.name }),
-      onConfirm: () => setMenu((prev) => ({ ...prev, [category]: prev[category].filter((it) => it.id !== item.id) })),
+      onConfirm: () => {
+        if (profileId) {
+          setMenuProfiles((prev) =>
+            prev.map((p) => (p.id === profileId ? { ...p, extraItems: { ...p.extraItems, [category]: ((p.extraItems || {})[category] || []).filter((it) => it.id !== item.id) } } : p))
+          );
+        } else {
+          setMenu((prev) => ({ ...prev, [category]: prev[category].filter((it) => it.id !== item.id) }));
+        }
+      },
     });
+  };
+  // Menu profiles CRUD — see the effectiveMenu/findMenuItemAnywhere note above for how a profile
+  // relates to the base menu.
+  const createMenuProfile = () => {
+    const name = newProfileName.trim();
+    if (!name) {
+      flashNotice(t("notice_giveProfileName"));
+      return;
+    }
+    const profile = { id: newId("profile"), name, priceOverrides: {}, extraItems: {} };
+    setMenuProfiles((prev) => [...prev, profile]);
+    setNewProfileName("");
+    setManagingProfileId(profile.id);
+    flashNotice(t("notice_profileCreated", { name }));
+  };
+  const renameMenuProfile = (profileId, name) => {
+    setMenuProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, name } : p)));
+  };
+  const deleteMenuProfile = (profile) => {
+    setConfirmDialog({
+      message: t("confirm_deleteMenuProfile", { name: profile.name }),
+      onConfirm: () => {
+        setMenuProfiles((prev) => prev.filter((p) => p.id !== profile.id));
+        if (activeMenuProfile === profile.id) setActiveMenuProfile(null);
+        if (managingProfileId === profile.id) setManagingProfileId(null);
+      },
+    });
+  };
+  const setProfilePriceOverride = (profileId, itemId, value) => {
+    setMenuProfiles((prev) =>
+      prev.map((p) => {
+        if (p.id !== profileId) return p;
+        const next = { ...p.priceOverrides };
+        if (value === "" || value === null || value === undefined) delete next[itemId];
+        else next[itemId] = Number(value);
+        return { ...p, priceOverrides: next };
+      })
+    );
   };
 
   const MAX_MENU_SCAN_BYTES = 8 * 1024 * 1024;
@@ -5126,6 +5427,7 @@ function POSPrototype({ tenantId }) {
               })
               .map((key) => {
                 const locked = hasFeature("tabAccessControl") && pinGatedTabs.includes(key) && !isManager && !unlockedTabs.has(key);
+                const active = view === key && (key !== "order" || activeMenuProfile === null);
                 return (
                   <button
                     key={key}
@@ -5136,8 +5438,8 @@ function POSPrototype({ tenantId }) {
                       padding: isMobile ? "7px 11px" : "7px 14px",
                       borderRadius: 999,
                       border: "none",
-                      background: view === key ? theme.primary : "transparent",
-                      color: view === key ? "#FBF8F2" : "var(--text-muted)",
+                      background: active ? theme.primary : "transparent",
+                      color: active ? "#FBF8F2" : "var(--text-muted)",
                       fontSize: isMobile ? 12.5 : 13,
                       fontWeight: 500,
                       cursor: "pointer",
@@ -5146,6 +5448,31 @@ function POSPrototype({ tenantId }) {
                     }}
                   >
                     {locked && "🔒 "}{t(`tab_${key}`)}
+                  </button>
+                );
+              })}
+            {hasFeature("menu") &&
+              menuProfiles.map((p) => {
+                const active = view === "order" && activeMenuProfile === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => openMenuProfileTab(p.id)}
+                    className="view-pill"
+                    style={{
+                      padding: isMobile ? "7px 11px" : "7px 14px",
+                      borderRadius: 999,
+                      border: "none",
+                      background: active ? theme.primary : "transparent",
+                      color: active ? "#FBF8F2" : "var(--text-muted)",
+                      fontSize: isMobile ? 12.5 : 13,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {p.name}
                   </button>
                 );
               })}
@@ -5249,7 +5576,7 @@ function POSPrototype({ tenantId }) {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
-              {(menu[active] || []).map((item) => {
+              {(effectiveMenu[active] || []).map((item) => {
                 const badge = servingsBadge(item);
                 const out = rawMaxServings(item) === 0;
                 return (
@@ -5272,9 +5599,7 @@ function POSPrototype({ tenantId }) {
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ width: 34, height: 34, borderRadius: 8, background: "#3A2A2D", color: theme.secondaryLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600, fontFamily: "IBM Plex Mono, monospace" }}>
-                        {initials(item.name)}
-                      </div>
+                      <MenuThumb item={item} />
                       <span style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 14, color: theme.secondary }}>{money(item.price)}</span>
                     </div>
                     <div>
@@ -5285,7 +5610,7 @@ function POSPrototype({ tenantId }) {
                   </button>
                 );
               })}
-              {(menu[active] || []).length === 0 && (
+              {(effectiveMenu[active] || []).length === 0 && (
                 <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noItemsInCategory")}</div>
               )}
             </div>
@@ -5649,6 +5974,79 @@ function POSPrototype({ tenantId }) {
             <button onClick={addCategory} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("addCategory")}</button>
           </div>
 
+          <div style={{ marginBottom: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 18 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 3 }}>{t("priceListsTitle")}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14 }}>{t("priceListsSubtitle")}</div>
+
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <input type="text" value={newProfileName} onChange={(e) => setNewProfileName(e.target.value)} placeholder={t("newProfileNamePlaceholder")} className="field" style={{ flex: 1 }} />
+              <button onClick={createMenuProfile} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("createProfile")}</button>
+            </div>
+
+            {menuProfiles.length === 0 && <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noProfilesYet")}</div>}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {menuProfiles.map((p) => (
+                <div key={p.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <input
+                      type="text"
+                      value={p.name}
+                      onChange={(e) => renameMenuProfile(p.id, e.target.value)}
+                      className="field"
+                      style={{ flex: 1, minWidth: 140, fontWeight: 500 }}
+                    />
+                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                      <button onClick={() => setManagingProfileId(managingProfileId === p.id ? null : p.id)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>
+                        {managingProfileId === p.id ? t("closeManage") : t("managePrices")}
+                      </button>
+                      <button onClick={() => deleteMenuProfile(p)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
+                    </div>
+                  </div>
+
+                  {managingProfileId === p.id && (
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+                      {categories.map((cat) => (
+                        <div key={cat} style={{ marginBottom: 16 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{cat}</div>
+                            <button onClick={() => openNewItem(cat, p.id)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("addExtraItem")}</button>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {(menu[cat] || []).map((item) => (
+                              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5 }}>
+                                <MenuThumb item={item} size={28} />
+                                <span style={{ flex: 1 }}>{item.name}</span>
+                                <span style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "IBM Plex Mono, monospace" }}>{t("baseLabel")} {money(item.price)}</span>
+                                <input
+                                  type="number"
+                                  value={p.priceOverrides[item.id] !== undefined ? p.priceOverrides[item.id] : ""}
+                                  onChange={(e) => setProfilePriceOverride(p.id, item.id, e.target.value)}
+                                  placeholder={String(item.price)}
+                                  className="field"
+                                  style={{ width: 80 }}
+                                />
+                              </div>
+                            ))}
+                            {((p.extraItems || {})[cat] || []).map((item) => (
+                              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, background: "var(--surface)", borderRadius: 6, padding: "6px 8px" }}>
+                                <MenuThumb item={item} size={28} />
+                                <span style={{ flex: 1 }}>{item.name} <span style={{ fontSize: 10.5, color: theme.secondaryLight }}>{t("extraLabel")}</span></span>
+                                <span style={{ fontSize: 11.5, fontFamily: "IBM Plex Mono, monospace", color: theme.secondary }}>{money(item.price)}</span>
+                                <button onClick={() => openEditItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
+                                <button onClick={() => deleteMenuItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
           {categories.map((cat) => (
             <div key={cat} style={{ marginBottom: 26 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -5663,11 +6061,14 @@ function POSPrototype({ tenantId }) {
                 {(menu[cat] || []).map((item) => (
                   <div key={item.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 500 }}>{item.name} <span style={{ color: theme.secondary, fontFamily: "IBM Plex Mono, monospace", fontWeight: 400 }}>{money(item.price)}</span></div>
-                        <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 2 }}>{item.tag}</div>
-                        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 6 }}>
-                          {item.recipe.length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtQty(r.qty)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <MenuThumb item={item} size={40} />
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 500 }}>{item.name} <span style={{ color: theme.secondary, fontFamily: "IBM Plex Mono, monospace", fontWeight: 400 }}>{money(item.price)}</span></div>
+                          <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 2 }}>{item.tag}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 6 }}>
+                            {item.recipe.length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtQty(r.qty)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
+                          </div>
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -5687,6 +6088,22 @@ function POSPrototype({ tenantId }) {
               <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24, width: "100%", maxWidth: 460, maxHeight: "85vh", overflowY: "auto" }}>
                 <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 16 }}>
                   {itemEditor.mode === "new" ? t("addItemToCategory", { category: itemEditor.category }) : t("editItemTitle", { name: itemEditor.name })}
+                </div>
+
+                <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
+                  <MenuThumb item={{ name: itemEditor.name || "?", tag: itemEditor.tag, image: itemEditor.image }} size={56} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <label style={{ fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: `1px solid ${theme.secondary}`, color: theme.secondaryLight, cursor: "pointer" }}>
+                        {itemEditor.image ? t("changePhoto") : t("uploadPhoto")}
+                        <input type="file" accept="image/*" onChange={(e) => handleItemPhotoFile(e.target.files?.[0])} style={{ display: "none" }} />
+                      </label>
+                      {itemEditor.image && (
+                        <button onClick={() => setItemEditor((p) => ({ ...p, image: null }))} style={{ fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("removePhoto")}</button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: "var(--text-faint)" }}>{itemEditor.image ? t("photoUploadedHint") : t("suggestedPhotoHint")}</div>
+                  </div>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
@@ -6717,6 +7134,19 @@ function POSPrototype({ tenantId }) {
                               <span>{p.net < 0 ? t("deliveryReconciliationOwedToAgent") : t("deliveryReconciliationOwed")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(Math.abs(p.net))}</span>
                             </div>
                           </div>
+                          {p.orderList.some((r) => r.customer?.address) && (
+                            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed var(--border)" }}>
+                              <div style={{ fontSize: 10.5, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 5 }}>{t("deliveryAddressesLabel")}</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                {p.orderList.map((r) => (
+                                  <div key={r.id} style={{ fontSize: 11.5, color: "var(--text-muted)", display: "flex", gap: 6 }}>
+                                    <span style={{ color: "var(--text-faint)", flexShrink: 0 }}>#{r.ticketNo}</span>
+                                    <span>{r.customer?.address || t("noAddressOnFile")}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                           <button
                             onClick={() => settleDeliveryCash(p)}
                             style={{ marginTop: 10, fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: "#FBF8F2", cursor: "pointer", fontWeight: 600 }}
@@ -8049,6 +8479,7 @@ function CustomerMenuView({ tableId, tenantId }) {
                   return (
                     <div key={item.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "13px 16px", opacity: available ? 1 : 0.6 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                        <MenuThumb item={item} size={44} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 14.5, fontWeight: 500 }}>{item.name}</div>
                           {item.tag && <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 3 }}>{item.tag}</div>}
