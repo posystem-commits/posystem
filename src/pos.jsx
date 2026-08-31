@@ -172,7 +172,7 @@ const STRINGS = {
     changePhoto: "Change photo",
     removePhoto: "Remove photo",
     photoUploadedHint: "This photo shows everywhere this item appears.",
-    suggestedPhotoHint: "Showing a generic placeholder based on the name — upload a real photo any time.",
+    suggestedPhotoHint: "No photo yet — showing the dish's initials until you upload one.",
     priceListsTitle: "Price lists",
     priceListsSubtitle: "Mirror the menu with different pricing for delivery apps, events, or a separate brand — same items and recipes, your prices.",
     newProfileNamePlaceholder: "Price list name (e.g. Talabat)",
@@ -794,7 +794,7 @@ const STRINGS = {
     changePhoto: "تغيير الصورة",
     removePhoto: "إزالة الصورة",
     photoUploadedHint: "تظهر هذه الصورة في كل مكان يظهر فيه هذا الصنف.",
-    suggestedPhotoHint: "تُعرض صورة تقريبية عامة حسب الاسم — يمكنك رفع صورة حقيقية في أي وقت.",
+    suggestedPhotoHint: "لا توجد صورة بعد — يتم عرض الحروف الأولى للطبق حتى ترفع صورة.",
     priceListsTitle: "قوائم الأسعار",
     priceListsSubtitle: "اعكس نفس القائمة بأسعار مختلفة لتطبيقات التوصيل أو المناسبات أو علامة تجارية أخرى — نفس الأصناف والمكونات، بأسعارك أنت.",
     newProfileNamePlaceholder: "اسم قائمة الأسعار (مثال: طلبات)",
@@ -1471,7 +1471,7 @@ don't see mentioned anywhere in this list, or one that's missing for them specif
 that you don't see it and it may not be included in their current plan — don't guess.
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
-- **Menu**: add/edit/delete categories and dishes. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one, or leave it unset and the app shows a generic icon guessed from the dish's name (editable any time); the photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
+- **Menu**: add/edit/delete categories and dishes. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Use +10 restock or the +/- buttons to adjust.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
@@ -1558,44 +1558,6 @@ function initials(name) {
     .join("");
 }
 
-// A generic "photo" suggestion for a menu item that has no real photo uploaded yet — matched
-// by keyword against the item's name/description, bilingual (this app's menus mix English and
-// Arabic item names). Deliberately simple keyword matching, not a real image search, since
-// there's no photo-search API wired into this app — it's a placeholder the owner can replace
-// with an actual uploaded photo at any time, not a claim of a real matched photo.
-const FOOD_EMOJI_RULES = [
-  { emoji: "🍔", kw: ["burger", "برجر"] },
-  { emoji: "🍕", kw: ["pizza", "بيتزا"] },
-  { emoji: "🌯", kw: ["shawarma", "شاورما", "wrap", "kebab", "كباب"] },
-  { emoji: "🥙", kw: ["crepe", "كريب"] },
-  { emoji: "🍗", kw: ["chicken", "دجاج", "فراخ", "فرخة"] },
-  { emoji: "🥩", kw: ["steak", "sirloin", "lamb", "beef", "لحم", "لحمة", "ستيك", "مشوي"] },
-  { emoji: "🐟", kw: ["fish", "halibut", "salmon", "سمك", "بلطي"] },
-  { emoji: "🦐", kw: ["shrimp", "prawn", "جمبري", "قريدس"] },
-  { emoji: "🦑", kw: ["squid", "calamari", "كاليماري", "أخطبوط", "octopus"] },
-  { emoji: "🍝", kw: ["pasta", "spaghetti", "مكرونة", "سباجتى", "معكرونة", "لازانيا", "lasagna"] },
-  { emoji: "🥗", kw: ["salad", "سلطة"] },
-  { emoji: "🍲", kw: ["soup", "شوربة", "ريزوتو", "risotto"] },
-  { emoji: "🍰", kw: ["cake", "cheesecake", "tart", "كيك", "تارت", "chocolate", "شوكولاتة"] },
-  { emoji: "🍨", kw: ["ice cream", "affogato", "gelato", "آيس كريم", "جيلاتو"] },
-  { emoji: "☕", kw: ["coffee", "espresso", "قهوة", "اسبريسو"] },
-  { emoji: "🍷", kw: ["wine", "نبيذ"] },
-  { emoji: "🍸", kw: ["martini", "cocktail", "كوكتيل"] },
-  { emoji: "🧃", kw: ["juice", "tea", "شاي", "عصير"] },
-  { emoji: "💧", kw: ["water", "مياه", "ماء"] },
-  { emoji: "🍟", kw: ["fries", "potato", "بطاطس"] },
-  { emoji: "🥪", kw: ["sandwich", "سندوتش", "سندوتشات", "سندويتش"] },
-  { emoji: "🍞", kw: ["bread", "خبز"] },
-  { emoji: "🍚", kw: ["rice", "أرز", "رز"] },
-  { emoji: "🍄", kw: ["mushroom", "مشروم", "فطر"] },
-  { emoji: "🧀", kw: ["cheese", "جبنة", "جبن"] },
-];
-const suggestEmojiForItem = (name, tag) => {
-  const text = `${name || ""} ${tag || ""}`.toLowerCase();
-  const found = FOOD_EMOJI_RULES.find((r) => r.kw.some((k) => text.includes(k)));
-  return found ? found.emoji : "🍽️";
-};
-
 // Downscales an uploaded photo client-side before it's stored — a restaurant menu can have
 // well over a hundred items, so storing full-resolution photos per item would balloon the
 // synced menu payload. A small square thumbnail is all any of the surfaces that show it
@@ -1624,18 +1586,17 @@ const resizeImageToDataUrl = (file, maxDim = 240, quality = 0.72) =>
   });
 
 // Shown wherever a menu item appears — a real uploaded photo if there is one, otherwise the
-// keyword-suggested emoji as a placeholder, falling back to initials only if even that yields
-// nothing. No access to per-tenant brand colors here (this renders in both the staff terminal
-// and the customer-facing menu), so it sticks to fixed, theme-independent tones.
+// item's initials as a placeholder. No access to per-tenant brand colors here (this renders in
+// both the staff terminal and the customer-facing menu), so it sticks to fixed, theme-independent
+// tones.
 function MenuThumb({ item, size = 34 }) {
   const base = { width: size, height: size, borderRadius: 8, flexShrink: 0 };
   if (item.image) {
     return <img src={item.image} alt="" style={{ ...base, objectFit: "cover" }} />;
   }
-  const emoji = suggestEmojiForItem(item.name, item.tag);
   return (
-    <div style={{ ...base, background: "#3A2A2D", color: "#D8C39A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: emoji ? size * 0.55 : size * 0.35, fontFamily: "IBM Plex Mono, monospace", fontWeight: 600 }}>
-      {emoji || initials(item.name)}
+    <div style={{ ...base, background: "#3A2A2D", color: "#D8C39A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, fontFamily: "IBM Plex Mono, monospace", fontWeight: 600 }}>
+      {initials(item.name)}
     </div>
   );
 }
