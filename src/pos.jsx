@@ -309,6 +309,10 @@ const STRINGS = {
     locationPlaceholder: "Paste a Google Maps link, or type your address",
     locationHint: "Adds a \"Get directions\" button to your online-ordering link, so customers can navigate straight to you. Open your restaurant in Google Maps, tap Share, and paste the link here — or just type your address.",
     getDirectionsButton: "Get directions",
+    phoneNumberLabel: "Phone number",
+    phoneNumberPlaceholder: "e.g. +20 10 1234 5678",
+    phoneNumberHint: "Adds a \"Call us\" button to your online-ordering link, so customers can call you directly.",
+    callButton: "Call us",
     primaryColorLabel: "Primary color",
     secondaryColorLabel: "Secondary color",
     primaryColorHint: "Used for buttons, the active tab, and key actions.",
@@ -386,6 +390,7 @@ const STRINGS = {
     orderSentTitle: "Order sent!",
     orderSentSubtitle: "Your server will review it shortly and bring it out. You can keep browsing and send another order any time.",
     orderSentOk: "Got it",
+    orderConfirmedBanner: "Your order was confirmed and is being prepared!",
     notice_cartEmpty: "Add at least one item before sending your order",
     notice_orderSendFailed: "Couldn't send your order — check your connection and try again",
     pendingOrdersPill: "{{n}} new order",
@@ -931,6 +936,10 @@ const STRINGS = {
     locationPlaceholder: "الصق رابط خرائط جوجل، أو اكتب عنوانك",
     locationHint: "يضيف زر \"احصل على الاتجاهات\" إلى رابط الطلب عبر الإنترنت، ليتمكن العملاء من الوصول إليك مباشرة. افتح مطعمك في خرائط جوجل، اضغط مشاركة، والصق الرابط هنا — أو اكتب عنوانك فقط.",
     getDirectionsButton: "احصل على الاتجاهات",
+    phoneNumberLabel: "رقم الهاتف",
+    phoneNumberPlaceholder: "مثال: 01012345678",
+    phoneNumberHint: "يضيف زر \"اتصل بنا\" إلى رابط الطلب عبر الإنترنت، ليتمكن العملاء من الاتصال بك مباشرة.",
+    callButton: "اتصل بنا",
     primaryColorLabel: "اللون الأساسي",
     secondaryColorLabel: "اللون الثانوي",
     primaryColorHint: "يُستخدم للأزرار والتبويب النشط والإجراءات الرئيسية.",
@@ -1008,6 +1017,7 @@ const STRINGS = {
     orderSentTitle: "تم إرسال الطلب!",
     orderSentSubtitle: "سيقوم النادل بمراجعته قريبًا وإحضاره. يمكنك متابعة التصفح وإرسال طلب آخر في أي وقت.",
     orderSentOk: "تم",
+    orderConfirmedBanner: "تم تأكيد طلبك وجارٍ تحضيره الآن!",
     notice_cartEmpty: "أضف صنفًا واحدًا على الأقل قبل إرسال طلبك",
     notice_orderSendFailed: "تعذّر إرسال طلبك — تحقق من اتصالك وحاول مرة أخرى",
     pendingOrdersPill: "طلب جديد واحد",
@@ -1452,6 +1462,7 @@ const buildHelpSystemPrompt = (restaurantName, lang) => {
     "payment_wallet", "priceListsTitle", "createProfile", "managePrices", "uploadPhoto",
     "themeLabel", "cashReconciliationTitle", "electronicReconciliationTitle", "deliveryReconciliationTitle",
     "deliveryAddressesLabel", "printShiftReport", "dashboardModeMonth", "dashboardModeDay",
+    "phoneNumberLabel", "callButton", "getDirectionsButton",
   ];
   const glossary = glossaryKeys.map((k) => `- ${S[k]}`).join("\n");
 
@@ -1481,13 +1492,13 @@ that you don't see it and it may not be included in their current plan — don't
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount. "Clock out" ends their shift and shows a recap. Managers additionally see: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard and shift history.
-- **Settings**: restaurant name, logo, primary/secondary brand colors, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
+- **Settings**: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How staff log in
 The app requires clocking in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
 
-## QR code table ordering
-Each table's QR code links to this same app with a table ID in the URL, showing customers a live, view-only menu (items, descriptions, prices — no stock/availability details, by design, for customer privacy) where they can add items and send an order. That order does NOT go straight to the kitchen — it shows up as a "pending order" for staff to review in the Tables view (a badge appears, plus a pill in the header) and must be explicitly Confirmed (which merges it into that table's ticket) or Rejected. This is intentional so staff always have final say before anything hits the kitchen.
+## QR code table ordering and the online-ordering link
+Each table's QR code, and the general online-ordering link, land on the same customer-facing menu with a table ID (or no table ID, for the general link) in the URL, showing customers a live, view-only menu (items, descriptions, prices — no stock/availability details, by design, for customer privacy) where they can add items and send an order. That order does NOT go straight to the kitchen — it shows up as a "pending order" for staff to review in the Tables view (a badge appears, plus a pill in the header) and must be explicitly Confirmed (which merges it into that table's ticket) or Rejected. This is intentional so staff always have final say before anything hits the kitchen. Once staff taps Confirm, the customer's own device — if that page is still open — automatically shows a "Your order was confirmed and is being prepared!" banner within a few seconds, with no action needed from the customer. Rejecting an order does NOT notify the customer automatically — staff need to let them know some other way.
 
 ## Known limitations — mention these proactively if relevant
 - **Printing and QR codes only fully work once this app is deployed to a real, published URL.** If someone is testing inside Claude's chat preview, "Print receipt" and the QR code links won't function — use the "Download" button instead (downloads a receipt/flyer file they can open and print manually), and know that QR codes will start working once the app is actually deployed/published somewhere with a real public URL.
@@ -1918,6 +1929,7 @@ function POSPrototype({ tenantId }) {
   const [primaryColor, setPrimaryColor] = useState(COLORS.burgundy);
   const [secondaryColor, setSecondaryColor] = useState(COLORS.brass);
   const [mapsLink, setMapsLink] = useState(""); // a Google Maps place link, or a plain address — see openInGoogleMaps
+  const [phoneNumber, setPhoneNumber] = useState(""); // shown as a "Call" button on the online-ordering page
   const [brandingLoaded, setBrandingLoaded] = useState(false);
 
   const [vatPercent, setVatPercent] = useState(0);
@@ -2104,6 +2116,7 @@ function POSPrototype({ tenantId }) {
           setPrimaryColor(parsed.primary || theme.primary);
           setSecondaryColor(parsed.secondary || theme.secondary);
           setMapsLink(parsed.mapsLink || "");
+          setPhoneNumber(parsed.phone || "");
         }
       } catch (e) {
         // fall back to defaults already set
@@ -2394,7 +2407,7 @@ function POSPrototype({ tenantId }) {
   };
   const updateRestaurantName = (value) => {
     setRestaurantName(value);
-    persistBranding({ name: value, logo: logoUrl, primary: primaryColor, secondary: secondaryColor, mapsLink });
+    persistBranding({ name: value, logo: logoUrl, primary: primaryColor, secondary: secondaryColor, mapsLink, phone: phoneNumber });
   };
   // The name field persists on every keystroke (see updateRestaurantName above), which would spam
   // the activity log if logged there — instead, capture the value when the field gains focus and
@@ -2410,15 +2423,19 @@ function POSPrototype({ tenantId }) {
   };
   const updatePrimaryColor = (value) => {
     setPrimaryColor(value);
-    persistBranding({ name: restaurantName, logo: logoUrl, primary: value, secondary: secondaryColor, mapsLink });
+    persistBranding({ name: restaurantName, logo: logoUrl, primary: value, secondary: secondaryColor, mapsLink, phone: phoneNumber });
   };
   const updateSecondaryColor = (value) => {
     setSecondaryColor(value);
-    persistBranding({ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: value, mapsLink });
+    persistBranding({ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: value, mapsLink, phone: phoneNumber });
   };
   const updateMapsLink = (value) => {
     setMapsLink(value);
-    persistBranding({ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: secondaryColor, mapsLink: value });
+    persistBranding({ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: secondaryColor, mapsLink: value, phone: phoneNumber });
+  };
+  const updatePhoneNumber = (value) => {
+    setPhoneNumber(value);
+    persistBranding({ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: secondaryColor, mapsLink, phone: value });
   };
 
   const togglePinGatedTab = (key) => {
@@ -2486,7 +2503,7 @@ function POSPrototype({ tenantId }) {
     reader.onload = () => {
       const dataUrl = reader.result;
       setLogoUrl(dataUrl);
-      persistBranding({ name: restaurantName, logo: dataUrl, primary: primaryColor, secondary: secondaryColor, mapsLink });
+      persistBranding({ name: restaurantName, logo: dataUrl, primary: primaryColor, secondary: secondaryColor, mapsLink, phone: phoneNumber });
       flashNotice(t("notice_logoUpdated"));
       logActivity("logo_changed");
     };
@@ -2495,7 +2512,7 @@ function POSPrototype({ tenantId }) {
   };
   const removeLogo = () => {
     setLogoUrl(null);
-    persistBranding({ name: restaurantName, logo: null, primary: primaryColor, secondary: secondaryColor, mapsLink });
+    persistBranding({ name: restaurantName, logo: null, primary: primaryColor, secondary: secondaryColor, mapsLink, phone: phoneNumber });
   };
 
   // Looks up a UI string in the current language, falling back to English, with {{var}}
@@ -2565,7 +2582,11 @@ function POSPrototype({ tenantId }) {
     return tableNames[id] || t("tableNumbered", { n: id });
   };
   const tableIds = useMemo(() => Array.from({ length: tableCount }, (_, i) => String(i + 1)), [tableCount]);
-  const pendingOrdersForTable = (id) => pendingOrders.filter((o) => o.tableId === id);
+  // Confirmed orders are kept around (not removed) so the customer's device can pick up the status
+  // change — see markPendingOrderConfirmed — so every staff-facing view of "what's pending review"
+  // needs to explicitly exclude them.
+  const activePendingOrders = pendingOrders.filter((o) => o.status !== "confirmed");
+  const pendingOrdersForTable = (id) => activePendingOrders.filter((o) => o.tableId === id);
   // How many items are sitting in a given table's in-progress order right now — checks the live
   // top-level cart if it's the currently active table, otherwise its stashed draft.
   const tableItemCount = (id) => {
@@ -2886,6 +2907,25 @@ function POSPrototype({ tenantId }) {
     setPendingOrders(next);
     await syncSet("pending-orders", JSON.stringify(next), true, t("syncLabelOrders"));
   };
+  // Marks an order confirmed instead of removing it outright, so the customer's own device (still
+  // polling this same shared list for its order id) can pick up the status change and show
+  // "confirmed, being prepared" feedback. Confirmed orders older than 30 minutes are pruned on
+  // every write so the list doesn't grow unbounded once nobody's device is polling for them anymore.
+  const markPendingOrderConfirmed = async (orderId) => {
+    let latest;
+    try {
+      const result = await storage.get("pending-orders", true);
+      latest = result?.value ? JSON.parse(result.value) : [];
+    } catch (e) {
+      latest = pendingOrders;
+    }
+    const cutoff = Date.now() - 30 * 60 * 1000;
+    const next = latest
+      .filter((o) => o.status !== "confirmed" || new Date(o.confirmedAt || 0).getTime() > cutoff)
+      .map((o) => (o.id === orderId ? { ...o, status: "confirmed", confirmedAt: new Date().toISOString() } : o));
+    setPendingOrders(next);
+    await syncSet("pending-orders", JSON.stringify(next), true, t("syncLabelOrders"));
+  };
   // Pulls a customer-submitted order's items into that table's ticket. If the table is the one
   // currently open in the Order screen, merges straight into the live cart; otherwise merges into
   // its stashed draft so it's there waiting the next time staff switches to it. Existing lines for
@@ -2963,7 +3003,7 @@ function POSPrototype({ tenantId }) {
       setSaved(false);
       setActiveTableId(targetId);
     }
-    removePendingOrder(order.id);
+    markPendingOrderConfirmed(order.id);
     flashNotice(t("notice_orderConfirmed", { table: tableLabel(targetId) }));
     setView("order");
     setReviewTableId(undefined);
@@ -5480,13 +5520,13 @@ function POSPrototype({ tenantId }) {
               {tCount("syncPendingPill", syncQueue.length)} &middot; {t("retrySync")}
             </button>
           )}
-          {pendingOrders.length > 0 && (
+          {activePendingOrders.length > 0 && (
             <button
-              onClick={() => setReviewTableId(pendingOrders[0].tableId)}
+              onClick={() => setReviewTableId(activePendingOrders[0].tableId)}
               style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, border: "1px solid #C9A24A", background: "rgba(201,162,74,0.15)", color: "#E3C98A", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
             >
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E3C98A", display: "inline-block" }} />
-              {tCount("pendingOrdersPill", pendingOrders.length)}
+              {tCount("pendingOrdersPill", activePendingOrders.length)}
             </button>
           )}
           {checkoutRequests.length > 0 && (
@@ -7884,6 +7924,12 @@ function POSPrototype({ tenantId }) {
               </div>
               )}
 
+              <div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("phoneNumberLabel")}</div>
+                <input type="tel" value={phoneNumber} onChange={(e) => updatePhoneNumber(e.target.value)} placeholder={t("phoneNumberPlaceholder")} className="field" style={{ width: "100%", boxSizing: "border-box" }} />
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("phoneNumberHint")}</div>
+              </div>
+
               <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("primaryColorLabel")}</div>
@@ -8051,6 +8097,7 @@ function CustomerMenuView({ tableId, tenantId }) {
   const [primaryColor, setPrimaryColor] = useState(COLORS.burgundy);
   const [secondaryColor, setSecondaryColor] = useState(COLORS.brass);
   const [mapsLink, setMapsLink] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [categories, setCategories] = useState([]);
   const [menu, setMenu] = useState({});
   const [availability, setAvailability] = useState({}); // { [itemId]: true|false } — boolean only, never raw stock
@@ -8078,6 +8125,8 @@ function CustomerMenuView({ tableId, tenantId }) {
   const [sending, setSending] = useState(false);
   const [justSent, setJustSent] = useState(false);
   const [sendError, setSendError] = useState(false);
+  const [submittedOrderId, setSubmittedOrderId] = useState(null); // this device's last submitted order — polled below for staff confirmation
+  const [orderConfirmed, setOrderConfirmed] = useState(false);
   // Starts optimistic — see the identical reasoning in POSPrototype. navigator.onLine can wrongly
   // report offline inside embedded WebViews (like the Claude mobile app's artifact preview), and
   // here that bug is worse than cosmetic: it was hard-blocking every order submission before even
@@ -8124,6 +8173,7 @@ function CustomerMenuView({ tableId, tenantId }) {
           setPrimaryColor(b.primary || COLORS.burgundy);
           setSecondaryColor(b.secondary || COLORS.brass);
           setMapsLink(b.mapsLink || "");
+          setPhoneNumber(b.phone || "");
         }
         if (menuRes?.value) {
           const m = JSON.parse(menuRes.value);
@@ -8159,6 +8209,31 @@ function CustomerMenuView({ tableId, tenantId }) {
       clearInterval(interval);
     };
   }, []);
+
+  // Once an order's been sent, poll the same shared pending-orders list staff reviews from, to
+  // pick up the moment staff confirms it (see markPendingOrderConfirmed in POSPrototype) — that's
+  // how the "order confirmed, being prepared" feedback below reaches this device without the
+  // customer needing to do anything.
+  useEffect(() => {
+    if (!submittedOrderId) return;
+    let cancelled = false;
+    const checkStatus = async () => {
+      try {
+        const result = await storage.get("pending-orders", true);
+        const list = result?.value ? JSON.parse(result.value) : [];
+        const mine = list.find((o) => o.id === submittedOrderId);
+        if (!cancelled && mine?.status === "confirmed") setOrderConfirmed(true);
+      } catch (e) {
+        // offline or a transient failure — just retry on the next tick
+      }
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 8000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [submittedOrderId, storage]);
 
   const t = (key, vars) => {
     const template = (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.en[key] || key;
@@ -8241,6 +8316,8 @@ function CustomerMenuView({ tableId, tenantId }) {
       setIsOnline(true); // it just worked — whatever the flag said before, we're clearly connected
       setCart({});
       setJustSent(true);
+      setOrderConfirmed(false);
+      setSubmittedOrderId(order.id);
     } catch (e) {
       setIsOnline(false);
       setSendError(true);
@@ -8342,15 +8419,39 @@ function CustomerMenuView({ tableId, tenantId }) {
           </div>
         </div>
 
-        {isGeneralLink && buildMapsHref(mapsLink) && (
-          <a
-            href={buildMapsHref(mapsLink)}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, padding: "8px 14px", borderRadius: 999, border: `1px solid ${theme.secondary}`, color: theme.secondaryLight, fontSize: 12.5, fontWeight: 600, textDecoration: "none" }}
-          >
-            📍 {t("getDirectionsButton")}
-          </a>
+        {orderConfirmed && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 10, padding: "12px 16px", borderRadius: 10, border: "1px solid #4E7A47", background: "rgba(159,203,142,0.15)", color: "#9FCB8E" }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>✅ {t("orderConfirmedBanner")}</div>
+            <button
+              onClick={() => { setOrderConfirmed(false); setSubmittedOrderId(null); }}
+              style={{ background: "none", border: "none", color: "#9FCB8E", cursor: "pointer", fontSize: 16, lineHeight: 1, flexShrink: 0 }}
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
+        {isGeneralLink && (buildMapsHref(mapsLink) || phoneNumber.trim()) && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+            {buildMapsHref(mapsLink) && (
+              <a
+                href={buildMapsHref(mapsLink)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, border: `1px solid ${theme.secondary}`, color: theme.secondaryLight, fontSize: 12.5, fontWeight: 600, textDecoration: "none" }}
+              >
+                📍 {t("getDirectionsButton")}
+              </a>
+            )}
+            {phoneNumber.trim() && (
+              <a
+                href={`tel:${phoneNumber.replace(/[^\d+]/g, "")}`}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, border: `1px solid ${theme.secondary}`, color: theme.secondaryLight, fontSize: 12.5, fontWeight: 600, textDecoration: "none" }}
+              >
+                📞 {t("callButton")}
+              </a>
+            )}
+          </div>
         )}
 
         {isGeneralLink && (
