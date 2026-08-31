@@ -5429,51 +5429,52 @@ function POSPrototype({ tenantId }) {
                 const locked = hasFeature("tabAccessControl") && pinGatedTabs.includes(key) && !isManager && !unlockedTabs.has(key);
                 const active = view === key && (key !== "order" || activeMenuProfile === null);
                 return (
-                  <button
-                    key={key}
-                    onClick={() => handleTabClick(key)}
-                    className="view-pill"
-                    title={locked ? t("gatedTabTooltip") : undefined}
-                    style={{
-                      padding: isMobile ? "7px 11px" : "7px 14px",
-                      borderRadius: 999,
-                      border: "none",
-                      background: active ? theme.primary : "transparent",
-                      color: active ? "#FBF8F2" : "var(--text-muted)",
-                      fontSize: isMobile ? 12.5 : 13,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {locked && "🔒 "}{t(`tab_${key}`)}
-                  </button>
-                );
-              })}
-            {hasFeature("menu") &&
-              menuProfiles.map((p) => {
-                const active = view === "order" && activeMenuProfile === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => openMenuProfileTab(p.id)}
-                    className="view-pill"
-                    style={{
-                      padding: isMobile ? "7px 11px" : "7px 14px",
-                      borderRadius: 999,
-                      border: "none",
-                      background: active ? theme.primary : "transparent",
-                      color: active ? "#FBF8F2" : "var(--text-muted)",
-                      fontSize: isMobile ? 12.5 : 13,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {p.name}
-                  </button>
+                  <React.Fragment key={key}>
+                    <button
+                      onClick={() => handleTabClick(key)}
+                      className="view-pill"
+                      title={locked ? t("gatedTabTooltip") : undefined}
+                      style={{
+                        padding: isMobile ? "7px 11px" : "7px 14px",
+                        borderRadius: 999,
+                        border: "none",
+                        background: active ? theme.primary : "transparent",
+                        color: active ? "#FBF8F2" : "var(--text-muted)",
+                        fontSize: isMobile ? 12.5 : 13,
+                        fontWeight: 500,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {locked && "🔒 "}{t(`tab_${key}`)}
+                    </button>
+                    {key === "order" &&
+                      menuProfiles.map((p) => {
+                        const profileActive = view === "order" && activeMenuProfile === p.id;
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => openMenuProfileTab(p.id)}
+                            className="view-pill"
+                            style={{
+                              padding: isMobile ? "7px 11px" : "7px 14px",
+                              borderRadius: 999,
+                              border: "none",
+                              background: profileActive ? theme.primary : "transparent",
+                              color: profileActive ? "#FBF8F2" : "var(--text-muted)",
+                              fontSize: isMobile ? 12.5 : 13,
+                              fontWeight: 500,
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                  </React.Fragment>
                 );
               })}
           </div>
