@@ -510,7 +510,6 @@ const STRINGS = {
     dashboardModeMonth: "Month",
     dashboardModeDay: "Day",
     dashboardModeRange: "Range",
-    rangeToLabel: "to",
     periodRevenueLabel: "Revenue",
     periodOrdersLabel: "Orders",
     todayRevenue: "Today's revenue",
@@ -1141,7 +1140,6 @@ const STRINGS = {
     dashboardModeMonth: "شهر",
     dashboardModeDay: "يوم",
     dashboardModeRange: "فترة",
-    rangeToLabel: "إلى",
     periodRevenueLabel: "الإيرادات",
     periodOrdersLabel: "الطلبات",
     todayRevenue: "إيرادات اليوم",
@@ -1645,6 +1643,79 @@ const monthKeysInRange = (startStr, endStr) => {
 };
 const formatShortDate = (dateStr, isRtl) =>
   new Date(`${dateStr}T00:00:00Z`).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+// A full 6-week (42-day) grid for the given "YYYY-MM" month, starting on the Sunday on/before the
+// 1st — enough to always fully cover the month regardless of which weekday it starts on.
+const monthGridDays = (viewMonthKey) => {
+  const [y, m] = viewMonthKey.split("-").map(Number);
+  const firstOfMonth = new Date(Date.UTC(y, m - 1, 1));
+  const gridStart = new Date(firstOfMonth);
+  gridStart.setUTCDate(gridStart.getUTCDate() - firstOfMonth.getUTCDay());
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(gridStart);
+    d.setUTCDate(gridStart.getUTCDate() + i);
+    return { dateStr: d.toISOString().slice(0, 10), day: d.getUTCDate(), inMonth: d.getUTCMonth() === m - 1 };
+  });
+};
+
+// A small popover calendar for picking a start/end day pair — used by the dashboard's custom
+// range filter instead of two separate native date inputs, which are fiddlier to use for picking
+// two related dates. Purely a rendering+navigation component: the actual start/end state and the
+// "which end am I picking next" logic live in the parent (POSPrototype), passed in via props, so
+// this can stay a plain controlled component without its own copy of the selection to keep in sync.
+function DateRangeCalendar({ startDate, endDate, maxDate, isRtl, theme, onPickDay }) {
+  const [viewMonth, setViewMonth] = useState(endDate.slice(0, 7));
+  const locale = isRtl ? "ar-EG" : "en-US";
+  const monthLabel = new Date(`${viewMonth}-01T00:00:00Z`).toLocaleDateString(locale, { month: "long", year: "numeric", timeZone: "UTC" });
+  // Jan 1 2023 was a Sunday — an arbitrary known Sunday to read weekday names off of, in order.
+  const weekdayLabels = Array.from({ length: 7 }, (_, i) => new Date(Date.UTC(2023, 0, 1 + i)).toLocaleDateString(locale, { weekday: "narrow", timeZone: "UTC" }));
+  const atMaxMonth = viewMonth >= maxDate.slice(0, 7);
+  const shiftMonth = (delta) => {
+    const [y, m] = viewMonth.split("-").map(Number);
+    setViewMonth(new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 7));
+  };
+  return (
+    <div onClick={(e) => e.stopPropagation()} style={{ background: "#FFFFFF", border: "1px solid #D8D0BE", borderRadius: 10, padding: 14, width: 264, boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <button type="button" onClick={() => shiftMonth(-1)} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 15, padding: 4 }}>{isRtl ? "›" : "‹"}</button>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: "#111" }}>{monthLabel}</div>
+        <button type="button" onClick={() => !atMaxMonth && shiftMonth(1)} disabled={atMaxMonth} style={{ background: "none", border: "none", color: atMaxMonth ? "#C9C4B8" : "#555", cursor: atMaxMonth ? "default" : "pointer", fontSize: 15, padding: 4 }}>{isRtl ? "‹" : "›"}</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
+        {weekdayLabels.map((w, i) => (
+          <div key={i} style={{ textAlign: "center", fontSize: 9.5, color: "#8A8578", fontWeight: 600 }}>{w}</div>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+        {monthGridDays(viewMonth).map((c) => {
+          const disabled = c.dateStr > maxDate;
+          const inRange = c.dateStr >= startDate && c.dateStr <= endDate;
+          const isEdge = c.dateStr === startDate || c.dateStr === endDate;
+          return (
+            <button
+              type="button"
+              key={c.dateStr}
+              onClick={() => !disabled && onPickDay(c.dateStr)}
+              disabled={disabled}
+              style={{
+                aspectRatio: "1",
+                border: "none",
+                borderRadius: isEdge ? 999 : 6,
+                background: isEdge ? theme.primary : inRange ? "rgba(176,141,87,0.22)" : "transparent",
+                color: disabled ? "#C9C4B8" : isEdge ? "#FBF8F2" : !c.inMonth ? "#B8B2A2" : "#222",
+                fontSize: 11.5,
+                fontWeight: isEdge ? 700 : 400,
+                cursor: disabled ? "default" : "pointer",
+                fontFamily: "IBM Plex Mono, monospace",
+              }}
+            >
+              {c.day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 const escapeHtml = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1861,6 +1932,8 @@ function POSPrototype({ tenantId }) {
   const [dashboardDay, setDashboardDay] = useState(null); // "YYYY-MM-DD", defaults to today once known
   const [dashboardRangeStart, setDashboardRangeStart] = useState(null); // "YYYY-MM-DD", defaults to 7 days before the end
   const [dashboardRangeEnd, setDashboardRangeEnd] = useState(null); // "YYYY-MM-DD", defaults to today once known
+  const [dashboardRangePickerOpen, setDashboardRangePickerOpen] = useState(false);
+  const [dashboardRangePickingEnd, setDashboardRangePickingEnd] = useState(false); // whether the next calendar click sets the end day (vs. starting a fresh range)
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [editingReceiptId, setEditingReceiptId] = useState(null);
   const [editDraftItems, setEditDraftItems] = useState([]);
@@ -3944,6 +4017,20 @@ function POSPrototype({ tenantId }) {
   const rawRangeStart = dashboardRangeStart || addDaysStr(rawRangeEnd, -6);
   const effectiveDashboardRangeStart = rawRangeStart <= rawRangeEnd ? rawRangeStart : rawRangeEnd;
   const effectiveDashboardRangeEnd = rawRangeStart <= rawRangeEnd ? rawRangeEnd : rawRangeStart;
+  // Airbnb-style two-click picking: the first click on the calendar starts a fresh single-day
+  // range, the second extends it into an end day (or, if it lands before the start, restarts the
+  // range from there instead) and closes the popover.
+  const handleDashboardRangeDayClick = (dateStr) => {
+    if (!dashboardRangePickingEnd || dateStr < effectiveDashboardRangeStart) {
+      setDashboardRangeStart(dateStr);
+      setDashboardRangeEnd(dateStr);
+      setDashboardRangePickingEnd(true);
+    } else {
+      setDashboardRangeEnd(dateStr);
+      setDashboardRangePickingEnd(false);
+      setDashboardRangePickerOpen(false);
+    }
+  };
   const dashboardActiveMonthKey = dashboardMode === "day" ? effectiveDashboardDay.slice(0, 7) : effectiveDashboardMonth;
   const dashboardRangeMonthKeys = dashboardMode === "range" ? monthKeysInRange(effectiveDashboardRangeStart, effectiveDashboardRangeEnd) : [];
   const dashboardMonthDataLoaded = dashboardMode === "range"
@@ -6839,25 +6926,32 @@ function POSPrototype({ tenantId }) {
                 style={{ colorScheme: "dark" }}
               />
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input
-                  type="date"
-                  value={effectiveDashboardRangeStart}
-                  max={effectiveDashboardRangeEnd}
-                  onChange={(e) => e.target.value && setDashboardRangeStart(e.target.value)}
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => {
+                    setDashboardRangePickingEnd(false);
+                    setDashboardRangePickerOpen((v) => !v);
+                  }}
                   className="field"
-                  style={{ colorScheme: "dark" }}
-                />
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("rangeToLabel")}</span>
-                <input
-                  type="date"
-                  value={effectiveDashboardRangeEnd}
-                  min={effectiveDashboardRangeStart}
-                  max={new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => e.target.value && setDashboardRangeEnd(e.target.value)}
-                  className="field"
-                  style={{ colorScheme: "dark" }}
-                />
+                  style={{ colorScheme: "dark", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}
+                >
+                  📅 {formatShortDate(effectiveDashboardRangeStart, isRtl)} – {formatShortDate(effectiveDashboardRangeEnd, isRtl)}
+                </button>
+                {dashboardRangePickerOpen && (
+                  <>
+                    <div style={{ position: "fixed", inset: 0, zIndex: 59 }} onClick={() => setDashboardRangePickerOpen(false)} />
+                    <div style={{ position: "absolute", top: "calc(100% + 6px)", [isRtl ? "right" : "left"]: 0, zIndex: 60 }}>
+                      <DateRangeCalendar
+                        startDate={effectiveDashboardRangeStart}
+                        endDate={effectiveDashboardRangeEnd}
+                        maxDate={new Date().toISOString().slice(0, 10)}
+                        isRtl={isRtl}
+                        theme={theme}
+                        onPickDay={handleDashboardRangeDayClick}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
