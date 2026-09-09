@@ -506,9 +506,11 @@ const STRINGS = {
 
     tab_dashboard: "Dashboard",
     dashboardTitle: "Dashboard",
-    dashboardSubtitle: "A snapshot of how the business is doing — pick a day or a month below.",
+    dashboardSubtitle: "A snapshot of how the business is doing — pick a day, a month, or a custom range below.",
     dashboardModeMonth: "Month",
     dashboardModeDay: "Day",
+    dashboardModeRange: "Range",
+    rangeToLabel: "to",
     periodRevenueLabel: "Revenue",
     periodOrdersLabel: "Orders",
     todayRevenue: "Today's revenue",
@@ -523,7 +525,9 @@ const STRINGS = {
     revenueTrendTitle: "Revenue this month",
     revenueTrendTitleMonth: "Revenue by day",
     revenueTrendTitleDay: "Revenue by hour",
+    revenueTrendTitleRange: "Revenue by day",
     bestDayLabel: "Best day so far: day {{day}} — {{amount}}",
+    bestDateLabel: "Best day so far: {{date}} — {{amount}}",
     bestHourLabel: "Best hour: {{time}} — {{amount}}",
     topSellersTitle: "Top sellers",
     noSalesYetDashboard: "No completed orders in this period.",
@@ -1133,9 +1137,11 @@ const STRINGS = {
 
     tab_dashboard: "لوحة المعلومات",
     dashboardTitle: "لوحة المعلومات",
-    dashboardSubtitle: "نظرة سريعة على أداء العمل — اختر يومًا أو شهرًا أدناه.",
+    dashboardSubtitle: "نظرة سريعة على أداء العمل — اختر يومًا أو شهرًا أو فترة مخصصة أدناه.",
     dashboardModeMonth: "شهر",
     dashboardModeDay: "يوم",
+    dashboardModeRange: "فترة",
+    rangeToLabel: "إلى",
     periodRevenueLabel: "الإيرادات",
     periodOrdersLabel: "الطلبات",
     todayRevenue: "إيرادات اليوم",
@@ -1150,7 +1156,9 @@ const STRINGS = {
     revenueTrendTitle: "إيرادات هذا الشهر",
     revenueTrendTitleMonth: "الإيرادات حسب اليوم",
     revenueTrendTitleDay: "الإيرادات حسب الساعة",
+    revenueTrendTitleRange: "الإيرادات حسب اليوم",
     bestDayLabel: "أفضل يوم حتى الآن: يوم {{day}} — {{amount}}",
+    bestDateLabel: "أفضل يوم حتى الآن: {{date}} — {{amount}}",
     bestHourLabel: "أفضل ساعة: {{time}} — {{amount}}",
     topSellersTitle: "الأكثر مبيعًا",
     noSalesYetDashboard: "لا توجد طلبات مكتملة في هذه الفترة.",
@@ -1461,7 +1469,7 @@ const buildHelpSystemPrompt = (restaurantName, lang) => {
     "confirmOrder", "rejectOrder", "openTicket", "cancelOrder", "refundOrder",
     "payment_wallet", "priceListsTitle", "createProfile", "managePrices", "uploadPhoto",
     "themeLabel", "cashReconciliationTitle", "electronicReconciliationTitle", "deliveryReconciliationTitle",
-    "deliveryAddressesLabel", "printShiftReport", "dashboardModeMonth", "dashboardModeDay",
+    "deliveryAddressesLabel", "printShiftReport", "dashboardModeMonth", "dashboardModeDay", "dashboardModeRange",
     "phoneNumberLabel", "callButton", "getDirectionsButton",
   ];
   const glossary = glossaryKeys.map((k) => `- ${S[k]}`).join("\n");
@@ -1488,7 +1496,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Delivery**: shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
 - **Receipts**: monthly order history. Cancel (restores stock, use when an order never went out), Refund (stock stays deducted, use when it was already served), or Edit a saved order. Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
-- **Dashboard** (manager-only): revenue, orders, average order value, net profit (revenue minus logged expenses), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month or by a single Day using the toggle and date picker at the top, so it isn't locked to "this month."
+- **Dashboard** (manager-only): revenue, orders, average order value, net profit (revenue minus logged expenses), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month, by a single Day, or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month."
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount. "Clock out" ends their shift and shows a recap. Managers additionally see: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard and shift history.
@@ -1614,6 +1622,29 @@ function MenuThumb({ item, size = 34 }) {
 
 const money = (n) => `${n.toFixed(2)} EGP`;
 const fmtQty = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+
+// Pure date-string helpers for the dashboard's custom day-range filter — operate on "YYYY-MM-DD"
+// strings via UTC arithmetic so they're immune to local-timezone/DST off-by-one bugs, unlike doing
+// this with local Date getters.
+const addDaysStr = (dateStr, n) => {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+const monthKeysInRange = (startStr, endStr) => {
+  const [sy, sm] = startStr.split("-").map(Number);
+  const [ey, em] = endStr.split("-").map(Number);
+  const keys = [];
+  let y = sy, m = sm;
+  while (y < ey || (y === ey && m <= em)) {
+    keys.push(`${y}-${String(m).padStart(2, "0")}`);
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return keys;
+};
+const formatShortDate = (dateStr, isRtl) =>
+  new Date(`${dateStr}T00:00:00Z`).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 const escapeHtml = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1825,9 +1856,11 @@ function POSPrototype({ tenantId }) {
   // Dashboard's own period selector — deliberately separate from selectedMonth above (which
   // belongs to the Receipts tab) so picking a month to review receipts doesn't also change what
   // the dashboard is showing, and vice versa.
-  const [dashboardMode, setDashboardMode] = useState("month"); // "month" | "day"
+  const [dashboardMode, setDashboardMode] = useState("month"); // "month" | "day" | "range"
   const [dashboardMonth, setDashboardMonth] = useState(null); // "YYYY-MM", defaults to the current month once known
   const [dashboardDay, setDashboardDay] = useState(null); // "YYYY-MM-DD", defaults to today once known
+  const [dashboardRangeStart, setDashboardRangeStart] = useState(null); // "YYYY-MM-DD", defaults to 7 days before the end
+  const [dashboardRangeEnd, setDashboardRangeEnd] = useState(null); // "YYYY-MM-DD", defaults to today once known
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [editingReceiptId, setEditingReceiptId] = useState(null);
   const [editDraftItems, setEditDraftItems] = useState([]);
@@ -3051,6 +3084,18 @@ function POSPrototype({ tenantId }) {
     ensureMonthLoaded(monthKey);
     ensureExpenseMonthLoaded(monthKey);
   }, [dashboardMode, dashboardMonth, dashboardDay]);
+  // A custom day range can span multiple months (or years), unlike the single-month/single-day
+  // modes above — every month touched by the selected range needs its own fetch.
+  useEffect(() => {
+    if (dashboardMode !== "range") return;
+    const end = dashboardRangeEnd || new Date().toISOString().slice(0, 10);
+    const start = dashboardRangeStart || addDaysStr(end, -6);
+    const [s, e] = start <= end ? [start, end] : [end, start];
+    monthKeysInRange(s, e).forEach((mk) => {
+      ensureMonthLoaded(mk);
+      ensureExpenseMonthLoaded(mk);
+    });
+  }, [dashboardMode, dashboardRangeStart, dashboardRangeEnd]);
 
   // Tracks connectivity and retries failed writes automatically once back online. Restaurant-wide
   // data now lives in a real tenant-scoped Postgres table via lib/tenantStorage.js (see
@@ -3893,17 +3938,36 @@ function POSPrototype({ tenantId }) {
   // loaded eagerly at startup.
   const effectiveDashboardMonth = dashboardMonth || thisMonthKey();
   const effectiveDashboardDay = dashboardDay || new Date().toISOString().slice(0, 10);
+  // A custom range clamps to (start <= end) regardless of which end the manager last edited, so
+  // the two date pickers can never silently produce an inverted, empty-looking period.
+  const rawRangeEnd = dashboardRangeEnd || new Date().toISOString().slice(0, 10);
+  const rawRangeStart = dashboardRangeStart || addDaysStr(rawRangeEnd, -6);
+  const effectiveDashboardRangeStart = rawRangeStart <= rawRangeEnd ? rawRangeStart : rawRangeEnd;
+  const effectiveDashboardRangeEnd = rawRangeStart <= rawRangeEnd ? rawRangeEnd : rawRangeStart;
   const dashboardActiveMonthKey = dashboardMode === "day" ? effectiveDashboardDay.slice(0, 7) : effectiveDashboardMonth;
-  const dashboardMonthDataLoaded = receiptsByMonth[dashboardActiveMonthKey] !== undefined;
+  const dashboardRangeMonthKeys = dashboardMode === "range" ? monthKeysInRange(effectiveDashboardRangeStart, effectiveDashboardRangeEnd) : [];
+  const dashboardMonthDataLoaded = dashboardMode === "range"
+    ? dashboardRangeMonthKeys.every((mk) => receiptsByMonth[mk] !== undefined)
+    : receiptsByMonth[dashboardActiveMonthKey] !== undefined;
 
-  const dashboardMonthReceiptsAll = (receiptsByMonth[dashboardActiveMonthKey] || []).filter((r) => r.status === "completed");
+  const dashboardMonthReceiptsAll = (dashboardMode === "range"
+    ? dashboardRangeMonthKeys.flatMap((mk) => receiptsByMonth[mk] || [])
+    : receiptsByMonth[dashboardActiveMonthKey] || []
+  ).filter((r) => r.status === "completed");
   const dashboardReceipts = dashboardMode === "day"
     ? dashboardMonthReceiptsAll.filter((r) => r.timestamp.slice(0, 10) === effectiveDashboardDay)
+    : dashboardMode === "range"
+    ? dashboardMonthReceiptsAll.filter((r) => { const d = r.timestamp.slice(0, 10); return d >= effectiveDashboardRangeStart && d <= effectiveDashboardRangeEnd; })
     : dashboardMonthReceiptsAll;
 
-  const dashboardExpensesAll = expensesByMonth[dashboardActiveMonthKey] || [];
-  const dashboardExpenseTotal = (dashboardMode === "day" ? dashboardExpensesAll.filter((e) => e.date === effectiveDashboardDay) : dashboardExpensesAll)
-    .reduce((s, e) => s + e.amount, 0);
+  const dashboardExpensesAll = dashboardMode === "range"
+    ? dashboardRangeMonthKeys.flatMap((mk) => expensesByMonth[mk] || [])
+    : expensesByMonth[dashboardActiveMonthKey] || [];
+  const dashboardExpenseTotal = (
+    dashboardMode === "day" ? dashboardExpensesAll.filter((e) => e.date === effectiveDashboardDay)
+    : dashboardMode === "range" ? dashboardExpensesAll.filter((e) => e.date >= effectiveDashboardRangeStart && e.date <= effectiveDashboardRangeEnd)
+    : dashboardExpensesAll
+  ).reduce((s, e) => s + e.amount, 0);
 
   const dashboardPeriodRevenue = dashboardReceipts.reduce((s, r) => s + r.total, 0);
   const dashboardPeriodOrders = dashboardReceipts.length;
@@ -3911,9 +3975,9 @@ function POSPrototype({ tenantId }) {
   const netProfit = dashboardPeriodRevenue - dashboardExpenseTotal;
   const dashboardDiscountTotal = dashboardReceipts.reduce((s, r) => s + (r.discountAmount || 0), 0);
 
-  // Trend chart: a bar per day when viewing a whole month, a bar per hour when viewing a single
-  // day (a single day has no "days" of its own to chart, so hour-of-day is the useful breakdown
-  // instead — also doubles as a simple peak-hours read for staffing).
+  // Trend chart: a bar per day when viewing a whole month or a custom range, a bar per hour when
+  // viewing a single day (a single day has no "days" of its own to chart, so hour-of-day is the
+  // useful breakdown instead — also doubles as a simple peak-hours read for staffing).
   const daysInDashboardMonth = (() => {
     const [y, m] = dashboardActiveMonthKey.split("-").map(Number);
     return dashboardActiveMonthKey === thisMonthKey() ? new Date().getDate() : new Date(y, m, 0).getDate();
@@ -3926,7 +3990,17 @@ function POSPrototype({ tenantId }) {
     key: h,
     total: dashboardReceipts.filter((r) => new Date(r.timestamp).getHours() === h).reduce((s, r) => s + r.total, 0),
   }));
-  const trendBars = dashboardMode === "day" ? hourlyRevenue : dailyRevenue;
+  const rangeDailyRevenue = (() => {
+    if (dashboardMode !== "range") return [];
+    const bars = [];
+    let day = effectiveDashboardRangeStart;
+    while (day <= effectiveDashboardRangeEnd) {
+      bars.push({ key: day, total: dashboardMonthReceiptsAll.filter((r) => r.timestamp.slice(0, 10) === day).reduce((s, r) => s + r.total, 0) });
+      day = addDaysStr(day, 1);
+    }
+    return bars;
+  })();
+  const trendBars = dashboardMode === "day" ? hourlyRevenue : dashboardMode === "range" ? rangeDailyRevenue : dailyRevenue;
   const maxTrendValue = Math.max(1, ...trendBars.map((b) => b.total));
   const bestTrendBar = trendBars.reduce((best, b) => (b.total > best.total ? b : best), { key: null, total: 0 });
 
@@ -6739,6 +6813,12 @@ function POSPrototype({ tenantId }) {
               >
                 {t("dashboardModeDay")}
               </button>
+              <button
+                onClick={() => setDashboardMode("range")}
+                style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${dashboardMode === "range" ? theme.secondary : "var(--border)"}`, background: dashboardMode === "range" ? "rgba(176,141,87,0.18)" : "transparent", color: dashboardMode === "range" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+              >
+                {t("dashboardModeRange")}
+              </button>
             </div>
             {dashboardMode === "month" ? (
               <input
@@ -6749,7 +6829,7 @@ function POSPrototype({ tenantId }) {
                 className="field"
                 style={{ colorScheme: "dark" }}
               />
-            ) : (
+            ) : dashboardMode === "day" ? (
               <input
                 type="date"
                 value={effectiveDashboardDay}
@@ -6758,6 +6838,27 @@ function POSPrototype({ tenantId }) {
                 className="field"
                 style={{ colorScheme: "dark" }}
               />
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="date"
+                  value={effectiveDashboardRangeStart}
+                  max={effectiveDashboardRangeEnd}
+                  onChange={(e) => e.target.value && setDashboardRangeStart(e.target.value)}
+                  className="field"
+                  style={{ colorScheme: "dark" }}
+                />
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("rangeToLabel")}</span>
+                <input
+                  type="date"
+                  value={effectiveDashboardRangeEnd}
+                  min={effectiveDashboardRangeStart}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => e.target.value && setDashboardRangeEnd(e.target.value)}
+                  className="field"
+                  style={{ colorScheme: "dark" }}
+                />
+              </div>
             )}
           </div>
 
@@ -6788,11 +6889,13 @@ function POSPrototype({ tenantId }) {
 
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 18, marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{t(dashboardMode === "day" ? "revenueTrendTitleDay" : "revenueTrendTitleMonth")}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{t(dashboardMode === "day" ? "revenueTrendTitleDay" : dashboardMode === "range" ? "revenueTrendTitleRange" : "revenueTrendTitleMonth")}</div>
               {bestTrendBar.key !== null && bestTrendBar.total > 0 && (
                 <div style={{ fontSize: 11.5, color: theme.secondaryLight }}>
                   {dashboardMode === "day"
                     ? t("bestHourLabel", { time: formatHour(bestTrendBar.key), amount: money(bestTrendBar.total) })
+                    : dashboardMode === "range"
+                    ? t("bestDateLabel", { date: formatShortDate(bestTrendBar.key, isRtl), amount: money(bestTrendBar.total) })
                     : t("bestDayLabel", { day: bestTrendBar.key, amount: money(bestTrendBar.total) })}
                 </div>
               )}
@@ -6803,20 +6906,22 @@ function POSPrototype({ tenantId }) {
               <>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: trendBars.length > 20 ? 2 : 4, height: 110 }}>
                   {trendBars.map((b) => (
-                    <div key={b.key} title={dashboardMode === "day" ? `${formatHour(b.key)}: ${money(b.total)}` : `${t("expenseDate")} ${b.key}: ${money(b.total)}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
+                    <div key={b.key} title={dashboardMode === "day" ? `${formatHour(b.key)}: ${money(b.total)}` : dashboardMode === "range" ? `${formatShortDate(b.key, isRtl)}: ${money(b.total)}` : `${t("expenseDate")} ${b.key}: ${money(b.total)}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
                       <div style={{ background: b.key === bestTrendBar.key && b.total > 0 ? theme.primary : b.total > 0 ? theme.secondary : "var(--track)", borderRadius: "3px 3px 0 0", height: `${Math.max(2, (b.total / maxTrendValue) * 100)}%`, transition: "height .2s ease" }} />
                     </div>
                   ))}
                 </div>
                 <div style={{ display: "flex", gap: trendBars.length > 20 ? 2 : 4, marginTop: 6 }}>
-                  {trendBars.map((b) => {
+                  {trendBars.map((b, i) => {
                     const interval = dashboardMode === "day" ? 6 : trendBars.length <= 10 ? 1 : trendBars.length <= 20 ? 2 : 5;
                     const showLabel = dashboardMode === "day"
                       ? b.key === 0 || b.key === trendBars.length - 1 || b.key % interval === 0
+                      : dashboardMode === "range"
+                      ? i === 0 || i === trendBars.length - 1 || i % interval === 0
                       : b.key === 1 || b.key === trendBars.length || b.key % interval === 0;
                     return (
                       <div key={b.key} style={{ flex: 1, textAlign: "center", fontSize: 9, color: "#6B6F78", fontFamily: "IBM Plex Mono, monospace" }}>
-                        {showLabel ? b.key : ""}
+                        {showLabel ? (dashboardMode === "range" ? formatShortDate(b.key, isRtl) : b.key) : ""}
                       </div>
                     );
                   })}
