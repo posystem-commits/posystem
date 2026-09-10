@@ -602,6 +602,13 @@ const STRINGS = {
     registerTotals: "Register totals (all staff)",
     clockOut: "Clock out",
     confirm_clockOut: "Clock out now? This ends your shift.",
+    viewingModeTitle: "Just viewing",
+    viewingModeSubtitle: "You're signed in to check the system without an active shift — nothing here counts toward shift stats or the shift log.",
+    exitViewMode: "Exit",
+    loginModeChoiceTitle: "Welcome, {{name}}",
+    loginModeChoiceSubtitle: "Are you clocking in to work a shift, or just checking the system?",
+    loginClockInOption: "Clock in for a shift",
+    loginViewOnlyOption: "Just view — no shift",
     shiftRecapTitle: "Nice work, {{name}}!",
     shiftRecapHours: "{{hours}} worked",
     avgOrderValue: "Avg order value",
@@ -1243,6 +1250,13 @@ const STRINGS = {
     registerTotals: "إجمالي الصندوق (كل الموظفين)",
     clockOut: "تسجيل الانصراف",
     confirm_clockOut: "تسجيل الانصراف الآن؟ سينهي هذا ورديتك.",
+    viewingModeTitle: "معاينة فقط",
+    viewingModeSubtitle: "أنت مسجّل دخول لمتابعة النظام بدون وردية نشطة — لا شيء هنا يُحتسب ضمن إحصاءات الورديات أو سجلّها.",
+    exitViewMode: "خروج",
+    loginModeChoiceTitle: "أهلاً، {{name}}",
+    loginModeChoiceSubtitle: "هل تسجّل حضورك للعمل في وردية، أم تريد فقط متابعة النظام؟",
+    loginClockInOption: "تسجيل حضور لوردية",
+    loginViewOnlyOption: "معاينة فقط — بدون وردية",
     shiftRecapTitle: "عمل رائع، {{name}}!",
     shiftRecapHours: "{{hours}} من العمل",
     avgOrderValue: "متوسط قيمة الطلب",
@@ -1491,6 +1505,7 @@ const buildHelpSystemPrompt = (restaurantName, lang) => {
     "themeLabel", "cashReconciliationTitle", "electronicReconciliationTitle", "deliveryReconciliationTitle",
     "deliveryAddressesLabel", "printShiftReport", "dashboardModeMonth", "dashboardModeDay", "dashboardModeRange",
     "phoneNumberLabel", "callButton", "getDirectionsButton", "shiftHoursTitle",
+    "loginClockInOption", "loginViewOnlyOption", "exitViewMode",
   ];
   const glossary = glossaryKeys.map((k) => `- ${S[k]}`).join("\n");
 
@@ -1523,7 +1538,9 @@ that you don't see it and it may not be included in their current plan — don't
 - **Settings**: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How staff log in
-The app requires clocking in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
+The app requires signing in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
+
+After a manager's PIN is accepted, they're asked "Clock in for a shift" or "Just view — no shift" (regular staff skip this and clock in directly, since orders need someone actually on shift to attribute to). "Just view" signs them in normally — they see everything a manager normally sees — but starts no shift: it never appears in shift stats, the shift log, or cash/electronic reconciliation, and their exit button just says "Exit" instead of "Clock out" (no shift to end, no confirmation). This is for a manager checking the system remotely (e.g., from their phone) without it looking like they worked a shift. Which employee is signed in (and whether that's a real shift or just-viewing) is stored per-device/browser, not shared — logging in as different people on different devices at the same time already works with no need to clock anyone out first.
 
 ## QR code table ordering and the online-ordering link
 Each table's QR code, and the general online-ordering link, land on the same customer-facing menu with a table ID (or no table ID, for the general link) in the URL, showing customers a live, view-only menu (items, descriptions, prices — no stock/availability details, by design, for customer privacy) where they can add items and send an order. That order does NOT go straight to the kitchen — it shows up as a "pending order" for staff to review in the Tables view (a badge appears, plus a pill in the header) and must be explicitly Confirmed (which merges it into that table's ticket) or Rejected. This is intentional so staff always have final say before anything hits the kitchen. Once staff taps Confirm, the customer's own device — if that page is still open — automatically shows a "Your order was confirmed and is being prepared!" banner within a few seconds, with no action needed from the customer. Rejecting an order does NOT notify the customer automatically — staff need to let them know some other way.
@@ -2041,8 +2058,10 @@ function POSPrototype({ tenantId }) {
   useEffect(() => {
     rosterLoadFailedRef.current = rosterLoadFailed;
   }, [rosterLoadFailed]);
-  const [currentEmployee, setCurrentEmployee] = useState(null); // {id, name} | null — who's clocked in on this device
+  const [currentEmployee, setCurrentEmployee] = useState(null); // {id, name} | null — who's clocked in (or just viewing — see viewingOnly) on this device
   const [currentEmployeeLoaded, setCurrentEmployeeLoaded] = useState(false);
+  const [viewingOnly, setViewingOnly] = useState(false); // manager checking the system from their phone, e.g. — signed in but not on shift, so it never touches shift stats
+  const [pendingManagerLogin, setPendingManagerLogin] = useState(null); // a manager whose PIN just verified, waiting on their Clock in / Just view choice
   const [shiftLog, setShiftLog] = useState([]); // shared history of completed shifts
   const [shiftLogLoaded, setShiftLogLoaded] = useState(false);
   const [loginSelectedId, setLoginSelectedId] = useState(null);
@@ -2210,16 +2229,25 @@ function POSPrototype({ tenantId }) {
         const emp = empResult?.value ? JSON.parse(empResult.value) : null;
         setCurrentEmployee(emp);
         if (emp) {
-          const result = await storage.get("shift-start", false);
-          setShiftStart(result?.value || new Date().toISOString());
-          const floatResult = await storage.get("opening-float", false);
-          setOpeningFloat(floatResult?.value || "0");
+          const viewingResult = await storage.get("viewing-only", false);
+          const isViewingOnly = viewingResult?.value === "true";
+          setViewingOnly(isViewingOnly);
+          if (isViewingOnly) {
+            setShiftStart(null);
+          } else {
+            const result = await storage.get("shift-start", false);
+            setShiftStart(result?.value || new Date().toISOString());
+            const floatResult = await storage.get("opening-float", false);
+            setOpeningFloat(floatResult?.value || "0");
+          }
         } else {
           setShiftStart(null);
+          setViewingOnly(false);
         }
       } catch (e) {
         setCurrentEmployee(null);
         setShiftStart(null);
+        setViewingOnly(false);
       } finally {
         setShiftLoaded(true);
         setCurrentEmployeeLoaded(true);
@@ -4920,6 +4948,7 @@ function POSPrototype({ tenantId }) {
   const doClockIn = async (emp) => {
     const now = new Date().toISOString();
     setCurrentEmployee({ id: emp.id, name: emp.name });
+    setViewingOnly(false);
     setShiftStart(now);
     setOpeningFloat("0");
     setCountedCash("");
@@ -4930,12 +4959,41 @@ function POSPrototype({ tenantId }) {
     setLoginAddMode(false);
     setLoginNewName("");
     setLoginNewPin("");
+    setPendingManagerLogin(null);
     // Login itself always works offline (it's just checking the PIN against the roster already
     // in memory) — only the "remember this session" writes can fail, and those are non-critical
     // enough to just queue quietly rather than block the person from getting to work.
     syncSet("current-employee", JSON.stringify({ id: emp.id, name: emp.name }), false, t("syncLabelSettings"));
     syncSet("shift-start", now, false, t("syncLabelSettings"));
     syncSet("opening-float", "0", false, t("syncLabelSettings"));
+    storage.delete("viewing-only", false).catch(() => {});
+  };
+  // A manager checking the system without actually working a shift — from their phone, say. Signs
+  // them in (so role-gated tabs and "who's using this device" still work normally) but skips
+  // shift-start entirely, so none of the shift/cash-reconciliation machinery ever engages and
+  // nothing about this session shows up in shift stats or the shift log.
+  const viewWithoutClockIn = (emp) => {
+    setCurrentEmployee({ id: emp.id, name: emp.name });
+    setViewingOnly(true);
+    setShiftStart(null);
+    setLoginSelectedId(null);
+    setLoginPin("");
+    setLoginError(false);
+    setLoginAddMode(false);
+    setLoginNewName("");
+    setLoginNewPin("");
+    setPendingManagerLogin(null);
+    syncSet("current-employee", JSON.stringify({ id: emp.id, name: emp.name }), false, t("syncLabelSettings"));
+    syncSet("viewing-only", "true", false, t("syncLabelSettings"));
+  };
+  // Leaves a viewing-only session — no shift to end, so unlike clockOut this needs no confirmation
+  // and writes nothing to the shift log.
+  const exitViewingMode = () => {
+    setCurrentEmployee(null);
+    setViewingOnly(false);
+    setShiftStart(null);
+    storage.delete("current-employee", false).catch(() => {});
+    storage.delete("viewing-only", false).catch(() => {});
   };
   const updateOpeningFloat = (value) => {
     setOpeningFloat(value);
@@ -4949,7 +5007,15 @@ function POSPrototype({ tenantId }) {
       setLoginPin("");
       return;
     }
-    doClockIn(emp);
+    // Only managers get the "just viewing" choice — regular staff are here to work, and orders/
+    // shift reconciliation need someone actually on shift to attribute to.
+    if ((emp.role || "manager") !== "staff") {
+      setPendingManagerLogin(emp);
+      setLoginSelectedId(null);
+      setLoginPin("");
+    } else {
+      doClockIn(emp);
+    }
   };
   const addEmployeeFromLogin = async () => {
     const name = loginNewName.trim();
@@ -5612,6 +5678,16 @@ function POSPrototype({ tenantId }) {
               <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 18, lineHeight: 1.5 }}>{t("rosterLoadFailedHint")}</div>
               <button onClick={retryRosterLoad} style={{ padding: "10px 20px", borderRadius: 8, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("retrySync")}</button>
             </div>
+          ) : pendingManagerLogin ? (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{t("loginModeChoiceTitle", { name: pendingManagerLogin.name })}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 22, lineHeight: 1.5 }}>{t("loginModeChoiceSubtitle")}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <button onClick={() => doClockIn(pendingManagerLogin)} style={{ padding: "13px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("loginClockInOption")}</button>
+                <button onClick={() => viewWithoutClockIn(pendingManagerLogin)} style={{ padding: "13px 0", borderRadius: 8, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("loginViewOnlyOption")}</button>
+                <button onClick={() => setPendingManagerLogin(null)} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("loginBackToNames")}</button>
+              </div>
+            </div>
           ) : employees.length === 0 || loginAddMode ? (
             <div>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, fontFamily: "Fraunces, serif", textAlign: "center" }}>{t("loginWelcome")}</div>
@@ -5854,7 +5930,11 @@ function POSPrototype({ tenantId }) {
           <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 24, fontSize: isMobile ? 12 : 13, color: "var(--text-muted)", flexWrap: "wrap" }}>
             <span>{t("orderingForLabel")} <b style={{ color: "var(--text-primary)", fontWeight: 500 }}>{tableLabel(activeTableId)}</b></span>
             {!isMobile && hasFeature("staff") && <span>{t("serverLabel")} <b style={{ color: "var(--text-primary)", fontWeight: 500 }}>{currentEmployee?.name}</b></span>}
-            {hasFeature("shift") && <button onClick={clockOut} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("clockOut")}</button>}
+            {hasFeature("shift") && (
+              viewingOnly
+                ? <button onClick={exitViewingMode} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("exitViewMode")}</button>
+                : <button onClick={clockOut} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("clockOut")}</button>
+            )}
           </div>
         </div>
       </div>
@@ -7330,7 +7410,16 @@ function POSPrototype({ tenantId }) {
         </div>
       )}
 
-      {view === "shift" && (
+      {view === "shift" && viewingOnly && (
+        <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 620 }}>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("viewingModeTitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("viewingModeSubtitle")}</div>
+          </div>
+          <button onClick={exitViewingMode} style={{ width: "100%", padding: "13px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("exitViewMode")}</button>
+        </div>
+      )}
+      {view === "shift" && !viewingOnly && (
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 620 }}>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("yourShift")}</div>
