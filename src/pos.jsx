@@ -218,6 +218,7 @@ const STRINGS = {
     orderCount_plural: "{{n}} orders",
     loadingMonth: "Loading {{month}}…",
     noSavedOrdersForMonth: "No saved orders for {{month}}.",
+    noSavedOrdersForPeriod: "No saved orders for this period.",
     ticketHash: "Ticket #{{n}}",
     cancelledBadge: "Cancelled · stock restored",
     refundedBadge: "Refunded · stock kept",
@@ -858,6 +859,7 @@ const STRINGS = {
     orderCount_plural: "{{n}} طلبات",
     loadingMonth: "جارٍ تحميل {{month}}…",
     noSavedOrdersForMonth: "لا توجد طلبات محفوظة لشهر {{month}}.",
+    noSavedOrdersForPeriod: "لا توجد طلبات محفوظة لهذه الفترة.",
     ticketHash: "فاتورة رقم {{n}}",
     cancelledBadge: "ملغى · تمت استعادة المخزون",
     refundedBadge: "مُسترجع · تم الاحتفاظ بالمخزون",
@@ -1512,7 +1514,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Use +10 restock or the +/- buttons to adjust.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
-- **Receipts**: monthly order history. Cancel (restores stock, use when an order never went out), Refund (stock stays deducted, use when it was already served), or Edit a saved order. Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
+- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out), Refund (stock stays deducted, use when it was already served), or Edit a saved order. Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
 - **Dashboard** (manager-only): revenue, orders, average order value, net profit (revenue minus logged expenses), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month, by a single Day, or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
@@ -1920,6 +1922,8 @@ function POSPrototype({ tenantId }) {
   const ticketCounterRef = useRef({ date: null, next: 1 }); // { date: "YYYY-MM-DD", next: number } — resets each day, shared across every terminal
   const [ticketCounterLoaded, setTicketCounterLoaded] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false); // guards saveOrder against a fast double-click/tap re-submitting the same cart as two orders
+  const [confirmingTablePayment, setConfirmingTablePayment] = useState(false); // same guard as savingOrder, for confirmTablePayment's own button
   const [notice, setNotice] = useState(null);
   // Starts optimistic rather than trusting navigator.onLine's initial snapshot — that API is
   // notoriously unreliable inside embedded WebViews (e.g. the Claude mobile app's artifact
@@ -1970,6 +1974,14 @@ function POSPrototype({ tenantId }) {
   const [monthKeys, setMonthKeys] = useState([]);
   const [monthsLoaded, setMonthsLoaded] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(null);
+  // Receipts tab's own Month/Day/Range toggle, mirroring the Dashboard's (see below) — separate
+  // state so picking a period here doesn't also change what the Dashboard is showing.
+  const [receiptsFilterMode, setReceiptsFilterMode] = useState("month"); // "month" | "day" | "range"
+  const [receiptsFilterDay, setReceiptsFilterDay] = useState(null);
+  const [receiptsFilterRangeStart, setReceiptsFilterRangeStart] = useState(null);
+  const [receiptsFilterRangeEnd, setReceiptsFilterRangeEnd] = useState(null);
+  const [receiptsRangePickerOpen, setReceiptsRangePickerOpen] = useState(false);
+  const [receiptsRangePickingEnd, setReceiptsRangePickingEnd] = useState(false);
 
   // Dashboard's own period selector — deliberately separate from selectedMonth above (which
   // belongs to the Receipts tab) so picking a month to review receipts doesn't also change what
@@ -2970,7 +2982,8 @@ function POSPrototype({ tenantId }) {
   // does for the actively-open table, but sourced from the table's tab (shared or local) rather
   // than requiring staff to switch to that table in the Order screen first.
   const confirmTablePayment = async () => {
-    if (!payTableModal) return;
+    if (!payTableModal || confirmingTablePayment) return;
+    setConfirmingTablePayment(true);
     const { tableId, items, paymentMethod, splitAmounts: tableSplitAmounts } = payTableModal;
 
     const modalSubtotalForValidation = items.reduce((s, i) => s + i.price * i.qty, 0);
@@ -2986,6 +2999,7 @@ function POSPrototype({ tenantId }) {
       const splitSum = splitPayments.reduce((s, sp) => s + sp.amount, 0);
       if (splitPayments.length < 2 || Math.abs(splitSum - modalGrandTotal) > 0.01) {
         flashNotice(t("notice_splitPaymentMismatch", { amount: money(modalGrandTotal) }));
+        setConfirmingTablePayment(false);
         return;
       }
     }
@@ -3063,6 +3077,7 @@ function POSPrototype({ tenantId }) {
 
     flashNotice(t("notice_paymentConfirmed", { table: tableLabel(tableId) }));
     setPayTableModal(null);
+    setConfirmingTablePayment(false);
   };
 
   // Removes an order from the shared pending-orders list. Re-reads the list right before writing
@@ -3208,9 +3223,24 @@ function POSPrototype({ tenantId }) {
     return list;
   };
 
+  // Receipts tab: which month(s) to fetch depends on its own Month/Day/Range toggle, widened one
+  // month either side the same way the Dashboard's loading effects are (see businessDateForTimestamp
+  // — a receipt's business date can spill into a neighboring month's storage bucket).
   useEffect(() => {
-    if (selectedMonth) ensureMonthLoaded(selectedMonth);
-  }, [selectedMonth]);
+    if (receiptsFilterMode === "range") {
+      const end = receiptsFilterRangeEnd || new Date().toISOString().slice(0, 10);
+      const start = receiptsFilterRangeStart || addDaysStr(end, -6);
+      const [s, e] = start <= end ? [start, end] : [end, start];
+      const reportingKeys = monthKeysInRange(s, e);
+      const storageKeys = new Set(reportingKeys.flatMap((mk) => [prevMonthKey(mk), mk, nextMonthKey(mk)]));
+      storageKeys.forEach((mk) => ensureMonthLoaded(mk));
+      return;
+    }
+    const monthKey = receiptsFilterMode === "day"
+      ? (receiptsFilterDay || new Date().toISOString().slice(0, 10)).slice(0, 7)
+      : selectedMonth || thisMonthKey();
+    [prevMonthKey(monthKey), monthKey, nextMonthKey(monthKey)].forEach((mk) => ensureMonthLoaded(mk));
+  }, [receiptsFilterMode, selectedMonth, receiptsFilterDay, receiptsFilterRangeStart, receiptsFilterRangeEnd]);
   useEffect(() => {
     ensureMonthLoaded(thisMonthKey());
   }, []);
@@ -3372,6 +3402,23 @@ function POSPrototype({ tenantId }) {
     if (existing === undefined) existing = await ensureMonthLoaded(monthKey);
     return persistMonth(monthKey, [receipt, ...existing]);
   };
+  // Resolves and updates a receipt directly in its own real storage month, rather than assuming
+  // it's whichever month happens to be currently selected in the Receipts tab — needed now that
+  // Receipts, like the Dashboard, can show a day/range whose business dates (see
+  // businessDateForTimestamp) spill into a neighboring month's storage bucket.
+  const updateReceiptInStorage = (r, updater) => {
+    const monthKey = new Date(r.timestamp).toISOString().slice(0, 7);
+    const list = receiptsByMonth[monthKey] || [];
+    persistMonth(monthKey, list.map((x) => (x.id === r.id ? updater(x) : x)));
+  };
+  // Shared by Dashboard and Receipts: widens a set of "reporting" months by one month either side,
+  // then filters receipts from that wider pool back down to exactly the reporting months by their
+  // real business date — see the note on dashboardStorageMonthKeys for why the widening is needed.
+  const storageMonthKeysFor = (reportingMonthKeys) => Array.from(new Set(reportingMonthKeys.flatMap((mk) => [prevMonthKey(mk), mk, nextMonthKey(mk)])));
+  const receiptsForReportingMonths = (reportingMonthKeys, extraFilter = () => true) =>
+    storageMonthKeysFor(reportingMonthKeys)
+      .flatMap((mk) => receiptsByMonth[mk] || [])
+      .filter((r) => reportingMonthKeys.includes(businessDateForTimestamp(r.timestamp, shiftHoursConfig).slice(0, 7)) && extraFilter(r));
 
   // --- Expenses (mirrors the receipts monthly-storage pattern above, but shared across
   // terminals rather than personal — a supplier payment logged on one device should be visible
@@ -3781,7 +3828,12 @@ function POSPrototype({ tenantId }) {
   };
 
   const saveOrder = async () => {
-    if (cart.length === 0) return;
+    // savingOrder stays true from here through the 1.1s "Saved" window below (reset alongside the
+    // rest of the form there) — closes the window where a fast double-click/tap, or someone
+    // unsure their first tap registered, would otherwise re-run this on the same still-populated
+    // cart and save the same order twice.
+    if (cart.length === 0 || savingOrder) return;
+    setSavingOrder(true);
     const finalTicketNo = ensureTicketNo();
 
     const splitPayments = paymentMethod === "split"
@@ -3791,6 +3843,7 @@ function POSPrototype({ tenantId }) {
       const splitSum = splitPayments.reduce((s, sp) => s + sp.amount, 0);
       if (splitPayments.length < 2 || Math.abs(splitSum - total) > 0.01) {
         flashNotice(t("notice_splitPaymentMismatch", { amount: money(total) }));
+        setSavingOrder(false);
         return;
       }
     }
@@ -3879,6 +3932,7 @@ function POSPrototype({ tenantId }) {
       setOrderEta(fresh.orderEta);
       setTicketNo(fresh.ticketNo);
       setSaved(false);
+      setSavingOrder(false);
       // Free up this table (or Takeaway/Delivery slot) now that its order has been placed —
       // otherwise switching away and back would restore the just-saved cart as if still open.
       const key = activeTableId === null ? "takeaway" : activeTableId;
@@ -4058,10 +4112,46 @@ function POSPrototype({ tenantId }) {
   const formatHour = (h) => new Date(2000, 0, 1, h).toLocaleTimeString("en-US", { hour: "numeric" });
   const availableMonths = useMemo(() => Array.from(new Set([thisMonthKey(), ...monthKeys])).sort().reverse(), [monthKeys]);
   const currentMonth = selectedMonth || thisMonthKey();
-  const monthReceipts = receiptsByMonth[currentMonth] || [];
-  const monthRevenue = monthReceipts.filter((r) => r.status === "completed").reduce((s, r) => s + r.total, 0);
-  const monthUnpaid = monthReceipts.filter((r) => r.status === "completed" && r.paid === false);
-  const monthUnpaidTotal = monthUnpaid.reduce((s, r) => s + r.total, 0);
+  // Receipts tab: Month/Day/Range filtering, mirroring the Dashboard's own (see
+  // dashboardReportingMonthKeys) — Month mode keeps using the dropdown above (only months that
+  // actually have data); Day and Range pick their own period independent of it, exactly like the
+  // Dashboard's equivalent modes.
+  const effectiveReceiptsDay = receiptsFilterDay || new Date().toISOString().slice(0, 10);
+  const rawReceiptsRangeEnd = receiptsFilterRangeEnd || new Date().toISOString().slice(0, 10);
+  const rawReceiptsRangeStart = receiptsFilterRangeStart || addDaysStr(rawReceiptsRangeEnd, -6);
+  const effectiveReceiptsRangeStart = rawReceiptsRangeStart <= rawReceiptsRangeEnd ? rawReceiptsRangeStart : rawReceiptsRangeEnd;
+  const effectiveReceiptsRangeEnd = rawReceiptsRangeStart <= rawReceiptsRangeEnd ? rawReceiptsRangeEnd : rawReceiptsRangeStart;
+  const handleReceiptsRangeDayClick = (dateStr) => {
+    if (!receiptsRangePickingEnd || dateStr < effectiveReceiptsRangeStart) {
+      setReceiptsFilterRangeStart(dateStr);
+      setReceiptsFilterRangeEnd(dateStr);
+      setReceiptsRangePickingEnd(true);
+    } else {
+      setReceiptsFilterRangeEnd(dateStr);
+      setReceiptsRangePickingEnd(false);
+      setReceiptsRangePickerOpen(false);
+    }
+  };
+  const receiptsReportingMonthKeys = receiptsFilterMode === "range"
+    ? monthKeysInRange(effectiveReceiptsRangeStart, effectiveReceiptsRangeEnd)
+    : receiptsFilterMode === "day"
+    ? [effectiveReceiptsDay.slice(0, 7)]
+    : [currentMonth];
+  const receiptsStorageMonthKeys = storageMonthKeysFor(receiptsReportingMonthKeys);
+  const receiptsDataLoaded = receiptsStorageMonthKeys.every((mk) => receiptsByMonth[mk] !== undefined);
+  // Every status, unlike the Dashboard (which only counts completed sales) — Receipts is a full
+  // history, cancellations and refunds included.
+  const receiptsPoolAll = receiptsForReportingMonths(receiptsReportingMonthKeys);
+  const filteredReceipts = (
+    receiptsFilterMode === "day"
+      ? receiptsPoolAll.filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === effectiveReceiptsDay)
+      : receiptsFilterMode === "range"
+      ? receiptsPoolAll.filter((r) => { const bd = businessDateForTimestamp(r.timestamp, shiftHoursConfig); return bd >= effectiveReceiptsRangeStart && bd <= effectiveReceiptsRangeEnd; })
+      : receiptsPoolAll
+  ).sort((a, b) => (a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0)); // newest first — the widened, multi-month pool above isn't naturally in this order
+  const receiptsListRevenue = filteredReceipts.filter((r) => r.status === "completed").reduce((s, r) => s + r.total, 0);
+  const receiptsListUnpaid = filteredReceipts.filter((r) => r.status === "completed" && r.paid === false);
+  const receiptsListUnpaidTotal = receiptsListUnpaid.reduce((s, r) => s + r.total, 0);
 
   const availableExpenseMonths = useMemo(() => Array.from(new Set([thisMonthKey(), ...expenseMonthKeys])).sort().reverse(), [expenseMonthKeys]);
   const currentExpenseMonth = selectedExpenseMonth || thisMonthKey();
@@ -4104,19 +4194,13 @@ function POSPrototype({ tenantId }) {
   };
   const dashboardActiveMonthKey = dashboardMode === "day" ? effectiveDashboardDay.slice(0, 7) : effectiveDashboardMonth;
   const dashboardReportingMonthKeys = dashboardMode === "range" ? monthKeysInRange(effectiveDashboardRangeStart, effectiveDashboardRangeEnd) : [dashboardActiveMonthKey];
-  // Receipts are filed by their real save-time month, but a receipt's *business* date (see
-  // businessDateForTimestamp) can fall a day — and therefore a month, right at a boundary —
-  // earlier than that. Scanning one month either side of every reporting month, then filtering by
-  // actual business date below, means a late-night receipt is never missed just because it
-  // physically lives in the neighboring month's storage bucket. Expenses have no such ambiguity
-  // (their date is picked explicitly, not derived from a timestamp), so they stay scoped to
-  // exactly the reporting months.
-  const dashboardStorageMonthKeys = Array.from(new Set(dashboardReportingMonthKeys.flatMap((mk) => [prevMonthKey(mk), mk, nextMonthKey(mk)])));
+  // Expenses have no business-date ambiguity (their date is picked explicitly, not derived from a
+  // timestamp), so they stay scoped to exactly the reporting months — see receiptsForReportingMonths
+  // for why receipts need the wider net.
+  const dashboardStorageMonthKeys = storageMonthKeysFor(dashboardReportingMonthKeys);
   const dashboardMonthDataLoaded = dashboardStorageMonthKeys.every((mk) => receiptsByMonth[mk] !== undefined);
 
-  const dashboardMonthReceiptsAll = dashboardStorageMonthKeys
-    .flatMap((mk) => receiptsByMonth[mk] || [])
-    .filter((r) => r.status === "completed" && dashboardReportingMonthKeys.includes(businessDateForTimestamp(r.timestamp, shiftHoursConfig).slice(0, 7)));
+  const dashboardMonthReceiptsAll = receiptsForReportingMonths(dashboardReportingMonthKeys, (r) => r.status === "completed");
   const dashboardReceipts = dashboardMode === "day"
     ? dashboardMonthReceiptsAll.filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === effectiveDashboardDay)
     : dashboardMode === "range"
@@ -4363,12 +4447,12 @@ function POSPrototype({ tenantId }) {
   const cancelReceipt = (r) => {
     if (r.status !== "completed") return;
     r.items.forEach((it) => (it.recipeSnapshot || []).forEach((rec) => updateIngredientStock(rec.ingredientId, rec.qty * it.qty)));
-    persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? { ...x, status: "cancelled" } : x)));
+    updateReceiptInStorage(r, (x) => ({ ...x, status: "cancelled" }));
     flashNotice(t("notice_orderCancelled", { n: r.ticketNo }));
   };
   const refundReceipt = (r) => {
     if (r.status !== "completed") return;
-    persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? { ...x, status: "refunded" } : x)));
+    updateReceiptInStorage(r, (x) => ({ ...x, status: "refunded" }));
     flashNotice(t("notice_orderRefunded", { n: r.ticketNo }));
   };
 
@@ -4458,15 +4542,12 @@ function POSPrototype({ tenantId }) {
     }
 
     const logEntry = { status: statusId, sentAt: new Date().toISOString(), phone: receipt.customer?.phone, silent: sentSilently };
-    persistMonth(
-      currentMonth,
-      monthReceipts.map((x) => (x.id === receipt.id ? { ...x, whatsappLog: [...(x.whatsappLog || x.smsLog || []), logEntry] } : x))
-    );
+    updateReceiptInStorage(receipt, (x) => ({ ...x, whatsappLog: [...(x.whatsappLog || x.smsLog || []), logEntry] }));
   };
 
   const updateFulfillmentStatus = (r, statusId) => {
     const updated = { ...r, fulfillmentStatus: statusId };
-    persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? updated : x)));
+    updateReceiptInStorage(r, () => updated);
     flashNotice(t("notice_orderMarked", { n: r.ticketNo, status: t(`status_${statusId}`) }));
     const statusDef = FULFILLMENT_STATUSES.find((s) => s.id === statusId);
     if (statusDef?.whatsapp) sendWhatsAppUpdate(updated, statusId);
@@ -4476,7 +4557,7 @@ function POSPrototype({ tenantId }) {
   // separate from editItemsHistory since it's not a change to what was ordered.
   const assignReceiptTo = (r, member) => {
     const updated = { ...r, assignedTo: member ? { id: member.id, name: member.name, role: member.role } : null };
-    persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? updated : x)));
+    updateReceiptInStorage(r, () => updated);
   };
 
   // Marks a "pay later" order as actually paid, the moment the cash (or card) is actually
@@ -4486,7 +4567,7 @@ function POSPrototype({ tenantId }) {
       message: t("confirm_markOrderPaid", { n: r.ticketNo }),
       onConfirm: () => {
         const updated = { ...r, paid: true, paidAt: new Date().toISOString() };
-        persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? updated : x)));
+        updateReceiptInStorage(r, () => updated);
         flashNotice(t("notice_orderMarkedPaid", { n: r.ticketNo }));
       },
     });
@@ -4572,7 +4653,7 @@ function POSPrototype({ tenantId }) {
       splitPayments: rescaledSplitPayments,
       editHistory: historyEntry ? [historyEntry, ...(r.editHistory || [])] : r.editHistory,
     };
-    persistMonth(currentMonth, monthReceipts.map((x) => (x.id === r.id ? updatedReceipt : x)));
+    updateReceiptInStorage(r, () => updatedReceipt);
     flashNotice(t("notice_orderUpdated", { n: r.ticketNo }));
     cancelEditReceipt();
   };
@@ -6179,8 +6260,8 @@ function POSPrototype({ tenantId }) {
               <button disabled={cart.length === 0} onClick={downloadOrderReceipt} title={t("downloadReceiptTooltip")} style={{ padding: "13px 16px", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "var(--border)" : "var(--border)"}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : "var(--text-muted)", fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
                 {t("download")}
               </button>
-              <button disabled={cart.length === 0} onClick={saveOrder} className="save-btn" style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: "none", background: cart.length === 0 ? "#4A2C33" : paidNow ? theme.primary : "#8A6A2E", color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.6 : 1 }}>
-                {paidNow ? t("saveOrder") : t("saveOrderUnpaid")}
+              <button disabled={cart.length === 0 || savingOrder} onClick={saveOrder} className="save-btn" style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: "none", background: cart.length === 0 || savingOrder ? "#4A2C33" : paidNow ? theme.primary : "#8A6A2E", color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: cart.length === 0 || savingOrder ? "not-allowed" : "pointer", opacity: cart.length === 0 || savingOrder ? 0.6 : 1 }}>
+                {savingOrder ? t("saved") : paidNow ? t("saveOrder") : t("saveOrderUnpaid")}
               </button>
             </div>
           </div>
@@ -6528,29 +6609,88 @@ function POSPrototype({ tenantId }) {
             <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loadingHistory")}</div>
           ) : (
             <>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
-                <select value={currentMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="field">
-                  {availableMonths.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
-                </select>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={() => setReceiptsFilterMode("month")}
+                    style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${receiptsFilterMode === "month" ? theme.secondary : "var(--border)"}`, background: receiptsFilterMode === "month" ? "rgba(176,141,87,0.18)" : "transparent", color: receiptsFilterMode === "month" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                  >
+                    {t("dashboardModeMonth")}
+                  </button>
+                  <button
+                    onClick={() => setReceiptsFilterMode("day")}
+                    style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${receiptsFilterMode === "day" ? theme.secondary : "var(--border)"}`, background: receiptsFilterMode === "day" ? "rgba(176,141,87,0.18)" : "transparent", color: receiptsFilterMode === "day" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                  >
+                    {t("dashboardModeDay")}
+                  </button>
+                  <button
+                    onClick={() => setReceiptsFilterMode("range")}
+                    style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${receiptsFilterMode === "range" ? theme.secondary : "var(--border)"}`, background: receiptsFilterMode === "range" ? "rgba(176,141,87,0.18)" : "transparent", color: receiptsFilterMode === "range" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                  >
+                    {t("dashboardModeRange")}
+                  </button>
+                </div>
+                {receiptsFilterMode === "month" ? (
+                  <select value={currentMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="field">
+                    {availableMonths.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
+                  </select>
+                ) : receiptsFilterMode === "day" ? (
+                  <input
+                    type="date"
+                    value={effectiveReceiptsDay}
+                    max={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => e.target.value && setReceiptsFilterDay(e.target.value)}
+                    className="field"
+                    style={{ colorScheme: "dark" }}
+                  />
+                ) : (
+                  <div style={{ position: "relative" }}>
+                    <button
+                      onClick={() => {
+                        setReceiptsRangePickingEnd(false);
+                        setReceiptsRangePickerOpen((v) => !v);
+                      }}
+                      className="field"
+                      style={{ colorScheme: "dark", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}
+                    >
+                      📅 {formatShortDate(effectiveReceiptsRangeStart, isRtl)} – {formatShortDate(effectiveReceiptsRangeEnd, isRtl)}
+                    </button>
+                    {receiptsRangePickerOpen && (
+                      <>
+                        <div style={{ position: "fixed", inset: 0, zIndex: 59 }} onClick={() => setReceiptsRangePickerOpen(false)} />
+                        <div style={{ position: "absolute", top: "calc(100% + 6px)", [isRtl ? "right" : "left"]: 0, zIndex: 60 }}>
+                          <DateRangeCalendar
+                            startDate={effectiveReceiptsRangeStart}
+                            endDate={effectiveReceiptsRangeEnd}
+                            maxDate={new Date().toISOString().slice(0, 10)}
+                            isRtl={isRtl}
+                            theme={theme}
+                            onPickDay={handleReceiptsRangeDayClick}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 20, fontSize: 13, color: "var(--text-muted)" }}>
-                  <span>{tCount("orderCount", monthReceipts.filter((r) => r.status === "completed").length)}</span>
-                  <span style={{ color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{money(monthRevenue)}</span>
+                  <span>{tCount("orderCount", filteredReceipts.filter((r) => r.status === "completed").length)}</span>
+                  <span style={{ color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{money(receiptsListRevenue)}</span>
                 </div>
               </div>
-              {monthUnpaid.length > 0 && (
+              {receiptsListUnpaid.length > 0 && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: -8, marginBottom: 18, fontSize: 12.5, color: "#F0D9A0" }}>
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#F0D9A0", display: "inline-block" }} />
-                  {t("unpaidSummary", { n: monthUnpaid.length, amount: money(monthUnpaidTotal) })}
+                  {t("unpaidSummary", { n: receiptsListUnpaid.length, amount: money(receiptsListUnpaidTotal) })}
                 </div>
               )}
 
-              {loadingMonth ? (
-                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loadingMonth", { month: monthLabel(currentMonth) })}</div>
-              ) : monthReceipts.length === 0 ? (
-                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noSavedOrdersForMonth", { month: monthLabel(currentMonth) })}</div>
+              {!receiptsDataLoaded ? (
+                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{receiptsFilterMode === "month" ? t("loadingMonth", { month: monthLabel(currentMonth) }) : t("loading")}</div>
+              ) : filteredReceipts.length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{receiptsFilterMode === "month" ? t("noSavedOrdersForMonth", { month: monthLabel(currentMonth) }) : t("noSavedOrdersForPeriod")}</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {monthReceipts.map((r) => {
+                  {filteredReceipts.map((r) => {
                     const cancelled = r.status === "cancelled";
                     const refunded = r.status === "refunded";
                     const voided = cancelled || refunded;
@@ -7806,7 +7946,7 @@ function POSPrototype({ tenantId }) {
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
                 <button onClick={() => setPayTableModal(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("cancel")}</button>
-                <button onClick={confirmTablePayment} style={{ flex: 2, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("confirmPaymentButton")}</button>
+                <button disabled={confirmingTablePayment} onClick={confirmTablePayment} style={{ flex: 2, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: confirmingTablePayment ? "not-allowed" : "pointer", opacity: confirmingTablePayment ? 0.6 : 1 }}>{t("confirmPaymentButton")}</button>
               </div>
             </div>
           </div>
