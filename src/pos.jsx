@@ -321,6 +321,16 @@ const STRINGS = {
     themeDark: "Dark",
     themeLight: "Light",
     themeHint: "Applies to this terminal's screens. Every device signed into this restaurant sees the same theme.",
+    shiftHoursTitle: "Shift hours",
+    shiftHoursHint: "When each day's shift starts and ends. An order placed after midnight but before the next shift's start still counts toward the day the shift began — so a 6pm–2am shift never gets split across two days on the Dashboard.",
+    shiftHoursToLabel: "to",
+    weekday_sun: "Sunday",
+    weekday_mon: "Monday",
+    weekday_tue: "Tuesday",
+    weekday_wed: "Wednesday",
+    weekday_thu: "Thursday",
+    weekday_fri: "Friday",
+    weekday_sat: "Saturday",
     previewLabel: "Preview",
 
     taxesTitle: "Taxes & service charge",
@@ -951,6 +961,16 @@ const STRINGS = {
     themeDark: "داكن",
     themeLight: "فاتح",
     themeHint: "يُطبَّق على شاشات هذا الجهاز. كل جهاز مسجّل دخول في هذا المطعم يرى نفس المظهر.",
+    shiftHoursTitle: "ساعات الشِفت",
+    shiftHoursHint: "متى يبدأ وينتهي شِفت كل يوم. الطلب الذي يتم تسجيله بعد منتصف الليل وقبل بداية الشِفت التالي يظل محسوبًا على اليوم الذي بدأ فيه الشِفت — بحيث لا يُقسَّم شِفت من 6 مساءً حتى 2 صباحًا بين يومين في لوحة المعلومات.",
+    shiftHoursToLabel: "إلى",
+    weekday_sun: "الأحد",
+    weekday_mon: "الاثنين",
+    weekday_tue: "الثلاثاء",
+    weekday_wed: "الأربعاء",
+    weekday_thu: "الخميس",
+    weekday_fri: "الجمعة",
+    weekday_sat: "السبت",
     previewLabel: "معاينة",
 
     taxesTitle: "الضرائب ورسوم الخدمة",
@@ -1468,7 +1488,7 @@ const buildHelpSystemPrompt = (restaurantName, lang) => {
     "payment_wallet", "priceListsTitle", "createProfile", "managePrices", "uploadPhoto",
     "themeLabel", "cashReconciliationTitle", "electronicReconciliationTitle", "deliveryReconciliationTitle",
     "deliveryAddressesLabel", "printShiftReport", "dashboardModeMonth", "dashboardModeDay", "dashboardModeRange",
-    "phoneNumberLabel", "callButton", "getDirectionsButton",
+    "phoneNumberLabel", "callButton", "getDirectionsButton", "shiftHoursTitle",
   ];
   const glossary = glossaryKeys.map((k) => `- ${S[k]}`).join("\n");
 
@@ -1494,11 +1514,11 @@ that you don't see it and it may not be included in their current plan — don't
 - **Delivery**: shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
 - **Receipts**: monthly order history. Cancel (restores stock, use when an order never went out), Refund (stock stays deducted, use when it was already served), or Edit a saved order. Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
-- **Dashboard** (manager-only): revenue, orders, average order value, net profit (revenue minus logged expenses), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month, by a single Day, or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month."
+- **Dashboard** (manager-only): revenue, orders, average order value, net profit (revenue minus logged expenses), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month, by a single Day, or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount. "Clock out" ends their shift and shows a recap. Managers additionally see: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard and shift history.
-- **Settings**: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
+- **Settings**: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How staff log in
 The app requires clocking in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
@@ -1640,6 +1660,33 @@ const monthKeysInRange = (startStr, endStr) => {
     if (m > 12) { m = 1; y++; }
   }
   return keys;
+};
+const prevMonthKey = (monthKey) => {
+  const [y, m] = monthKey.split("-").map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+};
+const nextMonthKey = (monthKey) => {
+  const [y, m] = monthKey.split("-").map(Number);
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+};
+// Business-day shift hours (Settings > Shift hours) — lets a restaurant say "our shift runs
+// 6pm-2am" so a 1am order still counts toward the day the shift started, instead of rolling onto
+// the calendar date that began at real midnight. Every weekday defaults to a 00:00 start, under
+// which the business date always equals the real calendar date — restaurants that never touch this
+// setting see no change in their numbers at all.
+const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+const DEFAULT_SHIFT_HOURS = Object.fromEntries(WEEKDAY_KEYS.map((k) => [k, { start: "00:00", end: "23:59" }]));
+const localDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// The "business date" an order counts toward for reporting — its own calendar day, unless it
+// landed before that day's configured shift start, in which case it still belongs to the day
+// before (the shift that's still running). Local wall-clock time throughout, since that's what a
+// manager typing "18:00" actually means.
+const businessDateForTimestamp = (isoTimestamp, shiftHours) => {
+  const d = new Date(isoTimestamp);
+  const startTime = shiftHours?.[WEEKDAY_KEYS[d.getDay()]]?.start || "00:00";
+  const timeOfDay = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  if (timeOfDay >= startTime) return localDateStr(d);
+  return localDateStr(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1));
 };
 const formatShortDate = (dateStr, isRtl) =>
   new Date(`${dateStr}T00:00:00Z`).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -1934,6 +1981,8 @@ function POSPrototype({ tenantId }) {
   const [dashboardRangeEnd, setDashboardRangeEnd] = useState(null); // "YYYY-MM-DD", defaults to today once known
   const [dashboardRangePickerOpen, setDashboardRangePickerOpen] = useState(false);
   const [dashboardRangePickingEnd, setDashboardRangePickingEnd] = useState(false); // whether the next calendar click sets the end day (vs. starting a fresh range)
+  const [shiftHoursConfig, setShiftHoursConfig] = useState(DEFAULT_SHIFT_HOURS);
+  const [shiftHoursLoaded, setShiftHoursLoaded] = useState(false);
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [editingReceiptId, setEditingReceiptId] = useState(null);
   const [editDraftItems, setEditDraftItems] = useState([]);
@@ -2228,6 +2277,20 @@ function POSPrototype({ tenantId }) {
         // fall back to defaults already set
       } finally {
         setBrandingLoaded(true);
+      }
+    })();
+
+    (async () => {
+      try {
+        const result = await getSharedWithRetry(storage, "shift-hours-config");
+        const parsed = result?.value ? JSON.parse(result.value) : null;
+        // Merged over the defaults rather than replacing outright, so an older saved config
+        // missing a weekday (or saved before this feature existed) still fills in safely.
+        if (parsed) setShiftHoursConfig({ ...DEFAULT_SHIFT_HOURS, ...parsed });
+      } catch (e) {
+        // fall back to defaults already set
+      } finally {
+        setShiftHoursLoaded(true);
       }
     })();
 
@@ -2542,6 +2605,12 @@ function POSPrototype({ tenantId }) {
   const updatePhoneNumber = (value) => {
     setPhoneNumber(value);
     persistBranding({ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: secondaryColor, mapsLink, phone: value });
+  };
+
+  const updateShiftHours = (weekday, field, value) => {
+    const next = { ...shiftHoursConfig, [weekday]: { ...shiftHoursConfig[weekday], [field]: value } };
+    setShiftHoursConfig(next);
+    syncSet("shift-hours-config", JSON.stringify(next), true, t("syncLabelSettings"));
   };
 
   const togglePinGatedTab = (key) => {
@@ -3152,22 +3221,24 @@ function POSPrototype({ tenantId }) {
     ensureExpenseMonthLoaded(thisMonthKey());
   }, []);
   useEffect(() => {
-    const monthKey = dashboardMode === "day" && dashboardDay ? dashboardDay.slice(0, 7) : dashboardMonth;
-    if (!monthKey) return;
-    ensureMonthLoaded(monthKey);
+    const monthKey = dashboardMode === "day" ? (dashboardDay || new Date().toISOString().slice(0, 10)).slice(0, 7) : dashboardMonth || thisMonthKey();
+    // Widened one month either side — a receipt's business date (see businessDateForTimestamp)
+    // can land a day, and therefore a month, earlier than the real timestamp it was filed under.
+    [prevMonthKey(monthKey), monthKey, nextMonthKey(monthKey)].forEach((mk) => ensureMonthLoaded(mk));
     ensureExpenseMonthLoaded(monthKey);
   }, [dashboardMode, dashboardMonth, dashboardDay]);
   // A custom day range can span multiple months (or years), unlike the single-month/single-day
-  // modes above — every month touched by the selected range needs its own fetch.
+  // modes above — every month touched by the selected range needs its own fetch (plus, same as
+  // above, one month either side of the whole span for business-date spillover).
   useEffect(() => {
     if (dashboardMode !== "range") return;
     const end = dashboardRangeEnd || new Date().toISOString().slice(0, 10);
     const start = dashboardRangeStart || addDaysStr(end, -6);
     const [s, e] = start <= end ? [start, end] : [end, start];
-    monthKeysInRange(s, e).forEach((mk) => {
-      ensureMonthLoaded(mk);
-      ensureExpenseMonthLoaded(mk);
-    });
+    const reportingKeys = monthKeysInRange(s, e);
+    const storageKeys = new Set(reportingKeys.flatMap((mk) => [prevMonthKey(mk), mk, nextMonthKey(mk)]));
+    storageKeys.forEach((mk) => ensureMonthLoaded(mk));
+    reportingKeys.forEach((mk) => ensureExpenseMonthLoaded(mk));
   }, [dashboardMode, dashboardRangeStart, dashboardRangeEnd]);
 
   // Tracks connectivity and retries failed writes automatically once back online. Restaurant-wide
@@ -4032,24 +4103,27 @@ function POSPrototype({ tenantId }) {
     }
   };
   const dashboardActiveMonthKey = dashboardMode === "day" ? effectiveDashboardDay.slice(0, 7) : effectiveDashboardMonth;
-  const dashboardRangeMonthKeys = dashboardMode === "range" ? monthKeysInRange(effectiveDashboardRangeStart, effectiveDashboardRangeEnd) : [];
-  const dashboardMonthDataLoaded = dashboardMode === "range"
-    ? dashboardRangeMonthKeys.every((mk) => receiptsByMonth[mk] !== undefined)
-    : receiptsByMonth[dashboardActiveMonthKey] !== undefined;
+  const dashboardReportingMonthKeys = dashboardMode === "range" ? monthKeysInRange(effectiveDashboardRangeStart, effectiveDashboardRangeEnd) : [dashboardActiveMonthKey];
+  // Receipts are filed by their real save-time month, but a receipt's *business* date (see
+  // businessDateForTimestamp) can fall a day — and therefore a month, right at a boundary —
+  // earlier than that. Scanning one month either side of every reporting month, then filtering by
+  // actual business date below, means a late-night receipt is never missed just because it
+  // physically lives in the neighboring month's storage bucket. Expenses have no such ambiguity
+  // (their date is picked explicitly, not derived from a timestamp), so they stay scoped to
+  // exactly the reporting months.
+  const dashboardStorageMonthKeys = Array.from(new Set(dashboardReportingMonthKeys.flatMap((mk) => [prevMonthKey(mk), mk, nextMonthKey(mk)])));
+  const dashboardMonthDataLoaded = dashboardStorageMonthKeys.every((mk) => receiptsByMonth[mk] !== undefined);
 
-  const dashboardMonthReceiptsAll = (dashboardMode === "range"
-    ? dashboardRangeMonthKeys.flatMap((mk) => receiptsByMonth[mk] || [])
-    : receiptsByMonth[dashboardActiveMonthKey] || []
-  ).filter((r) => r.status === "completed");
+  const dashboardMonthReceiptsAll = dashboardStorageMonthKeys
+    .flatMap((mk) => receiptsByMonth[mk] || [])
+    .filter((r) => r.status === "completed" && dashboardReportingMonthKeys.includes(businessDateForTimestamp(r.timestamp, shiftHoursConfig).slice(0, 7)));
   const dashboardReceipts = dashboardMode === "day"
-    ? dashboardMonthReceiptsAll.filter((r) => r.timestamp.slice(0, 10) === effectiveDashboardDay)
+    ? dashboardMonthReceiptsAll.filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === effectiveDashboardDay)
     : dashboardMode === "range"
-    ? dashboardMonthReceiptsAll.filter((r) => { const d = r.timestamp.slice(0, 10); return d >= effectiveDashboardRangeStart && d <= effectiveDashboardRangeEnd; })
+    ? dashboardMonthReceiptsAll.filter((r) => { const bd = businessDateForTimestamp(r.timestamp, shiftHoursConfig); return bd >= effectiveDashboardRangeStart && bd <= effectiveDashboardRangeEnd; })
     : dashboardMonthReceiptsAll;
 
-  const dashboardExpensesAll = dashboardMode === "range"
-    ? dashboardRangeMonthKeys.flatMap((mk) => expensesByMonth[mk] || [])
-    : expensesByMonth[dashboardActiveMonthKey] || [];
+  const dashboardExpensesAll = dashboardReportingMonthKeys.flatMap((mk) => expensesByMonth[mk] || []);
   const dashboardExpenseTotal = (
     dashboardMode === "day" ? dashboardExpensesAll.filter((e) => e.date === effectiveDashboardDay)
     : dashboardMode === "range" ? dashboardExpensesAll.filter((e) => e.date >= effectiveDashboardRangeStart && e.date <= effectiveDashboardRangeEnd)
@@ -4070,8 +4144,8 @@ function POSPrototype({ tenantId }) {
     return dashboardActiveMonthKey === thisMonthKey() ? new Date().getDate() : new Date(y, m, 0).getDate();
   })();
   const dailyRevenue = Array.from({ length: daysInDashboardMonth }, (_, i) => {
-    const dayStr = String(i + 1).padStart(2, "0");
-    return { key: i + 1, total: dashboardMonthReceiptsAll.filter((r) => r.timestamp.slice(8, 10) === dayStr).reduce((s, r) => s + r.total, 0) };
+    const dayStr = `${dashboardActiveMonthKey}-${String(i + 1).padStart(2, "0")}`;
+    return { key: i + 1, total: dashboardMonthReceiptsAll.filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === dayStr).reduce((s, r) => s + r.total, 0) };
   });
   const hourlyRevenue = Array.from({ length: 24 }, (_, h) => ({
     key: h,
@@ -4082,7 +4156,7 @@ function POSPrototype({ tenantId }) {
     const bars = [];
     let day = effectiveDashboardRangeStart;
     while (day <= effectiveDashboardRangeEnd) {
-      bars.push({ key: day, total: dashboardMonthReceiptsAll.filter((r) => r.timestamp.slice(0, 10) === day).reduce((s, r) => s + r.total, 0) });
+      bars.push({ key: day, total: dashboardMonthReceiptsAll.filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === day).reduce((s, r) => s + r.total, 0) });
       day = addDaysStr(day, 1);
     }
     return bars;
@@ -4091,16 +4165,13 @@ function POSPrototype({ tenantId }) {
   const maxTrendValue = Math.max(1, ...trendBars.map((b) => b.total));
   const bestTrendBar = trendBars.reduce((best, b) => (b.total > best.total ? b : best), { key: null, total: 0 });
 
-  // "vs previous" only compares within data that's already loaded — the previous day, when it
-  // falls in the same month as the one currently loaded. No extra fetch just for this comparison;
-  // it simply doesn't show when the previous day would be in a different (unloaded) month.
+  // The previous business day's month is always within one of the neighboring storage months
+  // already being fetched above, so — unlike before this widened fetch existed — this comparison
+  // no longer needs to silently hide itself when the previous day happens to fall in another month.
   const previousDayRevenue = (() => {
     if (dashboardMode !== "day") return null;
-    const d = new Date(`${effectiveDashboardDay}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() - 1);
-    if (d.toISOString().slice(0, 7) !== dashboardActiveMonthKey) return null;
-    const prevDayStr = d.toISOString().slice(0, 10);
-    return dashboardMonthReceiptsAll.filter((r) => r.timestamp.slice(0, 10) === prevDayStr).reduce((s, r) => s + r.total, 0);
+    const prevDayStr = addDaysStr(effectiveDashboardDay, -1);
+    return dashboardMonthReceiptsAll.filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === prevDayStr).reduce((s, r) => s + r.total, 0);
   })();
   const periodVsPreviousPct = previousDayRevenue > 0 ? Math.round(((dashboardPeriodRevenue - previousDayRevenue) / previousDayRevenue) * 100) : null;
 
@@ -8165,6 +8236,33 @@ function POSPrototype({ tenantId }) {
                   </button>
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>{t("themeHint")}</div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("shiftHoursTitle")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 10, lineHeight: 1.5 }}>{t("shiftHoursHint")}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {WEEKDAY_KEYS.map((wd) => (
+                    <div key={wd} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <div style={{ width: 90, fontSize: 12.5, flexShrink: 0 }}>{t(`weekday_${wd}`)}</div>
+                      <input
+                        type="time"
+                        value={shiftHoursConfig[wd]?.start || "00:00"}
+                        onChange={(e) => updateShiftHours(wd, "start", e.target.value)}
+                        className="field"
+                        style={{ colorScheme: "dark" }}
+                      />
+                      <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("shiftHoursToLabel")}</span>
+                      <input
+                        type="time"
+                        value={shiftHoursConfig[wd]?.end || "23:59"}
+                        onChange={(e) => updateShiftHours(wd, "end", e.target.value)}
+                        className="field"
+                        style={{ colorScheme: "dark" }}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {hasFeature("vatService") && (
