@@ -99,6 +99,10 @@ const STRINGS = {
     confirmAction: "Confirm",
     discountLabel: "Discount: {{value}}",
     splitBill: "+ Split bill",
+    addToExistingInvoice: "+ Add to existing invoice",
+    addToExistingInvoiceTitle: "Add to an unpaid invoice",
+    addToExistingInvoiceSubtitle: "Pick an unpaid invoice from this month to add these items to, instead of saving a new one.",
+    notice_addedToInvoice: "Added to ticket #{{n}}",
     numberOfPeoplePlaceholder: "Number of people",
     splitLabel: "Split {{n}} ways",
     eachPays: "{{amount}} each",
@@ -622,6 +626,9 @@ const STRINGS = {
     editPin: "Edit PIN",
     removeEmployee: "Remove",
     confirm_removeEmployee: "Remove {{name}} from staff? Their past shift history is kept.",
+    openShiftsTitle: "Open shifts right now",
+    noOpenShifts: "No one's currently clocked in.",
+    openShiftSince: "Since {{time}}",
     shiftHistoryTitle: "Recent shifts",
     noShiftHistory: "No completed shifts yet.",
     leaderboardTitle: "Top performers (last 30 days)",
@@ -747,6 +754,10 @@ const STRINGS = {
     confirmAction: "تأكيد",
     discountLabel: "الخصم: {{value}}",
     splitBill: "+ تقسيم الفاتورة",
+    addToExistingInvoice: "+ إضافة إلى فاتورة موجودة",
+    addToExistingInvoiceTitle: "إضافة إلى فاتورة غير مدفوعة",
+    addToExistingInvoiceSubtitle: "اختر فاتورة غير مدفوعة من هذا الشهر لإضافة هذه الأصناف إليها، بدلًا من حفظها كفاتورة جديدة.",
+    notice_addedToInvoice: "تمت الإضافة إلى الفاتورة رقم {{n}}",
     numberOfPeoplePlaceholder: "عدد الأشخاص",
     splitLabel: "تقسيم على {{n}}",
     eachPays: "{{amount}} للفرد",
@@ -1270,6 +1281,9 @@ const STRINGS = {
     editPin: "تعديل الرمز السري",
     removeEmployee: "إزالة",
     confirm_removeEmployee: "إزالة {{name}} من الموظفين؟ سيتم الاحتفاظ بسجل ورديته السابقة.",
+    openShiftsTitle: "الورديات المفتوحة الآن",
+    noOpenShifts: "لا يوجد أحد مسجّل حضوره حاليًا.",
+    openShiftSince: "منذ {{time}}",
     shiftHistoryTitle: "الورديات الأخيرة",
     noShiftHistory: "لا توجد ورديات مكتملة بعد.",
     leaderboardTitle: "الأفضل أداءً (آخر 30 يومًا)",
@@ -1505,7 +1519,7 @@ const buildHelpSystemPrompt = (restaurantName, lang) => {
     "themeLabel", "cashReconciliationTitle", "electronicReconciliationTitle", "deliveryReconciliationTitle",
     "deliveryAddressesLabel", "printShiftReport", "dashboardModeMonth", "dashboardModeDay", "dashboardModeRange",
     "phoneNumberLabel", "callButton", "getDirectionsButton", "shiftHoursTitle",
-    "loginClockInOption", "loginViewOnlyOption", "exitViewMode",
+    "loginClockInOption", "loginViewOnlyOption", "exitViewMode", "addToExistingInvoice", "openShiftsTitle",
   ];
   const glossary = glossaryKeys.map((k) => `- ${S[k]}`).join("\n");
 
@@ -1523,7 +1537,7 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Use +10 restock or the +/- buttons to adjust.
@@ -1540,7 +1554,7 @@ that you don't see it and it may not be included in their current plan — don't
 ## How staff log in
 The app requires signing in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
 
-After a manager's PIN is accepted, they're asked "Clock in for a shift" or "Just view — no shift" (regular staff skip this and clock in directly, since orders need someone actually on shift to attribute to). "Just view" signs them in normally — they see everything a manager normally sees — but starts no shift: it never appears in shift stats, the shift log, or cash/electronic reconciliation, and their exit button just says "Exit" instead of "Clock out" (no shift to end, no confirmation). This is for a manager checking the system remotely (e.g., from their phone) without it looking like they worked a shift. Which employee is signed in (and whether that's a real shift or just-viewing) is stored per-device/browser, not shared — logging in as different people on different devices at the same time already works with no need to clock anyone out first.
+After a manager's PIN is accepted, they're asked "Clock in for a shift" or "Just view — no shift" (regular staff skip this and clock in directly, since orders need someone actually on shift to attribute to). "Just view" signs them in normally — they see everything a manager normally sees — but starts no shift: it never appears in shift stats, the shift log, or cash/electronic reconciliation, and their exit button just says "Exit" instead of "Clock out" (no shift to end, no confirmation). This is for a manager checking the system remotely (e.g., from their phone) without it looking like they worked a shift. Which employee is signed in (and whether that's a real shift or just-viewing) is stored per-device/browser, not shared — logging in as different people on different devices at the same time already works with no need to clock anyone out first. To help exactly this kind of remote check-in, the Staff tab has an "Open shifts right now" section (managers only) listing everyone currently clocked in on any device, with when they started and their orders/revenue so far — a viewing manager doesn't need to be on shift themselves to see it.
 
 ## QR code table ordering and the online-ordering link
 Each table's QR code, and the general online-ordering link, land on the same customer-facing menu with a table ID (or no table ID, for the general link) in the URL, showing customers a live, view-only menu (items, descriptions, prices — no stock/availability details, by design, for customer privacy) where they can add items and send an order. That order does NOT go straight to the kitchen — it shows up as a "pending order" for staff to review in the Tables view (a badge appears, plus a pill in the header) and must be explicitly Confirmed (which merges it into that table's ticket) or Rejected. This is intentional so staff always have final say before anything hits the kitchen. Once staff taps Confirm, the customer's own device — if that page is still open — automatically shows a "Your order was confirmed and is being prepared!" banner within a few seconds, with no action needed from the customer. Rejecting an order does NOT notify the customer automatically — staff need to let them know some other way.
@@ -1941,6 +1955,8 @@ function POSPrototype({ tenantId }) {
   const [saved, setSaved] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false); // guards saveOrder against a fast double-click/tap re-submitting the same cart as two orders
   const [confirmingTablePayment, setConfirmingTablePayment] = useState(false); // same guard as savingOrder, for confirmTablePayment's own button
+  const [addToInvoiceOpen, setAddToInvoiceOpen] = useState(false); // picker for merging the current cart into an already-saved unpaid invoice
+  const [mergingIntoInvoice, setMergingIntoInvoice] = useState(false);
   const [notice, setNotice] = useState(null);
   // Starts optimistic rather than trusting navigator.onLine's initial snapshot — that API is
   // notoriously unreliable inside embedded WebViews (e.g. the Claude mobile app's artifact
@@ -2062,6 +2078,13 @@ function POSPrototype({ tenantId }) {
   const [currentEmployeeLoaded, setCurrentEmployeeLoaded] = useState(false);
   const [viewingOnly, setViewingOnly] = useState(false); // manager checking the system from their phone, e.g. — signed in but not on shift, so it never touches shift stats
   const [pendingManagerLogin, setPendingManagerLogin] = useState(null); // a manager whose PIN just verified, waiting on their Clock in / Just view choice
+  // Shared, live registry of shifts currently open on ANY device — {[employeeId]: {employeeId, employeeName, clockIn}}.
+  // current-employee/shift-start themselves stay device-local (see tenantStorage.js), so this is
+  // the one thing that actually crosses devices while a shift is still running, letting a manager
+  // checking in remotely (see viewingOnly) see who's on shift right now — not just past shifts,
+  // which only land in the shared shift-log once someone clocks out.
+  const [openShifts, setOpenShifts] = useState({});
+  const [openShiftsLoaded, setOpenShiftsLoaded] = useState(false);
   const [shiftLog, setShiftLog] = useState([]); // shared history of completed shifts
   const [shiftLogLoaded, setShiftLogLoaded] = useState(false);
   const [loginSelectedId, setLoginSelectedId] = useState(null);
@@ -2520,6 +2543,29 @@ function POSPrototype({ tenantId }) {
     };
     loadPending();
     const interval = setInterval(loadPending, 8000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Same live-polling reasoning as pending-orders above — this is how a manager viewing from
+  // another device sees who's currently on shift without needing to refresh.
+  useEffect(() => {
+    let cancelled = false;
+    const loadOpenShifts = async () => {
+      try {
+        const result = await storage.get("open-shifts", true);
+        if (cancelled) return;
+        setOpenShifts(result?.value ? JSON.parse(result.value) : {});
+      } catch (e) {
+        // leave whatever was there before — a transient failure shouldn't wipe the list
+      } finally {
+        if (!cancelled) setOpenShiftsLoaded(true);
+      }
+    };
+    loadOpenShifts();
+    const interval = setInterval(loadOpenShifts, 8000);
     return () => {
       cancelled = true;
       clearInterval(interval);
@@ -3968,6 +4014,81 @@ function POSPrototype({ tenantId }) {
     }, 1100);
   };
 
+  // Unpaid ("pay later") invoices from this month that the current cart could be merged into —
+  // e.g. a customer who already has a running, unpaid tab ordering more before it's settled,
+  // rather than that becoming a separate second ticket. Scoped to this month since that's the one
+  // month always guaranteed loaded; an unpaid tab from further back is rare enough not to need the
+  // Dashboard/Receipts-style cross-month widening.
+  const unpaidInvoicesThisMonth = (receiptsByMonth[thisMonthKey()] || []).filter((r) => r.status === "completed" && r.paid === false);
+  // Merges the current cart into an already-saved unpaid invoice instead of creating a new one —
+  // matching quantities get bumped, everything else appends as a new line, then subtotal/discount/
+  // service/VAT are recomputed using that invoice's own stored rates (same rule saveEditReceipt
+  // uses), not today's live settings. Stock is deducted for the newly added items exactly like a
+  // normal save, since these are genuinely new items being added to the kitchen's workload.
+  const addCartToUnpaidInvoice = (receiptId) => {
+    if (cart.length === 0 || mergingIntoInvoice) return;
+    const target = unpaidInvoicesThisMonth.find((r) => r.id === receiptId);
+    if (!target) return;
+    setMergingIntoInvoice(true);
+
+    cart.forEach((cartItem) => {
+      const menuItem = findMenuItemAnywhere(cartItem.id);
+      (menuItem?.recipe || []).forEach((r) => updateIngredientStock(r.ingredientId, -r.qty * cartItem.qty));
+    });
+
+    const newItems = cart.map((c) => {
+      const menuItem = findMenuItemAnywhere(c.id);
+      return { id: c.id, name: c.name, qty: c.qty, price: c.price, note: c.note || "", recipeSnapshot: menuItem?.recipe || [] };
+    });
+    const mergedItems = [...target.items];
+    newItems.forEach((it) => {
+      const idx = mergedItems.findIndex((m) => m.id === it.id && (m.note || "") === (it.note || ""));
+      if (idx >= 0) mergedItems[idx] = { ...mergedItems[idx], qty: mergedItems[idx].qty + it.qty };
+      else mergedItems.push(it);
+    });
+
+    const newSubtotal = mergedItems.reduce((s, it) => s + it.price * it.qty, 0);
+    const newDiscAmt = discountAmount(newSubtotal, target.discount);
+    const newNet = newSubtotal - newDiscAmt;
+    const newServiceAmt = Math.round(newNet * ((target.serviceRate || 0) / 100) * 100) / 100;
+    const newVatAmt = Math.round((newNet + newServiceAmt) * ((target.vatRate || 0) / 100) * 100) / 100;
+    const newTotal = newNet + newServiceAmt + newVatAmt + (target.deliveryFee || 0);
+    const updatedReceipt = {
+      ...target,
+      items: mergedItems,
+      subtotal: newSubtotal,
+      discountAmount: newDiscAmt,
+      serviceAmount: newServiceAmt,
+      vatAmount: newVatAmt,
+      total: newTotal,
+    };
+    updateReceiptInStorage(target, () => updatedReceipt);
+    flashNotice(t("notice_addedToInvoice", { n: target.ticketNo }));
+
+    const fresh = blankDraft();
+    setCart(fresh.cart);
+    setDiscount(fresh.discount);
+    setSplitCount(fresh.splitCount);
+    setSplitOpen(false);
+    setSplitDraft("");
+    setDeliveryFee(fresh.deliveryFee);
+    setDeliveryMethod(fresh.deliveryMethod);
+    setDeliveryZoneLabel(fresh.deliveryZoneLabel);
+    setAssignedTo(fresh.assignedTo);
+    setPaymentMethod(fresh.paymentMethod);
+    setPaidNow(fresh.paidNow);
+    setSplitAmounts(fresh.splitAmounts);
+    setCustomerName(fresh.customerName);
+    setCustomerPhone(fresh.customerPhone);
+    setCustomerAddress(fresh.customerAddress);
+    setOrderEta(fresh.orderEta);
+    setTicketNo(fresh.ticketNo);
+    const key = activeTableId === null ? "takeaway" : activeTableId;
+    setTableDrafts((prev) => ({ ...prev, [key]: fresh }));
+    setAddToInvoiceOpen(false);
+    setMergingIntoInvoice(false);
+  };
+
   // Small header block (logo + name) shared by both printable documents.
   const brandHeaderHtml = () => {
     const nameHtml = `<div style="font-size:16px;font-weight:700;">${escapeHtml(restaurantName)}</div>`;
@@ -4687,6 +4808,18 @@ function POSPrototype({ tenantId }) {
   };
 
   const monthReceiptsForShift = receiptsByMonth[thisMonthKey()] || [];
+  // Every shift currently open on any device, with orders/revenue computed live from shared
+  // receipts — same idea as this device's own shiftCompleted/shiftGross below, generalized to
+  // whichever employee+clockIn pair the open-shifts registry lists. Anything left behind by a
+  // device that closed without clocking out (crash, browser killed, etc.) fades out of this list
+  // after a day, so a manager checking in remotely never sees a permanently "stuck open" shift.
+  const openShiftsList = Object.values(openShifts)
+    .filter((s) => Date.now() - new Date(s.clockIn).getTime() < 24 * 60 * 60 * 1000)
+    .map((s) => {
+      const receipts = monthReceiptsForShift.filter((r) => r.servedBy?.id === s.employeeId && r.timestamp >= s.clockIn && r.status === "completed");
+      return { ...s, orders: receipts.length, revenue: receipts.reduce((sum, r) => sum + r.total, 0) };
+    })
+    .sort((a, b) => new Date(a.clockIn) - new Date(b.clockIn));
   const shiftReceipts = shiftStart ? monthReceiptsForShift.filter((r) => r.timestamp >= shiftStart) : [];
   const shiftCompleted = shiftReceipts.filter((r) => r.status === "completed");
   const shiftCancelled = shiftReceipts.filter((r) => r.status === "cancelled");
@@ -4967,6 +5100,22 @@ function POSPrototype({ tenantId }) {
     syncSet("shift-start", now, false, t("syncLabelSettings"));
     syncSet("opening-float", "0", false, t("syncLabelSettings"));
     storage.delete("viewing-only", false).catch(() => {});
+    // Register this shift in the shared open-shifts registry so any device viewing the system
+    // (see viewingOnly) sees it live — also prunes any entry left behind by a device that closed
+    // without properly clocking out, so a crashed session can't get stuck "open" forever.
+    (async () => {
+      try {
+        const latest = await storage.get("open-shifts", true);
+        const current = latest?.value ? JSON.parse(latest.value) : {};
+        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+        const pruned = Object.fromEntries(Object.entries(current).filter(([, s]) => new Date(s.clockIn).getTime() > cutoff));
+        const next = { ...pruned, [emp.id]: { employeeId: emp.id, employeeName: emp.name, clockIn: now } };
+        setOpenShifts(next);
+        await syncSet("open-shifts", JSON.stringify(next), true, t("syncLabelSettings"));
+      } catch (e) {
+        // non-fatal — worst case this shift just doesn't show up remotely until it's retried
+      }
+    })();
   };
   // A manager checking the system without actually working a shift — from their phone, say. Signs
   // them in (so role-gated tabs and "who's using this device" still work normally) but skips
@@ -5053,6 +5202,19 @@ function POSPrototype({ tenantId }) {
           { id: `shift_${Date.now()}`, employeeId: currentEmployee.id, employeeName: currentEmployee.name, clockIn: shiftStart, clockOut: clockOutTime, orders: myShiftCompleted.length, revenue: myShiftRevenue },
           ...shiftLog,
         ]);
+        // This shift is ending — it's captured in shiftLog above now, so drop it from the "open
+        // right now" registry.
+        (async () => {
+          try {
+            const latest = await storage.get("open-shifts", true);
+            const current = latest?.value ? JSON.parse(latest.value) : {};
+            const { [currentEmployee.id]: _removed, ...rest } = current;
+            setOpenShifts(rest);
+            await syncSet("open-shifts", JSON.stringify(rest), true, t("syncLabelSettings"));
+          } catch (e) {
+            // non-fatal — a stale entry here just self-prunes on the next clock-in's cutoff sweep
+          }
+        })();
       },
     });
   };
@@ -6168,6 +6330,12 @@ function POSPrototype({ tenantId }) {
               </div>
               )}
 
+              {cart.length > 0 && unpaidInvoicesThisMonth.length > 0 && (
+                <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
+                  <button onClick={() => setAddToInvoiceOpen(true)} style={{ fontSize: 11.5, color: theme.primary, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>{t("addToExistingInvoice")}</button>
+                </div>
+              )}
+
               <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("subtotal")}</span><span>{money(subtotal)}</span></div>
                 {discount && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 4 }}><span>{t("discount")}</span><span>-{money(discAmt)}</span></div>}
@@ -6344,6 +6512,32 @@ function POSPrototype({ tenantId }) {
                 {savingOrder ? t("saved") : paidNow ? t("saveOrder") : t("saveOrderUnpaid")}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {addToInvoiceOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }} onClick={() => setAddToInvoiceOpen(false)}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24, width: "100%", maxWidth: 420, maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 4 }}>{t("addToExistingInvoiceTitle")}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>{t("addToExistingInvoiceSubtitle")}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {unpaidInvoicesThisMonth.map((r) => (
+                <button
+                  key={r.id}
+                  disabled={mergingIntoInvoice}
+                  onClick={() => addCartToUnpaidInvoice(r.id)}
+                  style={{ textAlign: isRtl ? "right" : "left", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", cursor: mergingIntoInvoice ? "not-allowed" : "pointer", opacity: mergingIntoInvoice ? 0.6 : 1 }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                    <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{t("ticketHash", { n: r.ticketNo })}{r.table ? ` · ${r.table}` : ""}</span>
+                    <span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(r.total)}</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>{r.items.map((it) => `${it.qty}× ${it.name}`).join(", ")}</div>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setAddToInvoiceOpen(false)} style={{ marginTop: 16, width: "100%", padding: "11px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 13.5, cursor: "pointer" }}>{t("cancel")}</button>
           </div>
         </div>
       )}
@@ -8224,6 +8418,34 @@ function POSPrototype({ tenantId }) {
                 )}
               </div>
             </>
+          )}
+
+          {isManager && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>{t("openShiftsTitle")}</div>
+              {!openShiftsLoaded ? (
+                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
+              ) : openShiftsList.length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noOpenShifts")}</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {openShiftsList.map((s) => (
+                    <div key={s.employeeId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: `1px solid ${theme.secondary}`, borderRadius: 8, padding: "10px 14px", flexWrap: "wrap", gap: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#9FCB8E", display: "inline-block", flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontSize: 13 }}>{s.employeeName}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{t("openShiftSince", { time: new Date(s.clockIn).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) })}</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                        {t("shiftHistoryLine", { orders: s.orders, revenue: money(s.revenue), hours: formatDuration(Date.now() - new Date(s.clockIn).getTime()) })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           <div style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>{t("shiftHistoryTitle")}</div>
