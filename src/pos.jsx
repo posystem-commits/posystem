@@ -4762,7 +4762,13 @@ function POSPrototype({ tenantId }) {
         if (next < 0) return it;
         if (delta > 0) {
           const increaseBy = next - original;
-          const shortage = (it.recipeSnapshot || []).find((rec) => (ingredients[rec.ingredientId]?.stock ?? 0) < rec.qty * increaseBy);
+          // The extra units consume the dish's CURRENT recipe, not the frozen recipeSnapshot taken
+          // when this line was first ordered — if the recipe's been edited since (an ingredient
+          // removed, say), checking against the old snapshot could block on stock for an ingredient
+          // the dish doesn't even use anymore.
+          const menuItem = findMenuItemAnywhere(it.id);
+          const currentRecipe = menuItem?.recipe || it.recipeSnapshot || [];
+          const shortage = currentRecipe.find((rec) => (ingredients[rec.ingredientId]?.stock ?? 0) < rec.qty * increaseBy);
           if (increaseBy > 0 && shortage) {
             flashNotice(t("notEnoughToIncrease", { ingredient: ingredients[shortage.ingredientId]?.name || t("genericStock") }));
             return it;
@@ -4773,20 +4779,34 @@ function POSPrototype({ tenantId }) {
     );
   };
   const saveEditReceipt = (r) => {
-    const cleaned = editDraftItems.filter((it) => it.qty > 0);
     // Paired by position, not by menu item id — a receipt can have two lines for the same dish
     // with different notes (e.g. one plain, one "no onions"), and matching by id alone would
     // conflate them.
     const changes = [];
+    const finalItems = [];
     r.items.forEach((orig, i) => {
       const edited = editDraftItems[i];
       const newQty = edited ? edited.qty : 0;
-      const delta = orig.qty - newQty;
-      if (delta !== 0) {
+      const delta = orig.qty - newQty; // positive = fewer than before, negative = more than before
+      let recipeForItem = orig.recipeSnapshot;
+      if (delta > 0) {
+        // Fewer units than before — restore stock using the recipe those units were actually
+        // bought under, i.e. what was actually deducted at the time.
         (orig.recipeSnapshot || []).forEach((rec) => updateIngredientStock(rec.ingredientId, rec.qty * delta));
-        changes.push({ name: orig.name, from: orig.qty, to: newQty });
+      } else if (delta < 0) {
+        // More units than before — the extra units consume the dish's CURRENT recipe (it may have
+        // changed since this order was placed), same as if they were being ordered fresh. The
+        // line's stored recipeSnapshot is updated to match, so a later decrease restores correctly.
+        const menuItem = findMenuItemAnywhere(orig.id);
+        const currentRecipe = menuItem?.recipe || orig.recipeSnapshot || [];
+        const increaseBy = -delta;
+        currentRecipe.forEach((rec) => updateIngredientStock(rec.ingredientId, -rec.qty * increaseBy));
+        recipeForItem = currentRecipe;
       }
+      if (delta !== 0) changes.push({ name: orig.name, from: orig.qty, to: newQty });
+      if (newQty > 0) finalItems.push({ ...(edited || orig), qty: newQty, recipeSnapshot: recipeForItem });
     });
+    const cleaned = finalItems;
     const newSubtotal = cleaned.reduce((s, it) => s + it.price * it.qty, 0);
     const newDiscAmt = discountAmount(newSubtotal, r.discount);
     // Recomputed using THIS receipt's own stored rates, not today's live settings — editing an
