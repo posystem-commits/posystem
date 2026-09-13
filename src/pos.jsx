@@ -636,6 +636,8 @@ const STRINGS = {
     shiftHistoryLine: "{{orders}} orders · {{revenue}} · {{hours}}",
     viewShiftDetailTooltip: "View this shift's details",
     shiftDetailTicketsTitle: "Orders this shift",
+    shiftStillOpenBadge: "Live now",
+    openShiftOngoingLabel: "ongoing",
     currentlyClockedIn: "Currently clocked in",
     teamRosterTitle: "Waiters & delivery",
     teamRosterSubtitle: "Add non-login team members so orders can be assigned to whoever is serving or delivering them.",
@@ -1293,6 +1295,8 @@ const STRINGS = {
     shiftHistoryLine: "{{orders}} طلبات · {{revenue}} · {{hours}}",
     viewShiftDetailTooltip: "عرض تفاصيل هذه الوردية",
     shiftDetailTicketsTitle: "طلبات هذه الوردية",
+    shiftStillOpenBadge: "جارية الآن",
+    openShiftOngoingLabel: "مستمرة",
     currentlyClockedIn: "مسجل حضوره حاليًا",
     teamRosterTitle: "الجرسونات والدليفري",
     teamRosterSubtitle: "أضف أفراد الفريق الذين لا يسجلون دخولًا حتى تقدر تسند الطلبات لمن يقدّمها أو يوصّلها.",
@@ -1552,7 +1556,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Dashboard** (manager-only): revenue, orders, average order value, net profit (revenue minus logged expenses), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month, by a single Day, or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount. "Clock out" ends their shift and shows a recap. Managers additionally see: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together.
-- **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Managers can tap any past shift in that history to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts, not just the few numbers stored in the shift log itself.
+- **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
 - **Settings**: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How staff log in
@@ -3300,6 +3304,19 @@ function POSPrototype({ tenantId }) {
     setReceiptsByMonth((prev) => ({ ...prev, [monthKey]: list }));
     setLoadingMonth(false);
     return list;
+  };
+
+  // Re-fetches a month's receipts regardless of what's already cached — used to keep the open-shift
+  // detail modal live while it's watching a shift that's still in progress on (possibly) another device.
+  const refreshMonthLoaded = async (monthKey) => {
+    let list = [];
+    try {
+      const result = await storage.get(`receipts:${monthKey}`, false);
+      if (result && result.value) list = JSON.parse(result.value);
+    } catch (e) {
+      return;
+    }
+    setReceiptsByMonth((prev) => ({ ...prev, [monthKey]: list }));
   };
 
   // Receipts tab: which month(s) to fetch depends on its own Month/Day/Range toggle, widened one
@@ -5239,15 +5256,24 @@ function POSPrototype({ tenantId }) {
       // non-fatal — worst case the next load briefly shows a stale session before this clears
     }
   };
-  // Opens the detail view for a past shift (manager-only, see the Staff tab render) — the
-  // shift-log entry itself only stores a handful of aggregate numbers, so the actual per-order
-  // breakdown is reconstructed on demand from that shift's own real receipts, ensuring its month is
-  // loaded first since a past shift could be from any month, not just the one already in memory.
+  // Opens the detail view for a shift (manager-only, see the Staff tab render) — either a finished
+  // shift-log entry or one of the currently-open shifts (which has no clockOut yet). The shift-log
+  // entry itself only stores a handful of aggregate numbers, so the actual per-order breakdown is
+  // reconstructed on demand from that shift's own real receipts. Always force-refreshes the month
+  // (rather than trusting whatever's cached) so the numbers are current the moment it's opened.
   const openShiftDetail = async (s) => {
     const monthKey = new Date(s.clockIn).toISOString().slice(0, 7);
     setViewingShiftDetail(s);
-    if (receiptsByMonth[monthKey] === undefined) await ensureMonthLoaded(monthKey);
+    await refreshMonthLoaded(monthKey);
   };
+  // While the detail modal is open on a shift that's still in progress, keep polling that month's
+  // receipts so a manager watching it sees new orders land without having to close and reopen it.
+  useEffect(() => {
+    if (!viewingShiftDetail || viewingShiftDetail.clockOut) return;
+    const monthKey = new Date(viewingShiftDetail.clockIn).toISOString().slice(0, 7);
+    const interval = setInterval(() => refreshMonthLoaded(monthKey), 8000);
+    return () => clearInterval(interval);
+  }, [viewingShiftDetail]);
   const addStaffMember = () => {
     const name = newStaffName.trim();
     if (!name) {
@@ -8444,7 +8470,12 @@ function POSPrototype({ tenantId }) {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {openShiftsList.map((s) => (
-                    <div key={s.employeeId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: `1px solid ${theme.secondary}`, borderRadius: 8, padding: "10px 14px", flexWrap: "wrap", gap: 6 }}>
+                    <button
+                      key={s.employeeId}
+                      onClick={() => openShiftDetail(s)}
+                      title={t("viewShiftDetailTooltip")}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: `1px solid ${theme.secondary}`, borderRadius: 8, padding: "10px 14px", flexWrap: "wrap", gap: 6, width: "100%", textAlign: isRtl ? "right" : "left", font: "inherit", color: "inherit", cursor: "pointer" }}
+                    >
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#9FCB8E", display: "inline-block", flexShrink: 0 }} />
                         <div>
@@ -8453,9 +8484,9 @@ function POSPrototype({ tenantId }) {
                         </div>
                       </div>
                       <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                        {t("shiftHistoryLine", { orders: s.orders, revenue: money(s.revenue), hours: formatDuration(Date.now() - new Date(s.clockIn).getTime()) })}
+                        {t("shiftHistoryLine", { orders: s.orders, revenue: money(s.revenue), hours: formatDuration(nowTick - new Date(s.clockIn).getTime()) })}
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -8493,10 +8524,15 @@ function POSPrototype({ tenantId }) {
 
       {viewingShiftDetail && (() => {
         const s = viewingShiftDetail;
+        const isOngoing = !s.clockOut;
+        // For an ongoing shift there's no fixed end yet, so don't cap the upper bound at all —
+        // capping it at nowTick (which only ticks once a minute) was excluding orders placed within
+        // the last few tens of seconds. A finished shift still uses its real clockOut as the cutoff.
+        const endTime = s.clockOut || new Date(nowTick).toISOString();
         const monthKey = new Date(s.clockIn).toISOString().slice(0, 7);
         const loaded = receiptsByMonth[monthKey] !== undefined;
         const detailReceipts = loaded
-          ? (receiptsByMonth[monthKey] || []).filter((r) => r.servedBy?.id === s.employeeId && r.timestamp >= s.clockIn && r.timestamp <= s.clockOut)
+          ? (receiptsByMonth[monthKey] || []).filter((r) => r.servedBy?.id === s.employeeId && r.timestamp >= s.clockIn && (isOngoing || r.timestamp <= s.clockOut))
           : [];
         const completed = detailReceipts.filter((r) => r.status === "completed");
         const cancelled = detailReceipts.filter((r) => r.status === "cancelled");
@@ -8510,9 +8546,17 @@ function POSPrototype({ tenantId }) {
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }} onClick={() => setViewingShiftDetail(null)}>
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24, width: "100%", maxWidth: 480, maxHeight: "85vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 4 }}>{s.employeeName}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "Fraunces, serif" }}>{s.employeeName}</div>
+                {isOngoing && (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, color: "#9FCB8E", border: "1px solid #9FCB8E", borderRadius: 20, padding: "2px 8px" }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#9FCB8E", display: "inline-block" }} />
+                    {t("shiftStillOpenBadge")}
+                  </span>
+                )}
+              </div>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 18 }}>
-                {new Date(s.clockIn).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} &ndash; {new Date(s.clockOut).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })} &middot; {formatDuration(new Date(s.clockOut) - new Date(s.clockIn))}
+                {new Date(s.clockIn).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} &ndash; {isOngoing ? t("openShiftOngoingLabel") : new Date(s.clockOut).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })} &middot; {formatDuration(new Date(endTime) - new Date(s.clockIn))}
               </div>
               {!loaded ? (
                 <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
