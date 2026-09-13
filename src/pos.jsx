@@ -1457,7 +1457,14 @@ const normalizePhoneForWhatsApp = (raw) => {
   return digits;
 };
 
-const newId = (prefix) => `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+// A per-tab monotonic counter, not just Date.now() + a small random suffix — several call sites
+// (e.g. bulk-adding items from a scanned menu photo) generate many IDs in one synchronous loop,
+// all landing on the same millisecond, where a 3-digit random suffix collides often enough in
+// practice to matter: two menu items ending up with the same id makes findMenuItemAnywhere()
+// silently resolve to the wrong one, so an item's stock check can run against a completely
+// unrelated item's recipe.
+let idCounter = 0;
+const newId = (prefix) => `${prefix}_${Date.now()}_${(idCounter++).toString(36)}_${Math.floor(Math.random() * 1e6)}`;
 
 // A short two-tone chime for "a customer just requested the bill" — synthesized rather than an
 // audio file so there's nothing extra to host or load. Fails silently if the browser blocks audio
