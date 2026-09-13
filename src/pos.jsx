@@ -634,6 +634,8 @@ const STRINGS = {
     leaderboardTitle: "Top performers (last 30 days)",
     noLeaderboardData: "Not enough data yet.",
     shiftHistoryLine: "{{orders}} orders · {{revenue}} · {{hours}}",
+    viewShiftDetailTooltip: "View this shift's details",
+    shiftDetailTicketsTitle: "Orders this shift",
     currentlyClockedIn: "Currently clocked in",
     teamRosterTitle: "Waiters & delivery",
     teamRosterSubtitle: "Add non-login team members so orders can be assigned to whoever is serving or delivering them.",
@@ -1289,6 +1291,8 @@ const STRINGS = {
     leaderboardTitle: "الأفضل أداءً (آخر 30 يومًا)",
     noLeaderboardData: "لا توجد بيانات كافية بعد.",
     shiftHistoryLine: "{{orders}} طلبات · {{revenue}} · {{hours}}",
+    viewShiftDetailTooltip: "عرض تفاصيل هذه الوردية",
+    shiftDetailTicketsTitle: "طلبات هذه الوردية",
     currentlyClockedIn: "مسجل حضوره حاليًا",
     teamRosterTitle: "الجرسونات والدليفري",
     teamRosterSubtitle: "أضف أفراد الفريق الذين لا يسجلون دخولًا حتى تقدر تسند الطلبات لمن يقدّمها أو يوصّلها.",
@@ -1548,7 +1552,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Dashboard** (manager-only): revenue, orders, average order value, net profit (revenue minus logged expenses), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month, by a single Day, or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount. "Clock out" ends their shift and shows a recap. Managers additionally see: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together.
-- **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard and shift history.
+- **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Managers can tap any past shift in that history to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts, not just the few numbers stored in the shift log itself.
 - **Settings**: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How staff log in
@@ -2085,6 +2089,7 @@ function POSPrototype({ tenantId }) {
   // which only land in the shared shift-log once someone clocks out.
   const [openShifts, setOpenShifts] = useState({});
   const [openShiftsLoaded, setOpenShiftsLoaded] = useState(false);
+  const [viewingShiftDetail, setViewingShiftDetail] = useState(null); // a past shift-log entry a manager tapped, to show its orders/breakdown
   const [shiftLog, setShiftLog] = useState([]); // shared history of completed shifts
   const [shiftLogLoaded, setShiftLogLoaded] = useState(false);
   const [loginSelectedId, setLoginSelectedId] = useState(null);
@@ -5233,6 +5238,15 @@ function POSPrototype({ tenantId }) {
     } catch (e) {
       // non-fatal — worst case the next load briefly shows a stale session before this clears
     }
+  };
+  // Opens the detail view for a past shift (manager-only, see the Staff tab render) — the
+  // shift-log entry itself only stores a handful of aggregate numbers, so the actual per-order
+  // breakdown is reconstructed on demand from that shift's own real receipts, ensuring its month is
+  // loaded first since a past shift could be from any month, not just the one already in memory.
+  const openShiftDetail = async (s) => {
+    const monthKey = new Date(s.clockIn).toISOString().slice(0, 7);
+    setViewingShiftDetail(s);
+    if (receiptsByMonth[monthKey] === undefined) await ensureMonthLoaded(monthKey);
   };
   const addStaffMember = () => {
     const name = newStaffName.trim();
@@ -8456,7 +8470,13 @@ function POSPrototype({ tenantId }) {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {recentShiftLog.map((s) => (
-                <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", flexWrap: "wrap", gap: 6 }}>
+                <button
+                  key={s.id}
+                  onClick={() => isManager && openShiftDetail(s)}
+                  disabled={!isManager}
+                  title={isManager ? t("viewShiftDetailTooltip") : undefined}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", flexWrap: "wrap", gap: 6, width: "100%", textAlign: isRtl ? "right" : "left", font: "inherit", color: "inherit", cursor: isManager ? "pointer" : "default" }}
+                >
                   <div>
                     <div style={{ fontSize: 13 }}>{s.employeeName}</div>
                     <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{new Date(s.clockIn).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} &ndash; {new Date(s.clockOut).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })}</div>
@@ -8464,12 +8484,105 @@ function POSPrototype({ tenantId }) {
                   <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     {t("shiftHistoryLine", { orders: s.orders, revenue: money(s.revenue), hours: formatDuration(new Date(s.clockOut) - new Date(s.clockIn)) })}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
       )}
+
+      {viewingShiftDetail && (() => {
+        const s = viewingShiftDetail;
+        const monthKey = new Date(s.clockIn).toISOString().slice(0, 7);
+        const loaded = receiptsByMonth[monthKey] !== undefined;
+        const detailReceipts = loaded
+          ? (receiptsByMonth[monthKey] || []).filter((r) => r.servedBy?.id === s.employeeId && r.timestamp >= s.clockIn && r.timestamp <= s.clockOut)
+          : [];
+        const completed = detailReceipts.filter((r) => r.status === "completed");
+        const cancelled = detailReceipts.filter((r) => r.status === "cancelled");
+        const refunded = detailReceipts.filter((r) => r.status === "refunded");
+        const gross = completed.reduce((sum, r) => sum + r.total, 0);
+        const refundsTotal = refunded.reduce((sum, r) => sum + r.total, 0);
+        const discountTotal = completed.reduce((sum, r) => sum + (r.discountAmount || 0), 0);
+        const discountedCount = completed.filter((r) => (r.discountAmount || 0) > 0).length;
+        const methodAmounts = completed.flatMap(receiptMethodAmounts);
+        const byMethod = PAYMENT_METHODS.map((m) => ({ ...m, total: methodAmounts.filter((a) => a.method === m.id).reduce((sum, a) => sum + a.amount, 0) })).filter((m) => m.total > 0);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }} onClick={() => setViewingShiftDetail(null)}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24, width: "100%", maxWidth: 480, maxHeight: "85vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 4 }}>{s.employeeName}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 18 }}>
+                {new Date(s.clockIn).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} &ndash; {new Date(s.clockOut).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })} &middot; {formatDuration(new Date(s.clockOut) - new Date(s.clockIn))}
+              </div>
+              {!loaded ? (
+                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
+              ) : (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 18 }}>
+                    <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: 12 }}>
+                      <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginBottom: 4 }}>{t("ordersCompleted")}</div>
+                      <div style={{ fontSize: 17, fontFamily: "IBM Plex Mono, monospace" }}>{completed.length}</div>
+                    </div>
+                    <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: 12 }}>
+                      <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginBottom: 4 }}>{t("netSales")}</div>
+                      <div style={{ fontSize: 17, fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(gross - refundsTotal)}</div>
+                    </div>
+                    <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: 12 }}>
+                      <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginBottom: 4 }}>{t("avgOrderValue")}</div>
+                      <div style={{ fontSize: 17, fontFamily: "IBM Plex Mono, monospace" }}>{money(completed.length > 0 ? gross / completed.length : 0)}</div>
+                    </div>
+                  </div>
+
+                  {byMethod.length > 0 && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("byPaymentMethod")}</div>
+                      {byMethod.map((m) => (
+                        <div key={m.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 5 }}>
+                          <span>{t(`payment_${m.id}`)}</span>
+                          <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(m.total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {(refunded.length > 0 || cancelled.length > 0 || discountTotal > 0) && (
+                    <div style={{ marginBottom: 18, fontSize: 12.5, display: "flex", flexDirection: "column", gap: 4 }}>
+                      {refunded.length > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", color: "#E3A79C" }}>
+                          <span>{t("refundedCount", { n: refunded.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(refundsTotal)}</span>
+                        </div>
+                      )}
+                      {cancelled.length > 0 && (
+                        <div style={{ color: "#E3C98A" }}>{t("cancelledCountNote", { n: cancelled.length })}</div>
+                      )}
+                      {discountTotal > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span>{t("discountedCountNote", { n: discountedCount })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(discountTotal)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("shiftDetailTicketsTitle")}</div>
+                  {completed.length === 0 ? (
+                    <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noSalesThisShift")}</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      {completed.map((r) => (
+                        <div key={r.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--text-muted)" }}>
+                          <span>{t("ticketHash", { n: r.ticketNo })} &middot; {new Date(r.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })}</span>
+                          <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(r.total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+              <button onClick={() => setViewingShiftDetail(null)} style={{ marginTop: 20, width: "100%", padding: "11px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 13.5, cursor: "pointer" }}>{t("cancel")}</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {shiftRecap && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80, padding: 20 }}>
