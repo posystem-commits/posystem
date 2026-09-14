@@ -209,7 +209,9 @@ const STRINGS = {
     unitHint: "Pick the unit you'll actually count in day to day — grams for things you weigh precisely, pieces/bottles for things you count. This unit is fixed for this ingredient everywhere it's used.",
     low: "Low",
     inStock: "In stock",
-    restock10: "+10 restock",
+    restockAmountPlaceholder: "10",
+    restockAmountTooltip: "Type any amount and tap Restock to add it all at once — handy after a delivery instead of tapping + repeatedly.",
+    restockBulk: "Restock",
     stockDecreaseTooltip: "Only for correcting counts or returning defective/damaged supply — staff can only add stock, not remove it.",
     unitGroup_Weight: "Weight",
     unitGroup_Volume: "Volume",
@@ -232,6 +234,8 @@ const STRINGS = {
     whatsappLogLine: "✓ WhatsApp {{sentOrOpened}} for \"{{status}}\" at {{time}}",
     saveChanges: "Save changes",
     cancelEdit: "Cancel edit",
+    paymentMethodEditLabel: "Payment method",
+    paymentMethodEditSplitNote: "Picking a method here replaces the split-payment breakdown with a single method.",
     editReasonLabel: "Reason for edit (optional)",
     editReasonPlaceholder: "e.g. customer changed their mind",
     viewEditHistory: "View edit history ({{n}})",
@@ -868,7 +872,9 @@ const STRINGS = {
     unitHint: "اختر الوحدة التي تُحصي بها فعليًا يوميًا — جرام لما يُوزن بدقة، قطع/زجاجات لما يُعد. هذه الوحدة ثابتة لهذا المكون أينما استُخدم.",
     low: "منخفض",
     inStock: "متوفر",
-    restock10: "+١٠ تجديد المخزون",
+    restockAmountPlaceholder: "١٠",
+    restockAmountTooltip: "اكتب أي كمية واضغط تجديد لإضافتها دفعة واحدة — مفيد بعد استلام توريد بدل الضغط على + كل مرة.",
+    restockBulk: "تجديد",
     stockDecreaseTooltip: "فقط لتصحيح الأرقام أو إرجاع بضاعة تالفة/معيبة — الموظفون يقدروا يزودوا المخزون فقط ولا يقدروا يقللوه.",
     unitGroup_Weight: "الوزن",
     unitGroup_Volume: "الحجم",
@@ -891,6 +897,8 @@ const STRINGS = {
     whatsappLogLine: "✓ واتساب {{sentOrOpened}} لحالة \"{{status}}\" في {{time}}",
     saveChanges: "حفظ التغييرات",
     cancelEdit: "إلغاء التعديل",
+    paymentMethodEditLabel: "طريقة الدفع",
+    paymentMethodEditSplitNote: "اختيار طريقة هنا يستبدل تقسيم الدفع بطريقة واحدة فقط.",
     editReasonLabel: "سبب التعديل (اختياري)",
     editReasonPlaceholder: "مثال: العميل غيّر رأيه",
     viewEditHistory: "عرض سجل التعديلات ({{n}})",
@@ -1528,7 +1536,7 @@ const buildHelpSystemPrompt = (restaurantName, lang) => {
     "tab_order", "tab_menu", "tab_stock", "tab_tables", "tab_delivery", "tab_receipts", "tab_expenses", "tab_dashboard",
     "tab_customers", "tab_shift", "tab_staff", "tab_settings",
     "addDiscount", "splitBill", "saveOrder", "printReceipt", "download", "clockOut", "clockIn",
-    "qrCode", "addCategory", "addItem", "addEmployee", "editPin", "restock10",
+    "qrCode", "addCategory", "addItem", "addEmployee", "editPin", "restockBulk", "paymentMethodEditLabel",
     "confirmOrder", "rejectOrder", "openTicket", "cancelOrder", "refundOrder",
     "payment_wallet", "priceListsTitle", "createProfile", "managePrices", "uploadPhoto",
     "themeLabel", "cashReconciliationTitle", "electronicReconciliationTitle", "deliveryReconciliationTitle",
@@ -1555,10 +1563,10 @@ that you don't see it and it may not be included in their current plan — don't
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
-- **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Use +10 restock or the +/- buttons to adjust.
+- **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
-- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out), Refund (stock stays deducted, use when it was already served), or Edit a saved order. Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
+- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out), Refund (stock stays deducted, use when it was already served), or Edit a saved order. Editing lets you change each item's quantity (stock adjusts to match) and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
 - **Dashboard** (manager-only): revenue, orders, average order value, net profit (revenue minus logged expenses), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month, by a single Day, or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
@@ -2047,6 +2055,8 @@ function POSPrototype({ tenantId }) {
   const [editingReceiptId, setEditingReceiptId] = useState(null);
   const [editDraftItems, setEditDraftItems] = useState([]);
   const [editReason, setEditReason] = useState("");
+  const [editPaymentMethod, setEditPaymentMethod] = useState(null);
+  const [restockAmounts, setRestockAmounts] = useState({}); // per-ingredient typed bulk-restock amount, keyed by ingredient id
   const [expandedHistoryId, setExpandedHistoryId] = useState(null); // receipt id whose edit-history panel is open, if any
 
   const [dutyRoster, setDutyRoster] = useState([]); // shared: [{id, name, role: "waiter"|"delivery"}] — non-login personnel orders can be assigned to
@@ -3734,6 +3744,15 @@ function POSPrototype({ tenantId }) {
     const n = Math.max(0, parseFloat(value) || 0);
     setIngredients((prev) => ({ ...prev, [id]: { ...prev[id], stock: n } }));
   };
+  // Adds whatever amount is currently typed into that ingredient's restock field in one go —
+  // open to any employee, same as the old fixed "+10" button this replaces, so staff can restock
+  // in bulk (e.g. after a delivery) without repeatedly tapping "+" one unit at a time.
+  const applyBulkRestock = (id) => {
+    const amt = parseFloat(restockAmounts[id]);
+    if (!amt || amt <= 0) return;
+    updateIngredientStock(id, amt);
+    setRestockAmounts((prev) => ({ ...prev, [id]: "" }));
+  };
   const addIngredient = () => {
     if (!newIngName.trim()) {
       flashNotice(t("notice_giveIngredientName"));
@@ -4755,11 +4774,13 @@ function POSPrototype({ tenantId }) {
     setEditingReceiptId(r.id);
     setEditDraftItems(r.items.map((it) => ({ ...it })));
     setEditReason("");
+    setEditPaymentMethod(r.paymentMethod || null);
   };
   const cancelEditReceipt = () => {
     setEditingReceiptId(null);
     setEditDraftItems([]);
     setEditReason("");
+    setEditPaymentMethod(null);
   };
   const changeEditQty = (index, delta, original) => {
     setEditDraftItems((prev) =>
@@ -4813,6 +4834,10 @@ function POSPrototype({ tenantId }) {
       if (delta !== 0) changes.push({ name: orig.name, from: orig.qty, to: newQty });
       if (newQty > 0) finalItems.push({ ...(edited || orig), qty: newQty, recipeSnapshot: recipeForItem });
     });
+    const paymentMethodChanged = editPaymentMethod && editPaymentMethod !== r.paymentMethod;
+    if (paymentMethodChanged) {
+      changes.push({ name: t("paymentMethodEditLabel"), from: t(`payment_${r.paymentMethod}`), to: t(`payment_${editPaymentMethod}`) });
+    }
     const cleaned = finalItems;
     const newSubtotal = cleaned.reduce((s, it) => s + it.price * it.qty, 0);
     const newDiscAmt = discountAmount(newSubtotal, r.discount);
@@ -4848,7 +4873,10 @@ function POSPrototype({ tenantId }) {
       serviceAmount: newServiceAmt,
       vatAmount: newVatAmt,
       total: newTotal,
-      splitPayments: rescaledSplitPayments,
+      // Switching away from a split payment to a single method retires the per-method breakdown —
+      // there's no sensible way to keep it once it's no longer actually split.
+      paymentMethod: editPaymentMethod || r.paymentMethod,
+      splitPayments: paymentMethodChanged ? undefined : rescaledSplitPayments,
       editHistory: historyEntry ? [historyEntry, ...(r.editHistory || [])] : r.editHistory,
     };
     updateReceiptInStorage(r, () => updatedReceipt);
@@ -6927,7 +6955,16 @@ function POSPrototype({ tenantId }) {
                       <span style={{ width: 64, textAlign: "center", color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }}>{fmtQty(ing.stock)}</span>
                     )}
                     <button onClick={() => updateIngredientStock(ing.id, 1)} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 14 }}>+</button>
-                    <button onClick={() => updateIngredientStock(ing.id, 10)} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer", fontSize: 11.5, fontWeight: 500 }}>{t("restock10")}</button>
+                    <input
+                      type="number"
+                      value={restockAmounts[ing.id] ?? ""}
+                      onChange={(e) => setRestockAmounts((prev) => ({ ...prev, [ing.id]: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === "Enter") applyBulkRestock(ing.id); }}
+                      placeholder={t("restockAmountPlaceholder")}
+                      title={t("restockAmountTooltip")}
+                      style={{ width: 56, textAlign: "center", background: "transparent", border: `1px solid ${theme.secondary}`, borderRadius: 6, color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace", fontSize: 12, padding: "5px 2px" }}
+                    />
+                    <button onClick={() => applyBulkRestock(ing.id)} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer", fontSize: 11.5, fontWeight: 500 }}>{t("restockBulk")}</button>
                     {isManager && (
                       <button onClick={() => deleteIngredient(ing.id)} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer", fontSize: 11.5 }}>{t("delete")}</button>
                     )}
@@ -7141,6 +7178,35 @@ function POSPrototype({ tenantId }) {
                                 </div>
                               </div>
                             ))}
+                            <div style={{ marginBottom: 10 }}>
+                              <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginBottom: 5 }}>{t("paymentMethodEditLabel")}</div>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                {PAYMENT_METHODS.map((m) => {
+                                  const isCurrent = editPaymentMethod === m.id;
+                                  return (
+                                    <button
+                                      key={m.id}
+                                      onClick={() => setEditPaymentMethod(m.id)}
+                                      style={{
+                                        fontSize: 11.5,
+                                        padding: "5px 10px",
+                                        borderRadius: 999,
+                                        border: `1px solid ${isCurrent ? theme.secondary : "var(--border)"}`,
+                                        background: isCurrent ? "rgba(176,141,87,0.18)" : "transparent",
+                                        color: isCurrent ? theme.secondaryLight : "var(--text-muted)",
+                                        cursor: "pointer",
+                                        fontWeight: isCurrent ? 600 : 400,
+                                      }}
+                                    >
+                                      {t(`payment_${m.id}`)}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              {r.paymentMethod === "split" && (
+                                <div style={{ fontSize: 10.5, color: "#E3C98A", marginTop: 5 }}>{t("paymentMethodEditSplitNote")}</div>
+                              )}
+                            </div>
                             <textarea
                               value={editReason}
                               onChange={(e) => setEditReason(e.target.value)}
