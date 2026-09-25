@@ -570,6 +570,8 @@ const STRINGS = {
     offlineBadge: "Offline",
     menuLoadFailedBadge: "Menu didn't load",
     menuLoadFailedHint: "Couldn't load the real menu from the server — showing placeholder data instead. Don't take orders on this device until this clears; it retries automatically. Nothing has been overwritten yet.",
+    configLoadFailedBadge: "Some settings didn't load",
+    configLoadFailedHint: "Couldn't load one of this restaurant's settings (tables, price lists, tax rates, or delivery split) from the server. It's retrying automatically — nothing has been overwritten. Avoid changing that setting on this device until this clears.",
     syncPendingPill: "{{n}} change waiting to sync",
     syncPendingPill_plural: "{{n}} changes waiting to sync",
     retrySync: "Retry now",
@@ -1242,6 +1244,8 @@ const STRINGS = {
     offlineBadge: "غير متصل",
     menuLoadFailedBadge: "لم تُحمّل القائمة",
     menuLoadFailedHint: "تعذّر تحميل القائمة الحقيقية من الخادم — يُعرض حاليًا محتوى بديل مؤقت. لا تأخذ طلبات من هذا الجهاز حتى يختفي هذا التنبيه؛ إعادة المحاولة تلقائية. لم يُستبدل أي شيء بعد.",
+    configLoadFailedBadge: "بعض الإعدادات لم تُحمّل",
+    configLoadFailedHint: "تعذّر تحميل أحد إعدادات هذا المطعم (الطاولات، قوائم الأسعار، الضرائب، أو تقسيم رسوم التوصيل) من الخادم. تتم إعادة المحاولة تلقائيًا — لم يُستبدل أي شيء بعد. تجنّب تغيير هذا الإعداد من هذا الجهاز حتى يختفي هذا التنبيه.",
     syncPendingPill: "تغيير واحد بانتظار المزامنة",
     syncPendingPill_plural: "{{n}} تغييرات بانتظار المزامنة",
     retrySync: "إعادة المحاولة الآن",
@@ -1972,9 +1976,6 @@ function POSPrototype({ tenantId }) {
   // failed read would save the built-in placeholder starter menu over the tenant's real one.
   const [menuLoadFailed, setMenuLoadFailed] = useState(false);
   const menuLoadFailedRef = useRef(false);
-  useEffect(() => {
-    menuLoadFailedRef.current = menuLoadFailed;
-  }, [menuLoadFailed]);
 
   // Alternate price lists — each one mirrors the base menu (same items, same recipes/stock
   // consumption) but can override individual items' prices and add its own extra items on top.
@@ -1983,6 +1984,11 @@ function POSPrototype({ tenantId }) {
   // everywhere without having to touch every profile.
   const [menuProfiles, setMenuProfiles] = useState([]); // [{id, name, priceOverrides: {itemId: price}, extraItems: {category: [item,...]}}]
   const [menuProfilesLoaded, setMenuProfilesLoaded] = useState(false);
+  // Same "don't let a failed read fall through to the placeholder default and get auto-saved over
+  // real data" protection as menuLoadFailed above — see that comment. Applies to every config below
+  // that's auto-persisted on any change rather than only on an explicit save action.
+  const [menuProfilesLoadFailed, setMenuProfilesLoadFailed] = useState(false);
+  const menuProfilesLoadFailedRef = useRef(false);
   const [activeMenuProfile, setActiveMenuProfile] = useState(null); // profile id currently governing the order screen's prices, or null for the base menu
   const [newProfileName, setNewProfileName] = useState("");
   const [managingProfileId, setManagingProfileId] = useState(null); // which profile's price-management panel is expanded, if any
@@ -1990,6 +1996,8 @@ function POSPrototype({ tenantId }) {
   const [tableCount, setTableCount] = useState(12);
   const [tableNames, setTableNames] = useState({});
   const [tablesLoaded, setTablesLoaded] = useState(false);
+  const [tablesLoadFailed, setTablesLoadFailed] = useState(false);
+  const tablesLoadFailedRef = useRef(false);
   const [activeTableId, setActiveTableId] = useState(null); // null = Takeaway/Delivery
   const [tableDrafts, setTableDrafts] = useState({}); // in-session only — per-table in-progress carts
   const [qrTableId, setQrTableId] = useState(null); // which table's QR modal is open, if any
@@ -2123,9 +2131,6 @@ function POSPrototype({ tenantId }) {
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
   const [rosterLoadFailed, setRosterLoadFailed] = useState(false); // couldn't reach the roster (e.g. offline) — distinct from "genuinely no staff yet"
   const rosterLoadFailedRef = useRef(false);
-  useEffect(() => {
-    rosterLoadFailedRef.current = rosterLoadFailed;
-  }, [rosterLoadFailed]);
   const [currentEmployee, setCurrentEmployee] = useState(null); // {id, name} | null — who's clocked in (or just viewing — see viewingOnly) on this device
   const [currentEmployeeLoaded, setCurrentEmployeeLoaded] = useState(false);
   const [viewingOnly, setViewingOnly] = useState(false); // manager checking the system from their phone, e.g. — signed in but not on shift, so it never touches shift stats
@@ -2185,6 +2190,8 @@ function POSPrototype({ tenantId }) {
   // as the rest of branding.
   const [uiTheme, setUiTheme] = useState("dark");
   const [uiThemeLoaded, setUiThemeLoaded] = useState(false);
+  const [uiThemeLoadFailed, setUiThemeLoadFailed] = useState(false);
+  const uiThemeLoadFailedRef = useRef(false);
 
   const [restaurantName, setRestaurantName] = useState("Ember & Vine");
   const [logoUrl, setLogoUrl] = useState(null);
@@ -2197,6 +2204,8 @@ function POSPrototype({ tenantId }) {
   const [vatPercent, setVatPercent] = useState(0);
   const [servicePercent, setServicePercent] = useState(0);
   const [taxConfigLoaded, setTaxConfigLoaded] = useState(false);
+  const [taxConfigLoadFailed, setTaxConfigLoadFailed] = useState(false);
+  const taxConfigLoadFailedRef = useRef(false);
 
   // How much of the delivery fee the restaurant keeps for itself — the rest is the rider's pay.
   // Either a percentage of the fee, or a flat amount per delivery regardless of the fee size.
@@ -2206,6 +2215,8 @@ function POSPrototype({ tenantId }) {
   const [deliveryFeeRetentionPercent, setDeliveryFeeRetentionPercent] = useState(0);
   const [deliveryFeeRetentionFixed, setDeliveryFeeRetentionFixed] = useState(0);
   const [deliveryShareConfigLoaded, setDeliveryShareConfigLoaded] = useState(false);
+  const [deliveryShareConfigLoadFailed, setDeliveryShareConfigLoadFailed] = useState(false);
+  const deliveryShareConfigLoadFailedRef = useRef(false);
 
   // Tabs a manager has chosen to require a manager PIN to open — see handleTabClick. Regular
   // staff hit a PIN prompt; a currently-logged-in manager always passes straight through (they've
@@ -2419,7 +2430,9 @@ function POSPrototype({ tenantId }) {
           setServicePercent(Number(parsed.servicePercent) || 0);
         }
       } catch (e) {
-        // fall back to 0%/0% already set
+        // Genuinely couldn't reach it — do NOT fall through to 0%/0%: taxConfigLoadFailed blocks
+        // the auto-persist effect below from writing that over a real VAT/service rate.
+        setTaxConfigLoadFailed(true);
       } finally {
         setTaxConfigLoaded(true);
       }
@@ -2441,7 +2454,7 @@ function POSPrototype({ tenantId }) {
           setDeliveryFeeRetentionFixed(Number(parsed.retentionFixed) || 0);
         }
       } catch (e) {
-        // fall back to 0% / restaurant keeps nothing, already set
+        setDeliveryShareConfigLoadFailed(true);
       } finally {
         setDeliveryShareConfigLoaded(true);
       }
@@ -2453,7 +2466,7 @@ function POSPrototype({ tenantId }) {
         const parsed = result?.value ? JSON.parse(result.value) : null;
         if (parsed?.theme === "light" || parsed?.theme === "dark") setUiTheme(parsed.theme);
       } catch (e) {
-        // fall back to dark, already set
+        setUiThemeLoadFailed(true);
       } finally {
         setUiThemeLoaded(true);
       }
@@ -2514,7 +2527,7 @@ function POSPrototype({ tenantId }) {
         const parsed = result?.value ? JSON.parse(result.value) : null;
         if (Array.isArray(parsed)) setMenuProfiles(parsed);
       } catch (e) {
-        // fall back to no profiles already set
+        setMenuProfilesLoadFailed(true);
       } finally {
         setMenuProfilesLoaded(true);
       }
@@ -2529,7 +2542,7 @@ function POSPrototype({ tenantId }) {
           setTableNames(parsed.names || {});
         }
       } catch (e) {
-        // fall back to defaults already set
+        setTablesLoadFailed(true);
       } finally {
         setTablesLoaded(true);
       }
@@ -2647,36 +2660,38 @@ function POSPrototype({ tenantId }) {
     syncSet("ingredients-config", JSON.stringify(ingredients), true, t("syncLabelStock"));
   }, [ingredients, menuLoaded, menuLoadFailed]);
   useEffect(() => {
-    if (!menuProfilesLoaded) return;
+    if (!menuProfilesLoaded || menuProfilesLoadFailed) return;
     syncSet("menu-profiles-config", JSON.stringify(menuProfiles), true, t("syncLabelMenu"));
-  }, [menuProfiles, menuProfilesLoaded]);
+  }, [menuProfiles, menuProfilesLoaded, menuProfilesLoadFailed]);
   useEffect(() => {
-    if (!tablesLoaded) return;
+    if (!tablesLoaded || tablesLoadFailed) return;
     syncSet("tables-config", JSON.stringify({ count: tableCount, names: tableNames }), true, t("syncLabelTables"));
-  }, [tableCount, tableNames, tablesLoaded]);
+  }, [tableCount, tableNames, tablesLoaded, tablesLoadFailed]);
   useEffect(() => {
-    if (!taxConfigLoaded) return;
+    if (!taxConfigLoaded || taxConfigLoadFailed) return;
     syncSet("tax-config", JSON.stringify({ vatPercent, servicePercent }), true, t("syncLabelSettings"));
-  }, [vatPercent, servicePercent, taxConfigLoaded]);
+  }, [vatPercent, servicePercent, taxConfigLoaded, taxConfigLoadFailed]);
   useEffect(() => {
-    if (!deliveryShareConfigLoaded) return;
+    if (!deliveryShareConfigLoaded || deliveryShareConfigLoadFailed) return;
     syncSet(
       "delivery-share-config",
       JSON.stringify({ retentionMode: deliveryFeeRetentionMode, retentionPercent: deliveryFeeRetentionPercent, retentionFixed: deliveryFeeRetentionFixed }),
       true,
       t("syncLabelSettings")
     );
-  }, [deliveryFeeRetentionMode, deliveryFeeRetentionPercent, deliveryFeeRetentionFixed, deliveryShareConfigLoaded]);
+  }, [deliveryFeeRetentionMode, deliveryFeeRetentionPercent, deliveryFeeRetentionFixed, deliveryShareConfigLoaded, deliveryShareConfigLoadFailed]);
   useEffect(() => {
-    if (!uiThemeLoaded) return;
+    if (!uiThemeLoaded || uiThemeLoadFailed) return;
     syncSet("ui-theme-config", JSON.stringify({ theme: uiTheme }), true, t("syncLabelSettings"));
-  }, [uiTheme, uiThemeLoaded]);
+  }, [uiTheme, uiThemeLoaded, uiThemeLoadFailed]);
   // Publishes ONLY a per-item true/false availability flag to shared storage — never the
   // underlying ingredient names, quantities, or stock counts. This is what the public online-
   // ordering link (and table QR menus) read to show "Available"/"Not available" per dish, without
-  // any path to the actual inventory data that produced that flag.
+  // any path to the actual inventory data that produced that flag. Also gated on menuLoadFailed —
+  // a failed menu/ingredients read would otherwise publish availability computed from the
+  // placeholder starter menu's item ids instead of the tenant's real ones.
   useEffect(() => {
-    if (!menuLoaded) return;
+    if (!menuLoaded || menuLoadFailed) return;
     const availability = {};
     Object.values(menu).flat().forEach((item) => {
       const available =
@@ -2689,7 +2704,7 @@ function POSPrototype({ tenantId }) {
       availability[item.id] = available;
     });
     syncSet("menu-availability", JSON.stringify(availability), true, t("syncLabelStock"));
-  }, [menu, ingredients, menuLoaded]);
+  }, [menu, ingredients, menuLoaded, menuLoadFailed]);
 
   // Ticks once a minute purely to refresh the live "hours worked so far" display while someone's
   // clocked in — doesn't touch storage, just forces a re-render of that one computed string.
@@ -3442,6 +3457,11 @@ function POSPrototype({ tenantId }) {
       flushSyncQueue();
       if (rosterLoadFailed) retryRosterLoad();
       if (menuLoadFailed) retryMenuLoad();
+      if (menuProfilesLoadFailed) retryMenuProfilesLoad();
+      if (tablesLoadFailed) retryTablesLoad();
+      if (taxConfigLoadFailed) retryTaxConfigLoad();
+      if (deliveryShareConfigLoadFailed) retryDeliveryShareConfigLoad();
+      if (uiThemeLoadFailed) retryUiThemeLoad();
     };
     const goOffline = () => setIsOnline(false);
     const onVisible = () => {
@@ -3449,6 +3469,11 @@ function POSPrototype({ tenantId }) {
       if (syncQueueRef.current.length > 0) flushSyncQueue();
       if (rosterLoadFailedRef.current) retryRosterLoad();
       if (menuLoadFailedRef.current) retryMenuLoad();
+      if (menuProfilesLoadFailedRef.current) retryMenuProfilesLoad();
+      if (tablesLoadFailedRef.current) retryTablesLoad();
+      if (taxConfigLoadFailedRef.current) retryTaxConfigLoad();
+      if (deliveryShareConfigLoadFailedRef.current) retryDeliveryShareConfigLoad();
+      if (uiThemeLoadFailedRef.current) retryUiThemeLoad();
     };
     window.addEventListener("online", goOnline);
     window.addEventListener("offline", goOffline);
@@ -3458,7 +3483,7 @@ function POSPrototype({ tenantId }) {
       window.removeEventListener("offline", goOffline);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [rosterLoadFailed, menuLoadFailed]);
+  }, [rosterLoadFailed, menuLoadFailed, menuProfilesLoadFailed, tablesLoadFailed, taxConfigLoadFailed, deliveryShareConfigLoadFailed, uiThemeLoadFailed]);
   useEffect(() => {
     const interval = setInterval(() => {
       // No longer gated on navigator.onLine — that flag is exactly what's unreliable here, so
@@ -3466,6 +3491,11 @@ function POSPrototype({ tenantId }) {
       if (syncQueueRef.current.length > 0) flushSyncQueue();
       if (rosterLoadFailedRef.current) retryRosterLoad();
       if (menuLoadFailedRef.current) retryMenuLoad();
+      if (menuProfilesLoadFailedRef.current) retryMenuProfilesLoad();
+      if (tablesLoadFailedRef.current) retryTablesLoad();
+      if (taxConfigLoadFailedRef.current) retryTaxConfigLoad();
+      if (deliveryShareConfigLoadFailedRef.current) retryDeliveryShareConfigLoad();
+      if (uiThemeLoadFailedRef.current) retryUiThemeLoad();
     }, 3000); // short enough that automatic recovery feels immediate, not just "eventually"
     return () => clearInterval(interval);
   }, []);
@@ -3535,6 +3565,81 @@ function POSPrototype({ tenantId }) {
       // still offline/unreachable — stays in the failed state, will try again on the next signal
     }
   };
+  const retryMenuProfilesLoad = async () => {
+    try {
+      const result = await getSharedWithRetry(storage, "menu-profiles-config");
+      const parsed = result?.value ? JSON.parse(result.value) : null;
+      if (Array.isArray(parsed)) setMenuProfiles(parsed);
+      setMenuProfilesLoadFailed(false);
+    } catch (e) {
+      // still offline/unreachable — stays in the failed state, will try again on the next signal
+    }
+  };
+  const retryTablesLoad = async () => {
+    try {
+      const result = await getSharedWithRetry(storage, "tables-config");
+      const parsed = result?.value ? JSON.parse(result.value) : null;
+      if (parsed) {
+        setTableCount(Number(parsed.count) > 0 ? Number(parsed.count) : 12);
+        setTableNames(parsed.names || {});
+      }
+      setTablesLoadFailed(false);
+    } catch (e) {
+      // still offline/unreachable — stays in the failed state, will try again on the next signal
+    }
+  };
+  const retryTaxConfigLoad = async () => {
+    try {
+      const result = await getSharedWithRetry(storage, "tax-config");
+      const parsed = result?.value ? JSON.parse(result.value) : null;
+      if (parsed) {
+        setVatPercent(Number(parsed.vatPercent) || 0);
+        setServicePercent(Number(parsed.servicePercent) || 0);
+      }
+      setTaxConfigLoadFailed(false);
+    } catch (e) {
+      // still offline/unreachable — stays in the failed state, will try again on the next signal
+    }
+  };
+  const retryDeliveryShareConfigLoad = async () => {
+    try {
+      const result = await getSharedWithRetry(storage, "delivery-share-config");
+      const parsed = result?.value ? JSON.parse(result.value) : null;
+      if (parsed && parsed.agentSharePercent !== undefined && parsed.retentionMode === undefined) {
+        setDeliveryFeeRetentionMode("percentage");
+        setDeliveryFeeRetentionPercent(Math.max(0, Math.min(100, 100 - Number(parsed.agentSharePercent))));
+      } else if (parsed) {
+        setDeliveryFeeRetentionMode(parsed.retentionMode === "fixed" ? "fixed" : "percentage");
+        setDeliveryFeeRetentionPercent(Number(parsed.retentionPercent) || 0);
+        setDeliveryFeeRetentionFixed(Number(parsed.retentionFixed) || 0);
+      }
+      setDeliveryShareConfigLoadFailed(false);
+    } catch (e) {
+      // still offline/unreachable — stays in the failed state, will try again on the next signal
+    }
+  };
+  const retryUiThemeLoad = async () => {
+    try {
+      const result = await getSharedWithRetry(storage, "ui-theme-config");
+      const parsed = result?.value ? JSON.parse(result.value) : null;
+      if (parsed?.theme === "light" || parsed?.theme === "dark") setUiTheme(parsed.theme);
+      setUiThemeLoadFailed(false);
+    } catch (e) {
+      // still offline/unreachable — stays in the failed state, will try again on the next signal
+    }
+  };
+  // One combined sync instead of seven near-identical effects — keeps every "did this config's
+  // load actually fail" ref current after every render so the retry triggers below (which live
+  // inside listeners/intervals and would otherwise close over stale state) always see the latest.
+  useEffect(() => {
+    rosterLoadFailedRef.current = rosterLoadFailed;
+    menuLoadFailedRef.current = menuLoadFailed;
+    menuProfilesLoadFailedRef.current = menuProfilesLoadFailed;
+    tablesLoadFailedRef.current = tablesLoadFailed;
+    taxConfigLoadFailedRef.current = taxConfigLoadFailed;
+    deliveryShareConfigLoadFailedRef.current = deliveryShareConfigLoadFailed;
+    uiThemeLoadFailedRef.current = uiThemeLoadFailed;
+  });
 
   // Hands out the next ticket number and advances the shared counter. Uses the ref (not state)
   // so a burst of tickets issued in quick succession — e.g. several tables opened back to back —
@@ -6243,6 +6348,12 @@ function POSPrototype({ tenantId }) {
             <div title={t("menuLoadFailedHint")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, border: `1px solid ${COLORS.red}`, background: "rgba(166,83,74,0.15)", color: "#E3A79C", fontSize: 12.5, fontWeight: 600 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E3A79C", display: "inline-block" }} />
               {t("menuLoadFailedBadge")}
+            </div>
+          )}
+          {!menuLoadFailed && (menuProfilesLoadFailed || tablesLoadFailed || taxConfigLoadFailed || deliveryShareConfigLoadFailed || uiThemeLoadFailed) && (
+            <div title={t("configLoadFailedHint")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, border: `1px solid ${COLORS.red}`, background: "rgba(166,83,74,0.15)", color: "#E3A79C", fontSize: 12.5, fontWeight: 600 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E3A79C", display: "inline-block" }} />
+              {t("configLoadFailedBadge")}
             </div>
           )}
           {syncQueue.length > 0 && (
