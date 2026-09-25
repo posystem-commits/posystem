@@ -2655,10 +2655,9 @@ function POSPrototype({ tenantId }) {
     if (!menuLoaded || menuLoadFailed) return;
     syncSet("menu-config", JSON.stringify({ categories, menu }), true, t("syncLabelMenu"));
   }, [categories, menu, menuLoaded, menuLoadFailed]);
-  useEffect(() => {
-    if (!menuLoaded || menuLoadFailed) return;
-    syncSet("ingredients-config", JSON.stringify(ingredients), true, t("syncLabelStock"));
-  }, [ingredients, menuLoaded, menuLoadFailed]);
+  // No blanket auto-persist effect for ingredients-config — every mutation (updateIngredientStock,
+  // addIngredient, deleteIngredient, commitIngredientStockValue) writes it explicitly against a
+  // freshly-fetched value instead. See the "Ingredient stock helpers" section for why.
   useEffect(() => {
     if (!menuProfilesLoaded || menuProfilesLoadFailed) return;
     syncSet("menu-profiles-config", JSON.stringify(menuProfiles), true, t("syncLabelMenu"));
@@ -3672,19 +3671,34 @@ function POSPrototype({ tenantId }) {
     if (!monthKeys.includes(monthKey)) setMonthKeys((prev) => [monthKey, ...prev].sort().reverse());
     return syncSet(`receipts:${monthKey}`, JSON.stringify(updatedList), false, t("syncLabelOrders"));
   };
+  // Re-fetches a month's receipts straight from the server instead of trusting this device's
+  // local cache, which can be minutes or hours stale. Every write below (appendReceipt,
+  // updateReceiptInStorage) builds its new list from THIS, not from receiptsByMonth — otherwise
+  // two devices saving/cancelling/editing orders around the same time would race: whichever
+  // writes second replaces the whole month with its own stale snapshot plus its one change,
+  // silently erasing every receipt the other device saved in between. Falls back to the local
+  // cache only if the fresh read itself fails, so a real offline moment still degrades gracefully
+  // instead of blocking the save outright.
+  const fetchFreshMonth = async (monthKey) => {
+    try {
+      const result = await storage.get(`receipts:${monthKey}`, false);
+      return result?.value ? JSON.parse(result.value) : [];
+    } catch (e) {
+      return receiptsByMonth[monthKey] || [];
+    }
+  };
   const appendReceipt = async (monthKey, receipt) => {
-    let existing = receiptsByMonth[monthKey];
-    if (existing === undefined) existing = await ensureMonthLoaded(monthKey);
+    const existing = await fetchFreshMonth(monthKey);
     return persistMonth(monthKey, [receipt, ...existing]);
   };
   // Resolves and updates a receipt directly in its own real storage month, rather than assuming
   // it's whichever month happens to be currently selected in the Receipts tab — needed now that
   // Receipts, like the Dashboard, can show a day/range whose business dates (see
   // businessDateForTimestamp) spill into a neighboring month's storage bucket.
-  const updateReceiptInStorage = (r, updater) => {
+  const updateReceiptInStorage = async (r, updater) => {
     const monthKey = new Date(r.timestamp).toISOString().slice(0, 7);
-    const list = receiptsByMonth[monthKey] || [];
-    persistMonth(monthKey, list.map((x) => (x.id === r.id ? updater(x) : x)));
+    const list = await fetchFreshMonth(monthKey);
+    return persistMonth(monthKey, list.map((x) => (x.id === r.id ? updater(x) : x)));
   };
   // Shared by Dashboard and Receipts: widens a set of "reporting" months by one month either side,
   // then filters receipts from that wider pool back down to exactly the reporting months by their
@@ -3717,19 +3731,27 @@ function POSPrototype({ tenantId }) {
     if (!expenseMonthKeys.includes(monthKey)) setExpenseMonthKeys((prev) => [monthKey, ...prev].sort().reverse());
     return syncSet(`expenses:${monthKey}`, JSON.stringify(updatedList), true, t("syncLabelExpenses"));
   };
+  // Same fetch-fresh-before-write reasoning as fetchFreshMonth for receipts above — two devices
+  // logging expenses around the same time must not let whichever saves second silently erase
+  // what the first just logged.
+  const fetchFreshExpenseMonth = async (monthKey) => {
+    try {
+      const result = await getSharedWithRetry(storage, `expenses:${monthKey}`);
+      return result?.value ? JSON.parse(result.value) : [];
+    } catch (e) {
+      return expensesByMonth[monthKey] || [];
+    }
+  };
   const appendExpense = async (monthKey, expense) => {
-    let existing = expensesByMonth[monthKey];
-    if (existing === undefined) existing = await ensureExpenseMonthLoaded(monthKey);
+    const existing = await fetchFreshExpenseMonth(monthKey);
     return persistExpenseMonth(monthKey, [expense, ...existing]);
   };
   const updateExpenseInMonth = async (monthKey, expenseId, updater) => {
-    let existing = expensesByMonth[monthKey];
-    if (existing === undefined) existing = await ensureExpenseMonthLoaded(monthKey);
+    const existing = await fetchFreshExpenseMonth(monthKey);
     return persistExpenseMonth(monthKey, existing.map((e) => (e.id === expenseId ? updater(e) : e)));
   };
   const deleteExpenseFromMonth = async (monthKey, expenseId) => {
-    let existing = expensesByMonth[monthKey];
-    if (existing === undefined) existing = await ensureExpenseMonthLoaded(monthKey);
+    const existing = await fetchFreshExpenseMonth(monthKey);
     return persistExpenseMonth(monthKey, existing.filter((e) => e.id !== expenseId));
   };
 
@@ -3895,16 +3917,68 @@ function POSPrototype({ tenantId }) {
   };
 
   // --- Ingredient stock helpers ---
+  // ingredients-config has no blanket auto-persist effect (unlike most other shared config) —
+  // every mutation below writes it explicitly, fetching the current server value immediately
+  // before merging in, rather than trusting this device's local `ingredients` state. Stock
+  // changes on every single order (every device, all day), so trusting a stale local snapshot
+  // here would routinely let one device's save silently erase another's — the same race that hit
+  // receipts, just far more frequent since it fires on every sale, not only on edits/cancellations.
+  const fetchFreshIngredients = async () => {
+    try {
+      const result = await storage.get("ingredients-config", true);
+      return result?.value ? JSON.parse(result.value) : ingredients;
+    } catch (e) {
+      return ingredients;
+    }
+  };
+  // Deltas from one synchronous burst (e.g. every recipe line of every item in one saved order)
+  // are batched into a single fetch-merge-write rather than one round trip per line — both for
+  // efficiency and so they can't race against each other.
+  const pendingIngredientDeltasRef = useRef({}); // { [ingredientId]: accumulatedDelta }
+  const ingredientFlushScheduledRef = useRef(false);
+  const flushIngredientDeltas = async () => {
+    ingredientFlushScheduledRef.current = false;
+    const deltas = pendingIngredientDeltasRef.current;
+    pendingIngredientDeltasRef.current = {};
+    if (Object.keys(deltas).length === 0) return;
+    const fresh = await fetchFreshIngredients();
+    const next = { ...fresh };
+    Object.entries(deltas).forEach(([id, delta]) => {
+      if (!next[id]) return;
+      const nextVal = Math.max(0, Math.round((next[id].stock + delta) * 1000) / 1000);
+      next[id] = { ...next[id], stock: nextVal };
+    });
+    setIngredients(next);
+    await syncSet("ingredients-config", JSON.stringify(next), true, t("syncLabelStock"));
+  };
   const updateIngredientStock = (id, delta) => {
+    // Optimistic local update for immediate UI feedback — the actual persisted write happens in
+    // flushIngredientDeltas above, against a freshly-fetched value, not this local state.
     setIngredients((prev) => {
       if (!prev[id]) return prev;
       const nextVal = Math.max(0, Math.round((prev[id].stock + delta) * 1000) / 1000);
       return { ...prev, [id]: { ...prev[id], stock: nextVal } };
     });
+    pendingIngredientDeltasRef.current[id] = (pendingIngredientDeltasRef.current[id] || 0) + delta;
+    if (!ingredientFlushScheduledRef.current) {
+      ingredientFlushScheduledRef.current = true;
+      setTimeout(flushIngredientDeltas, 0);
+    }
   };
+  // Manual correction of an ingredient's exact stock count (Stock tab) — updates locally on every
+  // keystroke for responsive typing, but only commits to the server on blur (see the input's
+  // onBlur below), same fetch-fresh-before-write treatment as everything else here.
   const setIngredientStockValue = (id, value) => {
     const n = Math.max(0, parseFloat(value) || 0);
     setIngredients((prev) => ({ ...prev, [id]: { ...prev[id], stock: n } }));
+  };
+  const commitIngredientStockValue = async (id, value) => {
+    const n = Math.max(0, parseFloat(value) || 0);
+    const fresh = await fetchFreshIngredients();
+    if (!fresh[id]) return;
+    const next = { ...fresh, [id]: { ...fresh[id], stock: n } };
+    setIngredients(next);
+    await syncSet("ingredients-config", JSON.stringify(next), true, t("syncLabelStock"));
   };
   // Adds whatever amount is currently typed into that ingredient's restock field in one go —
   // open to any employee, same as the old fixed "+10" button this replaces, so staff can restock
@@ -3915,7 +3989,7 @@ function POSPrototype({ tenantId }) {
     updateIngredientStock(id, amt);
     setRestockAmounts((prev) => ({ ...prev, [id]: "" }));
   };
-  const addIngredient = () => {
+  const addIngredient = async () => {
     if (!newIngName.trim()) {
       flashNotice(t("notice_giveIngredientName"));
       return;
@@ -3926,26 +4000,27 @@ function POSPrototype({ tenantId }) {
       return;
     }
     const id = newId("ing");
-    setIngredients((prev) => ({
-      ...prev,
-      [id]: { id, name: newIngName.trim(), unit: resolvedUnit, stock: Math.max(0, parseFloat(newIngStock) || 0) },
-    }));
+    const entry = { id, name: newIngName.trim(), unit: resolvedUnit, stock: Math.max(0, parseFloat(newIngStock) || 0) };
+    const fresh = await fetchFreshIngredients();
+    const next = { ...fresh, [id]: entry };
+    setIngredients(next);
+    await syncSet("ingredients-config", JSON.stringify(next), true, t("syncLabelStock"));
     setNewIngName("");
     setNewIngStock("");
     setNewIngUnitCustom("");
-    flashNotice(t("notice_ingredientAdded", { name: newIngName.trim(), unit: resolvedUnit }));
+    flashNotice(t("notice_ingredientAdded", { name: entry.name, unit: resolvedUnit }));
   };
   const isIngredientUsed = (id) => Object.values(menu).some((items) => items.some((it) => it.recipe.some((r) => r.ingredientId === id)));
-  const deleteIngredient = (id) => {
+  const deleteIngredient = async (id) => {
     if (isIngredientUsed(id)) {
       flashNotice(t("notice_cantDeleteUsed"));
       return;
     }
-    setIngredients((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    const fresh = await fetchFreshIngredients();
+    const next = { ...fresh };
+    delete next[id];
+    setIngredients(next);
+    await syncSet("ingredients-config", JSON.stringify(next), true, t("syncLabelStock"));
   };
 
   // Looks up a menu item's definition (for its recipe, mainly) wherever it might live — the base
@@ -4180,7 +4255,17 @@ function POSPrototype({ tenantId }) {
 
     let customerOk = true;
     if (customer && customer.phone) {
-      const existing = customers[customer.phone];
+      // Fresh fetch, not the local `customers` cache — two devices checking out different
+      // customers (or the same one) around the same time must not let whichever saves second
+      // silently revert the other's order-count bump or contact-detail update.
+      let freshCustomers;
+      try {
+        const result = await storage.get("customers-directory", false);
+        freshCustomers = result?.value ? JSON.parse(result.value) : {};
+      } catch (e) {
+        freshCustomers = customers;
+      }
+      const existing = freshCustomers[customer.phone];
       const updatedEntry = {
         name: customer.name || existing?.name || "",
         phone: customer.phone,
@@ -4188,7 +4273,7 @@ function POSPrototype({ tenantId }) {
         orderCount: (existing?.orderCount || 0) + 1,
         lastOrder: receipt.timestamp,
       };
-      customerOk = await persistCustomers({ ...customers, [customer.phone]: updatedEntry });
+      customerOk = await persistCustomers({ ...freshCustomers, [customer.phone]: updatedEntry });
     }
 
     setSaved(true);
@@ -4642,13 +4727,21 @@ function POSPrototype({ tenantId }) {
     setSuppliers(next);
     return syncSet("suppliers-config", JSON.stringify(next), true, t("syncLabelExpenses"));
   };
-  const addSupplierRecord = () => {
+  const fetchFreshSuppliers = async () => {
+    try {
+      const result = await storage.get("suppliers-config", true);
+      return result?.value ? JSON.parse(result.value) : suppliers;
+    } catch (e) {
+      return suppliers;
+    }
+  };
+  const addSupplierRecord = async () => {
     const name = newSupplierName.trim();
     if (!name) {
       flashNotice(t("notice_enterSupplierName"));
       return;
     }
-    persistSuppliers([...suppliers, { id: newId("sup"), name, category: newSupplierCategory, phone: newSupplierPhone.trim() }]);
+    persistSuppliers([...(await fetchFreshSuppliers()), { id: newId("sup"), name, category: newSupplierCategory, phone: newSupplierPhone.trim() }]);
     flashNotice(t("notice_supplierAdded", { name }));
     setNewSupplierName("");
     setNewSupplierPhone("");
@@ -4656,7 +4749,7 @@ function POSPrototype({ tenantId }) {
   const removeSupplierRecord = (supplier) => {
     setConfirmDialog({
       message: t("confirm_removeSupplier", { name: supplier.name }),
-      onConfirm: () => persistSuppliers(suppliers.filter((s) => s.id !== supplier.id)),
+      onConfirm: async () => persistSuppliers((await fetchFreshSuppliers()).filter((s) => s.id !== supplier.id)),
     });
   };
 
@@ -4664,21 +4757,29 @@ function POSPrototype({ tenantId }) {
     setDutyRoster(next);
     return syncSet("duty-roster", JSON.stringify(next), true, t("syncLabelSettings"));
   };
-  const addDutyMember = () => {
+  const fetchFreshDutyRoster = async () => {
+    try {
+      const result = await storage.get("duty-roster", true);
+      return result?.value ? JSON.parse(result.value) : dutyRoster;
+    } catch (e) {
+      return dutyRoster;
+    }
+  };
+  const addDutyMember = async () => {
     const name = newDutyName.trim();
     if (!name) {
       flashNotice(t("notice_enterTeamMemberName"));
       return;
     }
-    persistDutyRoster([...dutyRoster, { id: newId("duty"), name, role: newDutyRole }]);
+    persistDutyRoster([...(await fetchFreshDutyRoster()), { id: newId("duty"), name, role: newDutyRole }]);
     flashNotice(t("notice_teamMemberAdded", { name }));
     setNewDutyName("");
   };
   const removeDutyMember = (member) => {
     setConfirmDialog({
       message: t("confirm_removeTeamMember", { name: member.name }),
-      onConfirm: () => {
-        persistDutyRoster(dutyRoster.filter((m) => m.id !== member.id));
+      onConfirm: async () => {
+        persistDutyRoster((await fetchFreshDutyRoster()).filter((m) => m.id !== member.id));
         if (assignedTo?.id === member.id) setAssignedTo(null);
       },
     });
@@ -4688,14 +4789,22 @@ function POSPrototype({ tenantId }) {
     setDeliveryZones(next);
     return syncSet("delivery-zones-config", JSON.stringify(next), true, t("syncLabelSettings"));
   };
-  const addDeliveryZone = () => {
+  const fetchFreshDeliveryZones = async () => {
+    try {
+      const result = await storage.get("delivery-zones-config", true);
+      return result?.value ? JSON.parse(result.value) : deliveryZones;
+    } catch (e) {
+      return deliveryZones;
+    }
+  };
+  const addDeliveryZone = async () => {
     const label = newZoneLabel.trim();
     if (!label) {
       flashNotice(t("notice_enterZoneLabel"));
       return;
     }
     const fee = Number(newZoneFee) || 0;
-    persistDeliveryZones([...deliveryZones, { id: newId("zone"), label, fee }]);
+    persistDeliveryZones([...(await fetchFreshDeliveryZones()), { id: newId("zone"), label, fee }]);
     flashNotice(t("notice_zoneAdded"));
     setNewZoneLabel("");
     setNewZoneFee("");
@@ -4705,20 +4814,20 @@ function POSPrototype({ tenantId }) {
     setEditingZoneLabel(zone.label);
     setEditingZoneFee(String(zone.fee));
   };
-  const saveEditZone = () => {
+  const saveEditZone = async () => {
     const label = editingZoneLabel.trim();
     if (!label) {
       flashNotice(t("notice_enterZoneLabel"));
       return;
     }
     const fee = Number(editingZoneFee) || 0;
-    persistDeliveryZones(deliveryZones.map((z) => (z.id === editingZoneId ? { ...z, label, fee } : z)));
+    persistDeliveryZones((await fetchFreshDeliveryZones()).map((z) => (z.id === editingZoneId ? { ...z, label, fee } : z)));
     setEditingZoneId(null);
   };
   const removeDeliveryZone = (zone) => {
     setConfirmDialog({
       message: t("confirm_removeZone"),
-      onConfirm: () => persistDeliveryZones(deliveryZones.filter((z) => z.id !== zone.id)),
+      onConfirm: async () => persistDeliveryZones((await fetchFreshDeliveryZones()).filter((z) => z.id !== zone.id)),
     });
   };
 
@@ -5338,9 +5447,27 @@ function POSPrototype({ tenantId }) {
     setEmployees(next);
     syncSet("staff-roster", JSON.stringify(next), true, t("syncLabelSettings"));
   };
+  const fetchFreshEmployees = async () => {
+    try {
+      const result = await storage.get("staff-roster", true);
+      return result?.value ? JSON.parse(result.value) : employees;
+    } catch (e) {
+      return employees;
+    }
+  };
   const persistShiftLog = async (next) => {
     setShiftLog(next);
     syncSet("shift-log", JSON.stringify(next), true, t("syncLabelSettings"));
+  };
+  const appendShiftLogEntry = async (entry) => {
+    let fresh;
+    try {
+      const result = await storage.get("shift-log", true);
+      fresh = result?.value ? JSON.parse(result.value) : [];
+    } catch (e) {
+      fresh = shiftLog;
+    }
+    return persistShiftLog([entry, ...fresh]);
   };
   const doClockIn = async (emp) => {
     const now = new Date().toISOString();
@@ -5462,10 +5589,7 @@ function POSPrototype({ tenantId }) {
         const hoursMs = shiftStart ? new Date(clockOutTime) - new Date(shiftStart) : 0;
         const top = myTopSeller();
         setShiftRecap({ name: currentEmployee.name, orders: myShiftCompleted.length, revenue: myShiftRevenue, avg: myShiftAvgOrder, hoursMs, topSeller: top });
-        persistShiftLog([
-          { id: `shift_${Date.now()}`, employeeId: currentEmployee.id, employeeName: currentEmployee.name, clockIn: shiftStart, clockOut: clockOutTime, orders: myShiftCompleted.length, revenue: myShiftRevenue },
-          ...shiftLog,
-        ]);
+        appendShiftLogEntry({ id: `shift_${Date.now()}`, employeeId: currentEmployee.id, employeeName: currentEmployee.name, clockIn: shiftStart, clockOut: clockOutTime, orders: myShiftCompleted.length, revenue: myShiftRevenue });
         // This shift is ending — it's captured in shiftLog above now, so drop it from the "open
         // right now" registry.
         (async () => {
@@ -5516,7 +5640,7 @@ function POSPrototype({ tenantId }) {
     const interval = setInterval(() => refreshMonthLoaded(monthKey), 8000);
     return () => clearInterval(interval);
   }, [viewingShiftDetail]);
-  const addStaffMember = () => {
+  const addStaffMember = async () => {
     const name = newStaffName.trim();
     if (!name) {
       flashNotice(t("notice_nameRequired"));
@@ -5530,7 +5654,12 @@ function POSPrototype({ tenantId }) {
       flashNotice(t("notice_employeeExists"));
       return;
     }
-    persistEmployees([...employees, { id: `emp_${Date.now()}`, name, pin: newStaffPin, role: "staff" }]);
+    const fresh = await fetchFreshEmployees();
+    if (fresh.some((e) => e.name.toLowerCase() === name.toLowerCase())) {
+      flashNotice(t("notice_employeeExists"));
+      return;
+    }
+    persistEmployees([...fresh, { id: `emp_${Date.now()}`, name, pin: newStaffPin, role: "staff" }]);
     setNewStaffName("");
     setNewStaffPin("");
   };
@@ -5549,10 +5678,10 @@ function POSPrototype({ tenantId }) {
     if (!emp) return;
     setConfirmDialog({
       message: t("confirm_removeEmployee", { name: emp.name }),
-      onConfirm: () => persistEmployees(employees.filter((e) => e.id !== id)),
+      onConfirm: async () => persistEmployees((await fetchFreshEmployees()).filter((e) => e.id !== id)),
     });
   };
-  const toggleEmployeeRole = (emp) => {
+  const toggleEmployeeRole = async (emp) => {
     if (!isManager) return; // only managers can grant/revoke manager access
     const empIsManager = (emp.role || "manager") !== "staff";
     if (empIsManager) {
@@ -5563,18 +5692,18 @@ function POSPrototype({ tenantId }) {
         flashNotice(t("confirm_lastManager", { name: emp.name }));
         return;
       }
-      persistEmployees(employees.map((e) => (e.id === emp.id ? { ...e, role: "staff" } : e)));
+      persistEmployees((await fetchFreshEmployees()).map((e) => (e.id === emp.id ? { ...e, role: "staff" } : e)));
     } else {
-      persistEmployees(employees.map((e) => (e.id === emp.id ? { ...e, role: "manager" } : e)));
+      persistEmployees((await fetchFreshEmployees()).map((e) => (e.id === emp.id ? { ...e, role: "manager" } : e)));
     }
   };
-  const saveEditedPin = (id) => {
+  const saveEditedPin = async (id) => {
     if (id !== currentEmployee?.id) return; // staff can only ever change their own PIN, not a colleague's
     if (!/^\d{4}$/.test(editingPinValue)) {
       flashNotice(t("notice_pinMustBe4Digits"));
       return;
     }
-    persistEmployees(employees.map((e) => (e.id === id ? { ...e, pin: editingPinValue } : e)));
+    persistEmployees((await fetchFreshEmployees()).map((e) => (e.id === id ? { ...e, pin: editingPinValue } : e)));
     setEditingPinId(null);
     setEditingPinValue("");
   };
@@ -7149,7 +7278,7 @@ function POSPrototype({ tenantId }) {
                       <button onClick={() => updateIngredientStock(ing.id, -1)} title={t("stockDecreaseTooltip")} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 14 }}>&minus;</button>
                     )}
                     {isManager ? (
-                      <input className="stock-input" type="number" value={ing.stock} onChange={(e) => setIngredientStockValue(ing.id, e.target.value)} style={{ width: 64, textAlign: "center", background: "transparent", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }} />
+                      <input className="stock-input" type="number" value={ing.stock} onChange={(e) => setIngredientStockValue(ing.id, e.target.value)} onBlur={(e) => commitIngredientStockValue(ing.id, e.target.value)} style={{ width: 64, textAlign: "center", background: "transparent", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }} />
                     ) : (
                       <span style={{ width: 64, textAlign: "center", color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }}>{fmtQty(ing.stock)}</span>
                     )}
