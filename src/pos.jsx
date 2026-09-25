@@ -222,6 +222,9 @@ const STRINGS = {
     loadingHistory: "Loading history…",
     orderCount: "{{n}} order",
     orderCount_plural: "{{n}} orders",
+    expensesThisShiftCount: "1 expense logged",
+    expensesThisShiftCount_plural: "{{n}} expenses logged",
+    netAfterExpensesLabel: "Net after expenses",
     loadingMonth: "Loading {{month}}…",
     noSavedOrdersForMonth: "No saved orders for {{month}}.",
     noSavedOrdersForPeriod: "No saved orders for this period.",
@@ -464,6 +467,8 @@ const STRINGS = {
     loadingExpenses: "Loading expenses…",
     recordedByLabel: "Logged by {{name}}",
     confirm_deleteExpense: "Delete this expense record? This can't be undone.",
+    confirm_cancelOrder: "Cancel order #{{n}}? This restores its stock and can't be undone.",
+    confirm_refundOrder: "Refund order #{{n}}? Stock stays consumed and this can't be undone.",
     confirm_removeSupplier: "Remove {{name}} from suppliers? Past expenses linked to them are kept.",
     notice_expenseSaved: "Expense saved",
     notice_expenseDeleted: "Expense deleted",
@@ -536,6 +541,8 @@ const STRINGS = {
     monthOrders: "This month's orders",
     netProfitLabel: "Net profit",
     netProfitHint: "Revenue minus logged expenses",
+    netProfitHintDetailed: "{{revenue}} revenue − {{expenses}} expenses",
+    expensesLabel: "Expenses",
     avgOrderValueLabel: "Average order value",
     discountsGivenLabel: "Discounts given",
     vsYesterdayChange: "{{pct}}% vs yesterday",
@@ -561,6 +568,8 @@ const STRINGS = {
     onlineOrderingHeading: "Order online",
 
     offlineBadge: "Offline",
+    menuLoadFailedBadge: "Menu didn't load",
+    menuLoadFailedHint: "Couldn't load the real menu from the server — showing placeholder data instead. Don't take orders on this device until this clears; it retries automatically. Nothing has been overwritten yet.",
     syncPendingPill: "{{n}} change waiting to sync",
     syncPendingPill_plural: "{{n}} changes waiting to sync",
     retrySync: "Retry now",
@@ -885,6 +894,9 @@ const STRINGS = {
     loadingHistory: "جارٍ تحميل السجل…",
     orderCount: "طلب واحد",
     orderCount_plural: "{{n}} طلبات",
+    expensesThisShiftCount: "مصروف واحد مسجّل",
+    expensesThisShiftCount_plural: "{{n}} مصروفات مسجّلة",
+    netAfterExpensesLabel: "الصافي بعد المصروفات",
     loadingMonth: "جارٍ تحميل {{month}}…",
     noSavedOrdersForMonth: "لا توجد طلبات محفوظة لشهر {{month}}.",
     noSavedOrdersForPeriod: "لا توجد طلبات محفوظة لهذه الفترة.",
@@ -1127,6 +1139,8 @@ const STRINGS = {
     loadingExpenses: "جارٍ تحميل المصروفات…",
     recordedByLabel: "سجّله {{name}}",
     confirm_deleteExpense: "حذف سجل هذا المصروف؟ لا يمكن التراجع عن هذا.",
+    confirm_cancelOrder: "إلغاء الفاتورة رقم {{n}}؟ سيتم استعادة المخزون ولا يمكن التراجع عن هذا.",
+    confirm_refundOrder: "استرجاع الفاتورة رقم {{n}}؟ سيبقى المخزون مستهلكًا ولا يمكن التراجع عن هذا.",
     confirm_removeSupplier: "إزالة {{name}} من الموردين؟ سيتم الاحتفاظ بالمصروفات السابقة المرتبطة به.",
     notice_expenseSaved: "تم حفظ المصروف",
     notice_expenseDeleted: "تم حذف المصروف",
@@ -1199,6 +1213,8 @@ const STRINGS = {
     monthOrders: "طلبات هذا الشهر",
     netProfitLabel: "صافي الربح",
     netProfitHint: "الإيرادات ناقص المصروفات المسجلة",
+    netProfitHintDetailed: "{{revenue}} إيرادات − {{expenses}} مصروفات",
+    expensesLabel: "المصروفات",
     avgOrderValueLabel: "متوسط قيمة الطلب",
     discountsGivenLabel: "الخصومات الممنوحة",
     vsYesterdayChange: "{{pct}}٪ مقارنة بالأمس",
@@ -1224,6 +1240,8 @@ const STRINGS = {
     onlineOrderingHeading: "اطلب عبر الإنترنت",
 
     offlineBadge: "غير متصل",
+    menuLoadFailedBadge: "لم تُحمّل القائمة",
+    menuLoadFailedHint: "تعذّر تحميل القائمة الحقيقية من الخادم — يُعرض حاليًا محتوى بديل مؤقت. لا تأخذ طلبات من هذا الجهاز حتى يختفي هذا التنبيه؛ إعادة المحاولة تلقائية. لم يُستبدل أي شيء بعد.",
     syncPendingPill: "تغيير واحد بانتظار المزامنة",
     syncPendingPill_plural: "{{n}} تغييرات بانتظار المزامنة",
     retrySync: "إعادة المحاولة الآن",
@@ -1566,11 +1584,11 @@ that you don't see it and it may not be included in their current plan — don't
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
-- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out), Refund (stock stays deducted, use when it was already served), or Edit a saved order. Editing lets you change each item's quantity (stock adjusts to match) and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
+- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served) both ask for a confirmation before going through, since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match) and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
-- **Dashboard** (manager-only): revenue, orders, average order value, net profit (revenue minus logged expenses), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month, by a single Day, or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
+- **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month, by a single Day, or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
-- **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount. "Clock out" ends their shift and shows a recap. Managers additionally see: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together.
+- **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. "Clock out" ends their shift and shows a recap. Managers additionally see: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
 - **Settings**: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
@@ -1948,6 +1966,15 @@ function POSPrototype({ tenantId }) {
   const [menu, setMenu] = useState(INITIAL_MENU);
   const [ingredients, setIngredients] = useState(INITIAL_INGREDIENTS);
   const [menuLoaded, setMenuLoaded] = useState(false);
+  // Couldn't reach the real menu/ingredients on this device (e.g. offline at startup) — distinct
+  // from "genuinely never set up yet". Critical: menuLoaded still flips true either way so the UI
+  // isn't stuck, but the auto-persist effect below must NOT write while this is true, or a single
+  // failed read would save the built-in placeholder starter menu over the tenant's real one.
+  const [menuLoadFailed, setMenuLoadFailed] = useState(false);
+  const menuLoadFailedRef = useRef(false);
+  useEffect(() => {
+    menuLoadFailedRef.current = menuLoadFailed;
+  }, [menuLoadFailed]);
 
   // Alternate price lists — each one mirrors the base menu (same items, same recipes/stock
   // consumption) but can override individual items' prices and add its own extra items on top.
@@ -2454,6 +2481,12 @@ function POSPrototype({ tenantId }) {
       // Menu/categories/ingredients are shared so they (a) actually persist across reloads for
       // the operator — previously they only lived in memory and reset on every refresh — and
       // (b) are visible to a customer's phone after scanning a table's QR code.
+      //
+      // If either read fails, this MUST NOT silently fall through to the built-in placeholder
+      // starter menu/ingredients still sitting in state — menuLoadFailed blocks the auto-persist
+      // effect below from writing anything until a retry actually succeeds, so a transient offline
+      // moment at startup can never overwrite the tenant's real data with the demo placeholder.
+      let failed = false;
       try {
         const result = await getSharedWithRetry(storage, "menu-config");
         const parsed = result?.value ? JSON.parse(result.value) : null;
@@ -2462,14 +2495,15 @@ function POSPrototype({ tenantId }) {
           if (parsed.menu) setMenu(parsed.menu);
         }
       } catch (e) {
-        // fall back to the built-in starter menu already set
+        failed = true;
       }
       try {
         const ingResult = await getSharedWithRetry(storage, "ingredients-config");
         if (ingResult?.value) setIngredients(JSON.parse(ingResult.value));
       } catch (e) {
-        // fall back to the built-in starter ingredients already set
+        failed = true;
       } finally {
+        if (failed) setMenuLoadFailed(true);
         setMenuLoaded(true);
       }
     })();
@@ -2602,13 +2636,16 @@ function POSPrototype({ tenantId }) {
   // threading a save call through every individual add/edit/delete handler. Routed through
   // syncSet so an edit made while offline is queued and retried instead of silently lost.
   useEffect(() => {
-    if (!menuLoaded) return; // don't overwrite shared data with initial defaults before load completes
+    // menuLoadFailed: the initial read never actually succeeded, so categories/menu are still
+    // whatever placeholder they started as — writing that out would overwrite the tenant's real
+    // data. Stays blocked until retryMenuLoad() below confirms a real read.
+    if (!menuLoaded || menuLoadFailed) return;
     syncSet("menu-config", JSON.stringify({ categories, menu }), true, t("syncLabelMenu"));
-  }, [categories, menu, menuLoaded]);
+  }, [categories, menu, menuLoaded, menuLoadFailed]);
   useEffect(() => {
-    if (!menuLoaded) return;
+    if (!menuLoaded || menuLoadFailed) return;
     syncSet("ingredients-config", JSON.stringify(ingredients), true, t("syncLabelStock"));
-  }, [ingredients, menuLoaded]);
+  }, [ingredients, menuLoaded, menuLoadFailed]);
   useEffect(() => {
     if (!menuProfilesLoaded) return;
     syncSet("menu-profiles-config", JSON.stringify(menuProfiles), true, t("syncLabelMenu"));
@@ -3404,12 +3441,14 @@ function POSPrototype({ tenantId }) {
       setIsOnline(true);
       flushSyncQueue();
       if (rosterLoadFailed) retryRosterLoad();
+      if (menuLoadFailed) retryMenuLoad();
     };
     const goOffline = () => setIsOnline(false);
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       if (syncQueueRef.current.length > 0) flushSyncQueue();
       if (rosterLoadFailedRef.current) retryRosterLoad();
+      if (menuLoadFailedRef.current) retryMenuLoad();
     };
     window.addEventListener("online", goOnline);
     window.addEventListener("offline", goOffline);
@@ -3419,13 +3458,14 @@ function POSPrototype({ tenantId }) {
       window.removeEventListener("offline", goOffline);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [rosterLoadFailed]);
+  }, [rosterLoadFailed, menuLoadFailed]);
   useEffect(() => {
     const interval = setInterval(() => {
       // No longer gated on navigator.onLine — that flag is exactly what's unreliable here, so
       // gating retries on it risked never even trying when the real connection was actually fine.
       if (syncQueueRef.current.length > 0) flushSyncQueue();
       if (rosterLoadFailedRef.current) retryRosterLoad();
+      if (menuLoadFailedRef.current) retryMenuLoad();
     }, 3000); // short enough that automatic recovery feels immediate, not just "eventually"
     return () => clearInterval(interval);
   }, []);
@@ -3474,6 +3514,23 @@ function POSPrototype({ tenantId }) {
       const result = await getSharedWithRetry(storage, "staff-roster");
       setEmployees(result?.value ? JSON.parse(result.value) : []);
       setRosterLoadFailed(false);
+    } catch (e) {
+      // still offline/unreachable — stays in the failed state, will try again on the next signal
+    }
+  };
+  const retryMenuLoad = async () => {
+    try {
+      const [result, ingResult] = await Promise.all([
+        getSharedWithRetry(storage, "menu-config"),
+        getSharedWithRetry(storage, "ingredients-config"),
+      ]);
+      const parsed = result?.value ? JSON.parse(result.value) : null;
+      if (parsed) {
+        if (parsed.categories) setCategories(parsed.categories);
+        if (parsed.menu) setMenu(parsed.menu);
+      }
+      if (ingResult?.value) setIngredients(JSON.parse(ingResult.value));
+      setMenuLoadFailed(false);
     } catch (e) {
       // still offline/unreachable — stays in the failed state, will try again on the next signal
     }
@@ -4587,6 +4644,7 @@ function POSPrototype({ tenantId }) {
       status: expense.status,
       dueDate: expense.dueDate || "",
       note: expense.note || "",
+      recordedAt: expense.recordedAt || null,
     });
   };
   const closeExpenseEditor = () => setExpenseEditor(null);
@@ -4610,6 +4668,10 @@ function POSPrototype({ tenantId }) {
       dueDate: expenseEditor.status === "unpaid" ? expenseEditor.dueDate : "",
       note: expenseEditor.note.trim(),
       recordedBy: currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null,
+      // When this expense was actually logged (not the business `date` it's dated for) — lets the
+      // Shift tab attribute it to a specific shift the same way receipts already are, by comparing
+      // against shiftStart. Preserved across edits so editing an expense doesn't reattribute it.
+      recordedAt: expenseEditor.recordedAt || new Date().toISOString(),
     };
     if (expenseEditor.mode === "new") {
       appendExpense(monthKey, record);
@@ -4643,14 +4705,24 @@ function POSPrototype({ tenantId }) {
 
   const cancelReceipt = (r) => {
     if (r.status !== "completed") return;
-    r.items.forEach((it) => (it.recipeSnapshot || []).forEach((rec) => updateIngredientStock(rec.ingredientId, rec.qty * it.qty)));
-    updateReceiptInStorage(r, (x) => ({ ...x, status: "cancelled" }));
-    flashNotice(t("notice_orderCancelled", { n: r.ticketNo }));
+    setConfirmDialog({
+      message: t("confirm_cancelOrder", { n: r.ticketNo }),
+      onConfirm: () => {
+        r.items.forEach((it) => (it.recipeSnapshot || []).forEach((rec) => updateIngredientStock(rec.ingredientId, rec.qty * it.qty)));
+        updateReceiptInStorage(r, (x) => ({ ...x, status: "cancelled" }));
+        flashNotice(t("notice_orderCancelled", { n: r.ticketNo }));
+      },
+    });
   };
   const refundReceipt = (r) => {
     if (r.status !== "completed") return;
-    updateReceiptInStorage(r, (x) => ({ ...x, status: "refunded" }));
-    flashNotice(t("notice_orderRefunded", { n: r.ticketNo }));
+    setConfirmDialog({
+      message: t("confirm_refundOrder", { n: r.ticketNo }),
+      onConfirm: () => {
+        updateReceiptInStorage(r, (x) => ({ ...x, status: "refunded" }));
+        flashNotice(t("notice_orderRefunded", { n: r.ticketNo }));
+      },
+    });
   };
 
   // Sends the status-update WhatsApp message and logs it on the receipt.
@@ -4903,6 +4975,13 @@ function POSPrototype({ tenantId }) {
   const shiftRefunded = shiftReceipts.filter((r) => r.status === "refunded");
   const shiftGross = shiftCompleted.reduce((s, r) => s + r.total, 0);
   const shiftRefundsTotal = shiftRefunded.reduce((s, r) => s + r.total, 0);
+  // Expenses only carry a business `date` (day granularity), not a precise time, so an expense
+  // logged before this field existed falls back to midnight of its date — good enough to tell
+  // whether it landed within this shift's window, just not to the minute like receipts are.
+  const shiftExpenses = shiftStart
+    ? (expensesByMonth[thisMonthKey()] || []).filter((e) => (e.recordedAt || `${e.date}T00:00:00.000Z`) >= shiftStart)
+    : [];
+  const shiftExpenseTotal = shiftExpenses.reduce((s, e) => s + e.amount, 0);
   // An order rung up as "pay later" doesn't belong in cash reconciliation until it's actually
   // paid — and conversely, an order rung up on a PREVIOUS shift that gets paid on this one belongs
   // here, not there, since that's when the money actually entered the drawer. So payment totals
@@ -5041,6 +5120,9 @@ function POSPrototype({ tenantId }) {
         <div class="row" style="font-size:12px;"><span>${escapeHtml(t("refunds"))}</span><span>-${money(shiftRefundsTotal)}</span></div>
         ${shiftDiscountTotal > 0 ? `<div class="row" style="font-size:12px;"><span>${escapeHtml(t("discountedCountNote", { n: shiftDiscountedOrders.length }))}</span><span>-${money(shiftDiscountTotal)}</span></div>` : ""}
         <div class="row" style="font-size:15px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("net"))}</span><span>${money(shiftGross - shiftRefundsTotal)}</span></div>
+        ${shiftExpenseTotal > 0 ? `
+        <div class="row" style="font-size:12px;margin-top:6px;"><span>${escapeHtml(tCount("expensesThisShiftCount", shiftExpenses.length))}</span><span>-${money(shiftExpenseTotal)}</span></div>
+        <div class="row" style="font-size:15px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("netAfterExpensesLabel"))}</span><span>${money(shiftGross - shiftRefundsTotal - shiftExpenseTotal)}</span></div>` : ""}
       </div>
       <div class="dashed" style="font-size:12px;">
         <div style="font-weight:600;margin-bottom:6px;">${escapeHtml(t("cashReconciliationTitle"))}</div>
@@ -6155,6 +6237,12 @@ function POSPrototype({ tenantId }) {
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, border: `1px solid ${COLORS.red}`, background: "rgba(166,83,74,0.15)", color: "#E3A79C", fontSize: 12.5, fontWeight: 600 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E3A79C", display: "inline-block" }} />
               {t("offlineBadge")}
+            </div>
+          )}
+          {menuLoadFailed && (
+            <div title={t("menuLoadFailedHint")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, border: `1px solid ${COLORS.red}`, background: "rgba(166,83,74,0.15)", color: "#E3A79C", fontSize: 12.5, fontWeight: 600 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E3A79C", display: "inline-block" }} />
+              {t("menuLoadFailedBadge")}
             </div>
           )}
           {syncQueue.length > 0 && (
@@ -7578,7 +7666,7 @@ function POSPrototype({ tenantId }) {
             <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
           ) : (
           <>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)", gap: 12, marginBottom: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(6, 1fr)", gap: 12, marginBottom: 24 }}>
             {[
               {
                 label: t("periodRevenueLabel"),
@@ -7588,7 +7676,13 @@ function POSPrototype({ tenantId }) {
               },
               { label: t("periodOrdersLabel"), value: String(dashboardPeriodOrders) },
               { label: t("avgOrderValueLabel"), value: money(avgOrderValue) },
-              { label: t("netProfitLabel"), value: money(netProfit), accent: netProfit >= 0 ? "#9FCB8E" : "#E3A79C", hint: t("netProfitHint") },
+              { label: t("expensesLabel"), value: money(dashboardExpenseTotal), accent: dashboardExpenseTotal > 0 ? "#E3A79C" : undefined },
+              {
+                label: t("netProfitLabel"),
+                value: money(netProfit),
+                accent: netProfit >= 0 ? "#9FCB8E" : "#E3A79C",
+                hint: t("netProfitHintDetailed", { revenue: money(dashboardPeriodRevenue), expenses: money(dashboardExpenseTotal) }),
+              },
               { label: t("discountsGivenLabel"), value: money(dashboardDiscountTotal) },
             ].map((card, i) => (
               <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
@@ -7802,6 +7896,18 @@ function POSPrototype({ tenantId }) {
                 {shiftDiscountTotal > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--border)" }}>
                     <span>{t("discountedCountNote", { n: shiftDiscountedOrders.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftDiscountTotal)}</span>
+                  </div>
+                )}
+                {shiftExpenseTotal > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--border)", color: "#E3A79C" }}>
+                    <span title={shiftExpenses.map((e) => `${e.category} ${money(e.amount)}`).join(", ")}>{tCount("expensesThisShiftCount", shiftExpenses.length)}</span>
+                    <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftExpenseTotal)}</span>
+                  </div>
+                )}
+                {shiftExpenseTotal > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+                    <span>{t("netAfterExpensesLabel")}</span>
+                    <span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(shiftGross - shiftRefundsTotal - shiftExpenseTotal)}</span>
                   </div>
                 )}
               </div>
