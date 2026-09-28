@@ -470,6 +470,7 @@ const STRINGS = {
     confirm_cancelOrder: "Cancel order #{{n}}? This restores its stock and can't be undone.",
     confirm_refundOrder: "Refund order #{{n}}? Stock stays consumed and this can't be undone.",
     confirm_removeSupplier: "Remove {{name}} from suppliers? Past expenses linked to them are kept.",
+    confirm_removeIngredient: "Delete \"{{name}}\" from stock? This can't be undone.",
     notice_expenseSaved: "Expense saved",
     notice_expenseDeleted: "Expense deleted",
     notice_supplierAdded: "{{name}} added to suppliers",
@@ -1144,6 +1145,7 @@ const STRINGS = {
     confirm_cancelOrder: "إلغاء الفاتورة رقم {{n}}؟ سيتم استعادة المخزون ولا يمكن التراجع عن هذا.",
     confirm_refundOrder: "استرجاع الفاتورة رقم {{n}}؟ سيبقى المخزون مستهلكًا ولا يمكن التراجع عن هذا.",
     confirm_removeSupplier: "إزالة {{name}} من الموردين؟ سيتم الاحتفاظ بالمصروفات السابقة المرتبطة به.",
+    confirm_removeIngredient: "حذف \"{{name}}\" من المخزون؟ لا يمكن التراجع عن هذا.",
     notice_expenseSaved: "تم حفظ المصروف",
     notice_expenseDeleted: "تم حذف المصروف",
     notice_supplierAdded: "تمت إضافة {{name}} إلى الموردين",
@@ -4011,16 +4013,21 @@ function POSPrototype({ tenantId }) {
     flashNotice(t("notice_ingredientAdded", { name: entry.name, unit: resolvedUnit }));
   };
   const isIngredientUsed = (id) => Object.values(menu).some((items) => items.some((it) => it.recipe.some((r) => r.ingredientId === id)));
-  const deleteIngredient = async (id) => {
+  const deleteIngredient = (id) => {
     if (isIngredientUsed(id)) {
       flashNotice(t("notice_cantDeleteUsed"));
       return;
     }
-    const fresh = await fetchFreshIngredients();
-    const next = { ...fresh };
-    delete next[id];
-    setIngredients(next);
-    await syncSet("ingredients-config", JSON.stringify(next), true, t("syncLabelStock"));
+    setConfirmDialog({
+      message: t("confirm_removeIngredient", { name: ingredients[id]?.name || "" }),
+      onConfirm: async () => {
+        const fresh = await fetchFreshIngredients();
+        const next = { ...fresh };
+        delete next[id];
+        setIngredients(next);
+        await syncSet("ingredients-config", JSON.stringify(next), true, t("syncLabelStock"));
+      },
+    });
   };
 
   // Looks up a menu item's definition (for its recipe, mainly) wherever it might live — the base
