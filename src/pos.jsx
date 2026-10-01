@@ -555,7 +555,7 @@ const STRINGS = {
     bestDayLabel: "Best day so far: day {{day}} — {{amount}}",
     bestDateLabel: "Best day so far: {{date}} — {{amount}}",
     bestHourLabel: "Best hour: {{time}} — {{amount}}",
-    topSellersTitle: "Top sellers",
+    topSellersTitle: "Items sold",
     noSalesYetDashboard: "No completed orders in this period.",
     paymentMixTitle: "Payment methods",
     orderSourceTitle: "Where orders came from",
@@ -1230,7 +1230,7 @@ const STRINGS = {
     bestDayLabel: "أفضل يوم حتى الآن: يوم {{day}} — {{amount}}",
     bestDateLabel: "أفضل يوم حتى الآن: {{date}} — {{amount}}",
     bestHourLabel: "أفضل ساعة: {{time}} — {{amount}}",
-    topSellersTitle: "الأكثر مبيعًا",
+    topSellersTitle: "الأصناف المباعة",
     noSalesYetDashboard: "لا توجد طلبات مكتملة في هذه الفترة.",
     paymentMixTitle: "طرق الدفع",
     orderSourceTitle: "مصدر الطلبات",
@@ -4712,7 +4712,7 @@ function POSPrototype({ tenantId }) {
 
   const dashboardItemTotals = {};
   dashboardReceipts.forEach((r) => r.items.forEach((it) => { dashboardItemTotals[it.name] = (dashboardItemTotals[it.name] || 0) + it.qty; }));
-  const topSellers = Object.entries(dashboardItemTotals).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, qty]) => ({ name, qty }));
+  const topSellers = Object.entries(dashboardItemTotals).sort((a, b) => b[1] - a[1]).map(([name, qty]) => ({ name, qty }));
   const maxTopSellerQty = Math.max(1, ...topSellers.map((s) => s.qty));
 
   const dashboardMethodAmounts = dashboardReceipts.flatMap(receiptMethodAmounts);
@@ -7989,7 +7989,7 @@ function POSPrototype({ tenantId }) {
               {topSellers.length === 0 ? (
                 <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noSalesYetDashboard")}</div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 280, overflowY: "auto", paddingRight: 6 }}>
                   {topSellers.map((s, i) => (
                     <div key={s.name}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
