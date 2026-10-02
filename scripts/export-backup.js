@@ -6,11 +6,16 @@
 //   node --env-file=.env.local scripts/export-backup.js
 //   node --env-file=.env.local scripts/export-backup.js "D:\SomewhereElse"     (custom folder)
 //
+// After each run it keeps only the newest 8 dated folders in that location and deletes older ones
+// (only folders named like 2026-10-02T12-54-24 — it never touches anything else).
+//
 // Restore a restaurant that no longer exists from one of these files:
 //   node --env-file=.env.local scripts/restore-tenant-backup.js "backups\...\Kaivo.json"
 const fs = require("fs");
 const path = require("path");
 const { createClient } = require("@supabase/supabase-js");
+
+const KEEP = 8;
 
 async function main() {
   const url = process.env.SUPABASE_URL;
@@ -48,6 +53,13 @@ async function main() {
     console.log(`${tenant.restaurant_name}: ${kv_rows.length} data rows, ${Math.round(fs.statSync(file).size / 1024)} KB -> ${file}`);
   }
   console.log(`\nDone. Backup folder: ${path.resolve(outDir)}`);
+
+  const root = path.dirname(outDir);
+  const dated = fs.readdirSync(root).filter((d) => /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/.test(d)).sort().reverse();
+  for (const old of dated.slice(KEEP)) {
+    fs.rmSync(path.join(root, old), { recursive: true, force: true });
+    console.log(`Removed old backup ${old}`);
+  }
 }
 
 main().catch((e) => {
