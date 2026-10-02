@@ -140,3 +140,28 @@ create table if not exists tenant_backups (
 );
 
 create index if not exists tenant_backups_tenant_idx on tenant_backups (tenant_id, deleted_at desc);
+
+-- ---------------------------------------------------------------------------------------------
+-- Periodic safety-net snapshots (see lib/snapshots.js, app/api/cron/snapshot/route.js, run daily
+-- via vercel.json). One row = a complete copy of one tenant's tenant_pos_kv at a moment in time.
+-- No foreign key on purpose, so snapshots survive the tenant being deleted. Restore with
+-- scripts/restore-snapshot.js.
+create table if not exists tenant_snapshots (
+  id              uuid primary key default gen_random_uuid(),
+  tenant_id       uuid not null,
+  restaurant_name text,
+  taken_at        timestamptz not null default now(),
+  content_hash    text not null,
+  kv_rows         jsonb not null,
+  kv_row_count    integer not null,
+  size_bytes      integer not null,
+  reason          text not null default 'scheduled'
+);
+
+create index if not exists tenant_snapshots_tenant_taken_idx on tenant_snapshots (tenant_id, taken_at desc);
+
+-- These tables hold complete copies of every restaurant's data and are only ever touched with the
+-- service-role key (which bypasses RLS). Enabling RLS with no policies makes them unreadable and
+-- unwritable through Supabase's public anon API even if that key were ever exposed.
+alter table tenant_snapshots enable row level security;
+alter table tenant_backups enable row level security;
