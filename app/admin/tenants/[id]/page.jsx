@@ -119,9 +119,25 @@ export default function TenantDetailPage() {
   };
 
   const remove = async () => {
-    if (!confirm(`Remove ${tenant.restaurant_name}? This can't be undone.`)) return;
-    const res = await fetch(`/api/admin/tenants/${id}`, { method: "DELETE" });
-    if (res.ok) router.push("/admin");
+    const typed = window.prompt(
+      `This permanently removes ${tenant.restaurant_name} and ALL of its menu, orders, expenses and customers from the live system (a backup copy is saved first).\n\nType the restaurant's exact name to confirm:`
+    );
+    if (typed === null) return;
+    if (typed.trim() !== tenant.restaurant_name.trim()) {
+      window.alert("That doesn't match the restaurant's name — nothing was deleted.");
+      return;
+    }
+    const res = await fetch(`/api/admin/tenants/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmName: typed }),
+    });
+    if (res.ok) {
+      router.push("/admin");
+    } else {
+      const data = await res.json().catch(() => ({}));
+      window.alert(data.error || "Couldn't remove the restaurant — nothing was deleted.");
+    }
   };
 
   if (error) {

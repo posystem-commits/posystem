@@ -121,3 +121,22 @@ create table if not exists tenant_activity_log (
 
 create index if not exists tenant_activity_log_tenant_created_idx
   on tenant_activity_log (tenant_id, created_at desc);
+
+-- ---------------------------------------------------------------------------------------------
+-- Safety net for admin tenant deletion. tenant_pos_kv and tenant_activity_log are ON DELETE
+-- CASCADE, so deleting a tenant permanently wipes every one of its rows. DELETE
+-- /api/admin/tenants/:id now copies the tenant row plus ALL of its tenant_pos_kv rows into this
+-- table first, and refuses to delete if the copy can't be written and read back. Deliberately NO
+-- foreign key to tenants — the backup has to outlive the tenant it describes. Restore with
+-- scripts/restore-tenant-backup.js.
+create table if not exists tenant_backups (
+  id            uuid primary key default gen_random_uuid(),
+  tenant_id     uuid not null,
+  restaurant_name text,
+  tenant_row    jsonb not null,
+  kv_rows       jsonb not null,
+  kv_row_count  integer not null,
+  deleted_at    timestamptz not null default now()
+);
+
+create index if not exists tenant_backups_tenant_idx on tenant_backups (tenant_id, deleted_at desc);
