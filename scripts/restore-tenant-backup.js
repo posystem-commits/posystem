@@ -4,6 +4,8 @@
 //
 //   List backups:   node --env-file=.env.local scripts/restore-tenant-backup.js
 //   Restore one:    node --env-file=.env.local scripts/restore-tenant-backup.js <backup-id>
+//   From a file:    node --env-file=.env.local scripts/restore-tenant-backup.js "backups\<date>\Name.json"
+//                   (a file made by scripts/export-backup.js)
 const { createClient } = require("@supabase/supabase-js");
 
 async function main() {
@@ -27,8 +29,15 @@ async function main() {
     return;
   }
 
-  const { data: backup, error } = await db.from("tenant_backups").select("*").eq("id", backupId).single();
-  if (error || !backup) throw new Error(`Backup not found: ${error?.message || backupId}`);
+  let backup;
+  if (backupId.toLowerCase().endsWith(".json")) {
+    const f = JSON.parse(require("fs").readFileSync(backupId, "utf8"));
+    backup = { tenant_id: f.tenant_row.id, restaurant_name: f.tenant_row.restaurant_name, tenant_row: f.tenant_row, kv_rows: f.kv_rows };
+  } else {
+    const { data, error } = await db.from("tenant_backups").select("*").eq("id", backupId).single();
+    if (error || !data) throw new Error(`Backup not found: ${error?.message || backupId}`);
+    backup = data;
+  }
 
   const { data: existing } = await db.from("tenants").select("id").eq("id", backup.tenant_id).maybeSingle();
   if (existing) throw new Error("A tenant with this id already exists — refusing to overwrite it.");
