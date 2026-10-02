@@ -1594,7 +1594,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
 - **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month, by a single Day, or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
-- **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. "Clock out" ends their shift and shows a recap. Managers additionally see: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
+- **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. "Clock out" ends their shift and shows a recap. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
 - **Settings**: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
@@ -5356,7 +5356,6 @@ function POSPrototype({ tenantId }) {
         ${countedCashNum !== null ? `<div class="row" style="margin-top:3px;"><span>${escapeHtml(t("countedCashLabel"))}</span><span>${money(countedCashNum)}</span></div>` : ""}
         ${cashVariance !== null ? `<div class="row" style="font-weight:700;"><span>${escapeHtml(t("varianceLabel"))}</span><span>${cashVariance >= 0 ? "+" : ""}${money(cashVariance)}</span></div>` : ""}
       </div>
-      ${isManager ? `
       <div class="dashed" style="font-size:12px;">
         <div style="font-weight:600;margin-bottom:6px;">${escapeHtml(t("electronicReconciliationTitle"))}</div>
         ${shiftElectronicMethods
@@ -5370,8 +5369,8 @@ function POSPrototype({ tenantId }) {
             </div>`;
           })
           .join("")}
-      </div>` : ""}
-      ${isManager && deliveryReconciliation.some((p) => p.orders > 0) ? `
+      </div>
+      ${deliveryReconciliation.some((p) => p.orders > 0) ? `
       <div class="dashed" style="font-size:12px;">
         <div style="font-weight:600;margin-bottom:6px;">${escapeHtml(t("deliveryReconciliationTitle"))}</div>
         ${deliveryReconciliation
@@ -8178,7 +8177,7 @@ function POSPrototype({ tenantId }) {
                 )}
               </div>
 
-              {isManager && (
+              {(
                 <div style={{ background: "var(--surface)", border: `1px solid ${theme.secondary}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
                   <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("cashReconciliationTitle")}</div>
                   <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 14 }}>{t("cashReconciliationSubtitle")}</div>
@@ -8252,7 +8251,7 @@ function POSPrototype({ tenantId }) {
                 </div>
               )}
 
-              {isManager && (
+              {(
                 <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginBottom: 20 }}>
                   <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("electronicReconciliationTitle")}</div>
                   <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 14 }}>{t("electronicReconciliationSubtitle")}</div>
@@ -8296,7 +8295,7 @@ function POSPrototype({ tenantId }) {
                 </div>
               )}
 
-              {hasFeature("teamTracking") && isManager && deliveryReconciliation.length > 0 && (
+              {hasFeature("teamTracking") && deliveryReconciliation.length > 0 && (
                 <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginBottom: 20 }}>
                   <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("deliveryReconciliationTitle")}</div>
                   <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 14 }}>
