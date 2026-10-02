@@ -199,6 +199,9 @@ const STRINGS = {
     notice_recipeCopied: "Copied the ingredients of \"{{name}}\" — change or add anything on top",
     notice_recipeCopyNothingNew: "\"{{name}}\" has no ingredients that aren't already here",
     selectIngredient: "Select ingredient…",
+    searchIngredient: "Search ingredient…",
+    noIngredientMatches: "No ingredient matches that search.",
+    inRecipeMark: "already in recipe",
     qtyPlaceholder: "Qty",
     add: "Add",
     saveItem: "Save item",
@@ -877,6 +880,9 @@ const STRINGS = {
     notice_recipeCopied: "تم نسخ مكونات \"{{name}}\" — عدّل أو أضف ما تريد فوقها",
     notice_recipeCopyNothingNew: "\"{{name}}\" ليس فيه مكونات غير موجودة هنا بالفعل",
     selectIngredient: "اختر مكونًا…",
+    searchIngredient: "ابحث عن مكوّن…",
+    noIngredientMatches: "لا يوجد مكوّن مطابق للبحث.",
+    inRecipeMark: "موجود في المكونات",
     qtyPlaceholder: "الكمية",
     add: "إضافة",
     saveItem: "حفظ الصنف",
@@ -1592,7 +1598,7 @@ don't see mentioned anywhere in this list, or one that's missing for them specif
 that you don't see it and it may not be included in their current plan — don't guess.
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
-- **Menu**: add/edit/delete categories and dishes. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
+- **Menu**: add/edit/delete categories and dishes. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
@@ -2242,6 +2248,10 @@ function POSPrototype({ tenantId }) {
   const [itemEditor, setItemEditor] = useState(null); // { mode, category, id, name, tag, price, recipe }
   const [recipeDraftIng, setRecipeDraftIng] = useState("");
   const [recipeDraftQty, setRecipeDraftQty] = useState("");
+  const [recipeSearch, setRecipeSearch] = useState("");
+  const [recipeListOpen, setRecipeListOpen] = useState(false);
+  const [recipeQtyDrafts, setRecipeQtyDrafts] = useState({}); // raw text while a recipe line's quantity is being typed
+  const recipeQtyInputRef = useRef(null);
   const [newIngName, setNewIngName] = useState("");
   const [newIngUnit, setNewIngUnit] = useState("kg");
   const [newIngUnitCustom, setNewIngUnitCustom] = useState("");
@@ -5836,11 +5846,15 @@ function POSPrototype({ tenantId }) {
     setItemEditor({ mode: "new", category, id: null, name: "", tag: "", price: "", recipe: [], image: null, profileId });
     setRecipeDraftIng("");
     setRecipeDraftQty("");
+    setRecipeSearch("");
+    setRecipeQtyDrafts({});
   };
   const openEditItem = (category, item, profileId = null) => {
     setItemEditor({ mode: "edit", category, id: item.id, name: item.name, tag: item.tag, price: String(item.price), recipe: item.recipe.map((r) => ({ ...r })), image: item.image || null, profileId });
     setRecipeDraftIng("");
     setRecipeDraftQty("");
+    setRecipeSearch("");
+    setRecipeQtyDrafts({});
   };
   const closeItemEditor = () => setItemEditor(null);
   const MAX_ITEM_PHOTO_SOURCE_BYTES = 8 * 1024 * 1024; // source file cap, before it gets downscaled for storage
@@ -5867,12 +5881,44 @@ function POSPrototype({ tenantId }) {
       flashNotice("Pick an ingredient and a quantity used per serving");
       return;
     }
+    const addedId = recipeDraftIng;
     setItemEditor((prev) => {
-      const withoutDup = prev.recipe.filter((r) => r.ingredientId !== recipeDraftIng);
-      return { ...prev, recipe: [...withoutDup, { ingredientId: recipeDraftIng, qty: Number(recipeDraftQty) }] };
+      const withoutDup = prev.recipe.filter((r) => r.ingredientId !== addedId);
+      return { ...prev, recipe: [...withoutDup, { ingredientId: addedId, qty: Number(recipeDraftQty) }] };
+    });
+    setRecipeQtyDrafts((d) => {
+      const { [addedId]: _gone, ...rest } = d;
+      return rest;
     });
     setRecipeDraftIng("");
     setRecipeDraftQty("");
+    setRecipeSearch("");
+  };
+  // Edits the quantity of a recipe line already added. Keeps the raw typed text separately so a
+  // half-typed value like "0." survives; only a valid number above zero is applied to the recipe.
+  const editRecipeLineQty = (ingredientId, raw) => {
+    setRecipeQtyDrafts((d) => ({ ...d, [ingredientId]: raw }));
+    const n = parseFloat(raw);
+    if (n > 0) setItemEditor((prev) => ({ ...prev, recipe: prev.recipe.map((r) => (r.ingredientId === ingredientId ? { ...r, qty: n } : r)) }));
+  };
+  const finishRecipeLineQtyEdit = (ingredientId) => {
+    setRecipeQtyDrafts((d) => {
+      const { [ingredientId]: _gone, ...rest } = d;
+      return rest;
+    });
+  };
+  const pickRecipeIngredient = (ing) => {
+    setRecipeDraftIng(ing.id);
+    setRecipeSearch(`${ing.name} (${ing.unit})`);
+    setRecipeListOpen(false);
+    setTimeout(() => recipeQtyInputRef.current?.focus(), 0);
+  };
+  const recipeSearchMatches = () => {
+    const q = recipeSearch.trim().toLowerCase();
+    const all = Object.values(ingredients).sort((a, b) => a.name.localeCompare(b.name));
+    if (!q || recipeDraftIng) return all;
+    const hits = all.filter((i) => i.name.toLowerCase().includes(q));
+    return [...hits.filter((i) => i.name.toLowerCase().startsWith(q)), ...hits.filter((i) => !i.name.toLowerCase().startsWith(q))];
   };
   // Every item with a recipe that could serve as a starting point (base menu, then price-list-only
   // extras), grouped by category. The item currently being edited is left out.
@@ -7187,22 +7233,65 @@ function POSPrototype({ tenantId }) {
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
                   {itemEditor.recipe.map((r) => (
                     <div key={r.ingredientId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, background: "var(--bg)", borderRadius: 6, padding: "7px 10px" }}>
-                      <span>{fmtQty(r.qty)} {ingredients[r.ingredientId]?.unit} &middot; {ingredients[r.ingredientId]?.name}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={recipeQtyDrafts[r.ingredientId] ?? String(r.qty)}
+                          onChange={(e) => editRecipeLineQty(r.ingredientId, e.target.value)}
+                          onBlur={() => finishRecipeLineQtyEdit(r.ingredientId)}
+                          className="field"
+                          style={{ width: 78, padding: "4px 8px", fontSize: 12.5 }}
+                        />
+                        <span>{ingredients[r.ingredientId]?.unit} &middot; {ingredients[r.ingredientId]?.name}</span>
+                      </span>
                       <button onClick={() => removeRecipeLine(r.ingredientId)} style={{ background: "none", border: "none", color: "#E3A79C", cursor: "pointer", fontSize: 13 }}>&times;</button>
                     </div>
                   ))}
                   {itemEditor.recipe.length === 0 && <div style={{ fontSize: 12, color: "var(--text-faint)" }}>{t("noIngredientsAdded")}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <select value={recipeDraftIng} onChange={(e) => setRecipeDraftIng(e.target.value)} className="field" style={{ flex: 1 }}>
-                    <option value="">{t("selectIngredient")}</option>
-                    {Object.values(ingredients).sort((a, b) => a.name.localeCompare(b.name)).map((ing) => (
-                      <option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>
-                    ))}
-                  </select>
-                  <input type="number" value={recipeDraftQty} onChange={(e) => setRecipeDraftQty(e.target.value)} placeholder={t("qtyPlaceholder")} className="field" style={{ width: 70 }} />
+                  <input
+                    type="text"
+                    value={recipeSearch}
+                    onChange={(e) => { setRecipeSearch(e.target.value); setRecipeDraftIng(""); setRecipeListOpen(true); }}
+                    onFocus={() => setRecipeListOpen(true)}
+                    onBlur={() => setRecipeListOpen(false)}
+                    placeholder={t("searchIngredient")}
+                    className="field"
+                    style={{ flex: 1, minWidth: 0 }}
+                  />
+                  <input
+                    ref={recipeQtyInputRef}
+                    type="number"
+                    value={recipeDraftQty}
+                    onChange={(e) => setRecipeDraftQty(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") addRecipeLine(); }}
+                    placeholder={t("qtyPlaceholder")}
+                    className="field"
+                    style={{ width: 70 }}
+                  />
                   <button onClick={addRecipeLine} style={{ padding: "9px 12px", borderRadius: 7, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer", fontSize: 12 }}>{t("add")}</button>
                 </div>
+                {recipeListOpen && !recipeDraftIng && (
+                  <div style={{ marginTop: 6, maxHeight: 190, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 7, background: "var(--bg)" }}>
+                    {recipeSearchMatches().length === 0 ? (
+                      <div style={{ fontSize: 12, color: "var(--text-faint)", padding: "9px 12px" }}>{t("noIngredientMatches")}</div>
+                    ) : (
+                      recipeSearchMatches().map((ing) => (
+                        <div
+                          key={ing.id}
+                          onMouseDown={(e) => { e.preventDefault(); pickRecipeIngredient(ing); }}
+                          style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12.5, padding: "8px 12px", cursor: "pointer", borderBottom: "1px solid var(--border)" }}
+                        >
+                          <span>{ing.name} <span style={{ color: "var(--text-faint)" }}>({ing.unit})</span></span>
+                          {itemEditor.recipe.some((r) => r.ingredientId === ing.id) && <span style={{ color: "var(--text-faint)", fontSize: 11 }}>{t("inRecipeMark")}</span>}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
 
                 <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
                   <button onClick={saveItemEditor} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>{t("saveItem")}</button>
