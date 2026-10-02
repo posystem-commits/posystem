@@ -195,6 +195,9 @@ const STRINGS = {
     pricePlaceholder: "Price",
     recipeLabel: "Recipe — stock used per serving",
     noIngredientsAdded: "No ingredients added yet.",
+    copyRecipeFrom: "Copy the recipe of another item…",
+    notice_recipeCopied: "Copied the ingredients of \"{{name}}\" — change or add anything on top",
+    notice_recipeCopyNothingNew: "\"{{name}}\" has no ingredients that aren't already here",
     selectIngredient: "Select ingredient…",
     qtyPlaceholder: "Qty",
     add: "Add",
@@ -870,6 +873,9 @@ const STRINGS = {
     pricePlaceholder: "السعر",
     recipeLabel: "المكونات — الكمية المستخدمة لكل حصة",
     noIngredientsAdded: "لم تتم إضافة مكونات بعد.",
+    copyRecipeFrom: "انسخ مكونات صنف آخر…",
+    notice_recipeCopied: "تم نسخ مكونات \"{{name}}\" — عدّل أو أضف ما تريد فوقها",
+    notice_recipeCopyNothingNew: "\"{{name}}\" ليس فيه مكونات غير موجودة هنا بالفعل",
     selectIngredient: "اختر مكونًا…",
     qtyPlaceholder: "الكمية",
     add: "إضافة",
@@ -1586,7 +1592,7 @@ don't see mentioned anywhere in this list, or one that's missing for them specif
 that you don't see it and it may not be included in their current plan — don't guess.
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
-- **Menu**: add/edit/delete categories and dishes. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
+- **Menu**: add/edit/delete categories and dishes. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
@@ -5868,6 +5874,37 @@ function POSPrototype({ tenantId }) {
     setRecipeDraftIng("");
     setRecipeDraftQty("");
   };
+  // Every item with a recipe that could serve as a starting point (base menu, then price-list-only
+  // extras), grouped by category. The item currently being edited is left out.
+  const recipeCopySources = () => {
+    const groups = [];
+    const keep = (items) => (items || []).filter((it) => it.id !== itemEditor?.id && it.recipe && it.recipe.length > 0);
+    categories.forEach((cat) => {
+      const items = keep(menu[cat]);
+      if (items.length) groups.push({ label: cat, items });
+    });
+    menuProfiles.forEach((pr) => {
+      Object.entries(pr.extraItems || {}).forEach(([cat, list]) => {
+        const items = keep(list);
+        if (items.length) groups.push({ label: `${cat} (${pr.name})`, items });
+      });
+    });
+    return groups;
+  };
+  // Adds the chosen item's ingredients to this recipe. Lines already in this recipe are left exactly
+  // as typed (so copying never overwrites something deliberately set); only missing ones are added.
+  const copyRecipeFromItem = (sourceId) => {
+    const source = sourceId && findMenuItemAnywhere(sourceId);
+    if (!source) return;
+    const have = new Set(itemEditor.recipe.map((r) => r.ingredientId));
+    const toAdd = source.recipe.filter((r) => ingredients[r.ingredientId] && !have.has(r.ingredientId)).map((r) => ({ ...r }));
+    if (toAdd.length === 0) {
+      flashNotice(t("notice_recipeCopyNothingNew", { name: source.name }));
+      return;
+    }
+    setItemEditor((prev) => ({ ...prev, recipe: [...prev.recipe, ...toAdd] }));
+    flashNotice(t("notice_recipeCopied", { name: source.name }));
+  };
   const removeRecipeLine = (ingredientId) => {
     setItemEditor((prev) => ({ ...prev, recipe: prev.recipe.filter((r) => r.ingredientId !== ingredientId) }));
   };
@@ -7135,6 +7172,18 @@ function POSPrototype({ tenantId }) {
                 </div>
 
                 <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("recipeLabel")}</div>
+                {recipeCopySources().length > 0 && (
+                  <select value="" onChange={(e) => copyRecipeFromItem(e.target.value)} className="field" style={{ width: "100%", marginBottom: 10 }}>
+                    <option value="">{t("copyRecipeFrom")}</option>
+                    {recipeCopySources().map((g) => (
+                      <optgroup key={g.label} label={g.label}>
+                        {g.items.map((it) => (
+                          <option key={it.id} value={it.id}>{it.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
                   {itemEditor.recipe.map((r) => (
                     <div key={r.ingredientId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, background: "var(--bg)", borderRadius: 6, padding: "7px 10px" }}>
