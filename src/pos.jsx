@@ -201,6 +201,34 @@ const STRINGS = {
     selectIngredient: "Select ingredient…",
     searchIngredient: "Search ingredient…",
     noIngredientMatches: "No ingredient matches that search.",
+    markOutOfStock: "Mark out of stock",
+    markAvailable: "Mark available",
+    manuallyOutBadge: "Marked out of stock",
+    notice_itemMarkedOut: "\"{{name}}\" is now out of stock everywhere",
+    notice_itemMarkedAvailable: "\"{{name}}\" is available again",
+    notice_outOfStockSaveFailed: "Couldn't update the item — check the connection and try again",
+    reasonMarkedOut: "{{item}} is marked out of stock",
+    callCenterLinkTitle: "Call center ordering link",
+    callCenterLinkSubtitle: "For your call center team. Same menu and ordering as the online link, plus searching your customer database by phone or name. Agents sign in with their staff name and PIN.",
+    callCenterLinkNote: "Keep this link private — it opens your customer list. Share it only with call center staff.",
+    soundSettingTitle: "New order sound",
+    soundSettingHint: "Play a sound on this device whenever a customer or the call center sends a new order (QR menu, online link, or call center). Applies to this device only.",
+    soundOn: "Sound on",
+    soundOff: "Sound off",
+    soundTest: "Play test sound",
+    pendingOrderCallCenter: "Call center order — taken by {{agent}}",
+    callCenterHeading: "Call center",
+    callCenterSignInTitle: "Call center sign-in",
+    callCenterPickName: "Choose your name",
+    callCenterEnterPin: "Enter your 4-digit PIN",
+    callCenterWrongPin: "Wrong PIN — try again",
+    callCenterNoStaff: "No staff members found yet. Add staff in the POS terminal first.",
+    callCenterSignedInAs: "Taking orders as {{name}}",
+    callCenterSignOut: "Sign out",
+    callCenterCustomerTitle: "Customer",
+    callCenterReturning: "Returning customer — details filled in ({{n}} previous orders)",
+    callCenterPhoneRequired: "Add the caller's phone number",
+    callCenterBack: "Back",
     inRecipeMark: "already in recipe",
     qtyPlaceholder: "Qty",
     add: "Add",
@@ -882,6 +910,34 @@ const STRINGS = {
     selectIngredient: "اختر مكونًا…",
     searchIngredient: "ابحث عن مكوّن…",
     noIngredientMatches: "لا يوجد مكوّن مطابق للبحث.",
+    markOutOfStock: "تحديد كنافد",
+    markAvailable: "إتاحة الصنف",
+    manuallyOutBadge: "محدد كنافد",
+    notice_itemMarkedOut: "\"{{name}}\" أصبح نافدًا في كل مكان",
+    notice_itemMarkedAvailable: "\"{{name}}\" متاح مرة أخرى",
+    notice_outOfStockSaveFailed: "تعذر تحديث الصنف — تأكد من الاتصال وحاول مرة أخرى",
+    reasonMarkedOut: "{{item}} محدد كنافد",
+    callCenterLinkTitle: "رابط طلبات الكول سنتر",
+    callCenterLinkSubtitle: "لفريق الكول سنتر. نفس القائمة وطريقة الطلب في رابط الطلب أونلاين، مع البحث في قاعدة بيانات العملاء بالهاتف أو الاسم. يسجّل الموظف دخوله باسمه ورمزه السري.",
+    callCenterLinkNote: "أبقِ هذا الرابط خاصًا — فهو يفتح قائمة عملائك. شاركه مع موظفي الكول سنتر فقط.",
+    soundSettingTitle: "صوت الطلب الجديد",
+    soundSettingHint: "شغّل صوتًا على هذا الجهاز كلما وصل طلب جديد من عميل أو من الكول سنتر (منيو QR أو رابط الطلب أو الكول سنتر). يسري على هذا الجهاز فقط.",
+    soundOn: "الصوت يعمل",
+    soundOff: "الصوت متوقف",
+    soundTest: "تشغيل صوت تجريبي",
+    pendingOrderCallCenter: "طلب كول سنتر — بواسطة {{agent}}",
+    callCenterHeading: "الكول سنتر",
+    callCenterSignInTitle: "تسجيل دخول الكول سنتر",
+    callCenterPickName: "اختر اسمك",
+    callCenterEnterPin: "أدخل رمزك السري المكوّن من 4 أرقام",
+    callCenterWrongPin: "رمز سري غير صحيح — حاول مرة أخرى",
+    callCenterNoStaff: "لا يوجد موظفون بعد. أضف الموظفين من شاشة الكاشير أولًا.",
+    callCenterSignedInAs: "تسجيل الطلبات باسم {{name}}",
+    callCenterSignOut: "تسجيل الخروج",
+    callCenterCustomerTitle: "العميل",
+    callCenterReturning: "عميل سابق — تم ملء بياناته ({{n}} طلبات سابقة)",
+    callCenterPhoneRequired: "أضف رقم هاتف المتصل",
+    callCenterBack: "رجوع",
     inRecipeMark: "موجود في المكونات",
     qtyPlaceholder: "الكمية",
     add: "إضافة",
@@ -1598,17 +1654,17 @@ don't see mentioned anywhere in this list, or one that's missing for them specif
 that you don't see it and it may not be included in their current plan — don't guess.
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
-- **Menu**: add/edit/delete categories and dishes. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
+- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
-- **Delivery**: shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
+- **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
 - **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served) both ask for a confirmation before going through, since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match) and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
 - **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month, by a single Day, or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. "Clock out" ends their shift and shows a recap. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
-- **Settings**: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
+- **Settings**: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How staff log in
 The app requires signing in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
@@ -2252,6 +2308,14 @@ function POSPrototype({ tenantId }) {
   const [recipeListOpen, setRecipeListOpen] = useState(false);
   const [recipeQtyDrafts, setRecipeQtyDrafts] = useState({}); // raw text while a recipe line's quantity is being typed
   const recipeQtyInputRef = useRef(null);
+  const [manualOutOfStock, setManualOutOfStock] = useState({}); // { [itemId]: true } — items staff marked out of stock by hand, on top of ingredient-based availability
+  const [manualOutLoaded, setManualOutLoaded] = useState(false);
+  const manualOutWritesRef = useRef(0);
+  const [orderSoundOn, setOrderSoundOn] = useState(false); // device-local — see the "order-sound" key in lib/tenantStorage.js
+  const audioCtxRef = useRef(null);
+  const seenPendingIdsRef = useRef(null);
+  const pendingFetchedOkRef = useRef(false);
+  const [callCenterLinkCopied, setCallCenterLinkCopied] = useState(false);
   const [newIngName, setNewIngName] = useState("");
   const [newIngUnit, setNewIngUnit] = useState("kg");
   const [newIngUnitCustom, setNewIngUnitCustom] = useState("");
@@ -2626,6 +2690,7 @@ function POSPrototype({ tenantId }) {
         const result = await storage.get("pending-orders", true);
         if (cancelled) return;
         setPendingOrders(result?.value ? JSON.parse(result.value) : []);
+        pendingFetchedOkRef.current = true;
       } catch (e) {
         // leave whatever was there before — a transient failure shouldn't wipe the list
       } finally {
@@ -2662,6 +2727,95 @@ function POSPrototype({ tenantId }) {
       clearInterval(interval);
     };
   }, []);
+
+  // Items staff have marked out of stock by hand. Kept in its own small shared key (not inside
+  // menu-config) so toggling one is a tiny write any employee can make, and so it can't collide
+  // with menu editing. Polled like the other live shared state; poll results are ignored while one
+  // of this device's own writes is still in flight so the switch doesn't flicker back.
+  useEffect(() => {
+    let cancelled = false;
+    const loadManualOut = async () => {
+      try {
+        const result = await storage.get("item-out-of-stock", true);
+        if (cancelled || manualOutWritesRef.current > 0) return;
+        setManualOutOfStock(result?.value ? JSON.parse(result.value) : {});
+        setManualOutLoaded(true);
+      } catch (e) {
+        // keep whatever was there — and manualOutLoaded stays false until one real read succeeds,
+        // which holds back publishing availability (see the menu-availability effect)
+      }
+    };
+    loadManualOut();
+    const interval = setInterval(loadManualOut, 8000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // New-order sound. The on/off choice is per device (a kitchen screen may want it, a back-office
+  // PC may not). Browsers only allow audio after the person has interacted with the page once, so
+  // the first click/tap/keypress anywhere quietly creates the audio context.
+  useEffect(() => {
+    storage.get("order-sound").then((r) => setOrderSoundOn(r?.value === "1")).catch(() => {});
+  }, []);
+  const ensureAudioContext = () => {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      if (!audioCtxRef.current) audioCtxRef.current = new AC();
+      if (audioCtxRef.current.state === "suspended") audioCtxRef.current.resume();
+      return audioCtxRef.current;
+    } catch (e) {
+      return null;
+    }
+  };
+  useEffect(() => {
+    const unlock = () => ensureAudioContext();
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+  const playOrderChime = () => {
+    const ctx = ensureAudioContext();
+    if (!ctx) return;
+    [880, 1174.66, 1567.98].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const start = ctx.currentTime + i * 0.2;
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.35, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.45);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.5);
+    });
+  };
+  const toggleOrderSound = (on) => {
+    setOrderSoundOn(on);
+    storage.set("order-sound", on ? "1" : "0").catch(() => {});
+    if (on) playOrderChime();
+  };
+  // Rings when an order that wasn't there before shows up in the pending list. The very first
+  // successful read only records what's already waiting, so opening the terminal (or a failed
+  // read recovering) never plays a sound for orders staff have already seen.
+  useEffect(() => {
+    if (!pendingFetchedOkRef.current) return;
+    const ids = pendingOrders.filter((o) => o.status !== "confirmed").map((o) => o.id);
+    if (seenPendingIdsRef.current === null) {
+      seenPendingIdsRef.current = new Set(ids);
+      return;
+    }
+    const fresh = ids.filter((id) => !seenPendingIdsRef.current.has(id));
+    ids.forEach((id) => seenPendingIdsRef.current.add(id));
+    if (fresh.length > 0 && orderSoundOn) playOrderChime();
+  }, [pendingOrders, orderSoundOn]);
 
   // Auto-persists menu/category/ingredient edits to shared storage as they change, rather than
   // threading a save call through every individual add/edit/delete handler. Routed through
@@ -2708,11 +2862,15 @@ function POSPrototype({ tenantId }) {
   // a failed menu/ingredients read would otherwise publish availability computed from the
   // placeholder starter menu's item ids instead of the tenant's real ones.
   useEffect(() => {
-    if (!menuLoaded || menuLoadFailed) return;
+    // Also waits for one successful read of the hand-set out-of-stock flags, so a failed read can't
+    // publish "available" for an item staff deliberately turned off.
+    if (!menuLoaded || menuLoadFailed || !manualOutLoaded) return;
     const availability = {};
     Object.values(menu).flat().forEach((item) => {
       const available =
-        !item.recipe || item.recipe.length === 0
+        manualOutOfStock[item.id]
+          ? false
+          : !item.recipe || item.recipe.length === 0
           ? true
           : item.recipe.every((r) => {
               const ing = ingredients[r.ingredientId];
@@ -2721,7 +2879,7 @@ function POSPrototype({ tenantId }) {
       availability[item.id] = available;
     });
     syncSet("menu-availability", JSON.stringify(availability), true, t("syncLabelStock"));
-  }, [menu, ingredients, menuLoaded, menuLoadFailed]);
+  }, [menu, ingredients, menuLoaded, menuLoadFailed, manualOutOfStock, manualOutLoaded]);
 
   // Ticks once a minute purely to refresh the live "hours worked so far" display while someone's
   // clocked in — doesn't touch storage, just forces a re-render of that one computed string.
@@ -4096,6 +4254,7 @@ function POSPrototype({ tenantId }) {
   }, [ingredients, cart, menu, menuProfiles]);
 
   const rawMaxServings = (item) => {
+    if (manualOutOfStock[item.id]) return 0; // switched off by hand, regardless of ingredient stock
     if (!item.recipe || item.recipe.length === 0) return null; // not tracked
     return Math.min(...item.recipe.map((r) => {
       const ing = ingredients[r.ingredientId];
@@ -4104,6 +4263,7 @@ function POSPrototype({ tenantId }) {
     }));
   };
   const canAddOneMore = (item) => {
+    if (manualOutOfStock[item.id]) return { ok: false, reason: t("reasonMarkedOut", { item: item.name }) };
     if (!item.recipe || item.recipe.length === 0) return { ok: true };
     for (const r of item.recipe) {
       const rem = remainingIngredientStock[r.ingredientId] ?? 0;
@@ -5441,6 +5601,47 @@ function POSPrototype({ tenantId }) {
     if (ok) {
       setStoreLinkCopied(true);
       setTimeout(() => setStoreLinkCopied(false), 2000);
+    } else {
+      flashNotice(t("notice_copyFailed"));
+    }
+  };
+  // Turns an item off (or back on) everywhere: order screen, QR menus, online link, call center.
+  // Reads the current shared flags right before writing and refuses to write if that read fails,
+  // so a bad connection can never replace the whole list with this device's partial copy.
+  const setItemManualOut = async (item, out) => {
+    let fresh;
+    try {
+      const result = await storage.get("item-out-of-stock", true);
+      fresh = result?.value ? JSON.parse(result.value) : {};
+    } catch (e) {
+      flashNotice(t("notice_outOfStockSaveFailed"));
+      return;
+    }
+    const next = { ...fresh };
+    if (out) next[item.id] = true;
+    else delete next[item.id];
+    manualOutWritesRef.current += 1;
+    setManualOutOfStock(next);
+    try {
+      await syncSet("item-out-of-stock", JSON.stringify(next), true, t("syncLabelMenu"));
+    } finally {
+      manualOutWritesRef.current -= 1;
+    }
+    flashNotice(out ? t("notice_itemMarkedOut", { name: item.name }) : t("notice_itemMarkedAvailable", { name: item.name }));
+  };
+  const callCenterUrl = () => {
+    try {
+      const base = `${window.location.origin}${window.location.pathname}`;
+      return `${base}?callcenter=1`;
+    } catch (e) {
+      return `?callcenter=1`;
+    }
+  };
+  const copyCallCenterLink = async () => {
+    const ok = await copyTextToClipboard(callCenterUrl());
+    if (ok) {
+      setCallCenterLinkCopied(true);
+      setTimeout(() => setCallCenterLinkCopied(false), 2000);
     } else {
       flashNotice(t("notice_copyFailed"));
     }
@@ -7138,6 +7339,12 @@ function POSPrototype({ tenantId }) {
                                 <MenuThumb item={item} size={28} />
                                 <span style={{ flex: 1 }}>{item.name} <span style={{ fontSize: 10.5, color: theme.secondaryLight }}>{t("extraLabel")}</span></span>
                                 <span style={{ fontSize: 11.5, fontFamily: "IBM Plex Mono, monospace", color: theme.secondary }}>{money(item.price)}</span>
+                                <button
+                                  onClick={() => setItemManualOut(item, !manualOutOfStock[item.id])}
+                                  style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${manualOutOfStock[item.id] ? "#4E7A47" : "#7A4A42"}`, background: "transparent", color: manualOutOfStock[item.id] ? "#9FCB8E" : "#E3A79C", cursor: "pointer" }}
+                                >
+                                  {manualOutOfStock[item.id] ? t("markAvailable") : t("markOutOfStock")}
+                                </button>
                                 <button onClick={() => openEditItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
                                 <button onClick={() => deleteMenuItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
                               </div>
@@ -7171,12 +7378,21 @@ function POSPrototype({ tenantId }) {
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 500 }}>{item.name} <span style={{ color: theme.secondary, fontFamily: "IBM Plex Mono, monospace", fontWeight: 400 }}>{money(item.price)}</span></div>
                           <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 2 }}>{item.tag}</div>
+                          {manualOutOfStock[item.id] && (
+                            <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5, padding: "2px 8px", borderRadius: 999, background: "#3A2A28", color: "#E3A79C", fontWeight: 500 }}>{t("manuallyOutBadge")}</span>
+                          )}
                           <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 6 }}>
                             {item.recipe.length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtQty(r.qty)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
                           </div>
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                        <button
+                          onClick={() => setItemManualOut(item, !manualOutOfStock[item.id])}
+                          style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${manualOutOfStock[item.id] ? "#4E7A47" : "#7A4A42"}`, background: "transparent", color: manualOutOfStock[item.id] ? "#9FCB8E" : "#E3A79C", cursor: "pointer" }}
+                        >
+                          {manualOutOfStock[item.id] ? t("markAvailable") : t("markOutOfStock")}
+                        </button>
                         <button onClick={() => openEditItem(cat, item)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
                         <button onClick={() => deleteMenuItem(cat, item)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
                       </div>
@@ -8627,6 +8843,20 @@ function POSPrototype({ tenantId }) {
           </div>
           )}
 
+          {hasFeature("onlineOrderingLink") && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("callCenterLinkTitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14 }}>{t("callCenterLinkSubtitle")}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 200, fontSize: 12, fontFamily: "IBM Plex Mono, monospace", color: "var(--text-muted)", wordBreak: "break-all" }}>{callCenterUrl()}</div>
+              <button onClick={copyCallCenterLink} style={{ padding: "8px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 12.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+                {callCenterLinkCopied ? t("linkCopied") : t("copyLink")}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: COLORS.red, marginTop: 8 }}>{t("callCenterLinkNote")}</div>
+          </div>
+          )}
+
           {hasFeature("deliveryZones") && (
           <>
           <div style={{ marginBottom: 12 }}>
@@ -8758,6 +8988,12 @@ function POSPrototype({ tenantId }) {
                   <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 8 }}>
                     {t("pendingOrderSubmitted", { time: new Date(order.submittedAt).toLocaleTimeString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" }) })}
                   </div>
+                  {(order.source === "callcenter" || order.customer) && (
+                    <div style={{ fontSize: 12, marginBottom: 8, lineHeight: 1.5 }}>
+                      {order.source === "callcenter" && <div style={{ color: theme.secondary, fontWeight: 600 }}>{t("pendingOrderCallCenter", { agent: order.agent?.name || "" })}</div>}
+                      {order.customer && <div>{[order.customer.name, order.customer.phone, order.customer.address].filter(Boolean).join(" · ")}</div>}
+                    </div>
+                  )}
                   {order.items.map((it, idx) => (
                     <div key={idx} style={{ marginBottom: 4 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
@@ -9430,6 +9666,26 @@ function POSPrototype({ tenantId }) {
               </div>
 
               <div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("soundSettingTitle")}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => toggleOrderSound(true)}
+                    style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${orderSoundOn ? theme.secondary : "var(--border)"}`, background: orderSoundOn ? "rgba(176,141,87,0.18)" : "transparent", color: orderSoundOn ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                  >
+                    {t("soundOn")}
+                  </button>
+                  <button
+                    onClick={() => toggleOrderSound(false)}
+                    style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${!orderSoundOn ? theme.secondary : "var(--border)"}`, background: !orderSoundOn ? "rgba(176,141,87,0.18)" : "transparent", color: !orderSoundOn ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                  >
+                    {t("soundOff")}
+                  </button>
+                  <button onClick={playOrderChime} style={{ padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("soundTest")}</button>
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>{t("soundSettingHint")}</div>
+              </div>
+
+              <div>
                 <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("shiftHoursTitle")}</div>
                 <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 10, lineHeight: 1.5 }}>{t("shiftHoursHint")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -9573,7 +9829,7 @@ function POSPrototype({ tenantId }) {
 // branding + the live menu with stock badges, no cart, no ordering (per the "view only" scope
 // chosen for v1) — reads shared storage so it reflects whatever the operator has actually set up,
 // not the hardcoded starter menu.
-function CustomerMenuView({ tableId, tenantId }) {
+function CustomerMenuView({ tableId, tenantId, callCenter = false }) {
   // A null/undefined tableId means this is the general online-ordering link (shared on social
   // media), not a specific table's QR code — the customer chooses Pickup or Delivery instead of
   // it being assumed dine-in.
@@ -9621,6 +9877,106 @@ function CustomerMenuView({ tableId, tenantId }) {
   // attempting one. The real check now happens at submit time against the actual result of trying
   // to send — see submitOrder below.
   const [isOnline, setIsOnline] = useState(true);
+
+  // Call center mode (?callcenter=1): the online-ordering page plus staff sign-in and customer
+  // database search. Agents pick their name from the staff roster and enter its PIN; the choice is
+  // kept for this browser tab only. Orders they send carry source "callcenter" and the agent's name.
+  const [agent, setAgent] = useState(() => {
+    if (!callCenter) return null;
+    try {
+      return JSON.parse(window.sessionStorage.getItem("callcenter-agent") || "null");
+    } catch (e) {
+      return null;
+    }
+  });
+  const [ccRoster, setCcRoster] = useState([]);
+  const [ccPickedId, setCcPickedId] = useState(null);
+  const [ccPin, setCcPin] = useState("");
+  const [ccPinError, setCcPinError] = useState(false);
+  const [ccCustomers, setCcCustomers] = useState({});
+  const [ccShowSuggestions, setCcShowSuggestions] = useState(false);
+  const [ccRecognized, setCcRecognized] = useState(null);
+
+  useEffect(() => {
+    if (!callCenter) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await getSharedWithRetry(storage, "staff-roster");
+        if (!cancelled) setCcRoster(r?.value ? JSON.parse(r.value) : []);
+      } catch (e) {
+        // the sign-in screen just shows no names until the roster can be read
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    if (!callCenter || !agent) return;
+    let cancelled = false;
+    const loadCustomers = async () => {
+      try {
+        const r = await storage.get("customers-directory", false);
+        if (!cancelled) setCcCustomers(r?.value ? JSON.parse(r.value) : {});
+      } catch (e) {
+        // keep the last list we had
+      }
+    };
+    loadCustomers();
+    const interval = setInterval(loadCustomers, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [agent]);
+  const ccMatches = useMemo(() => {
+    const q = onlineCustomerPhone.trim().toLowerCase();
+    if (!callCenter || !q) return [];
+    return Object.values(ccCustomers).filter((c) => (c.name || "").toLowerCase().includes(q) || (c.phone || "").includes(q)).slice(0, 6);
+  }, [onlineCustomerPhone, ccCustomers]);
+  const ccTryLogin = (pin) => {
+    const emp = ccRoster.find((e) => e.id === ccPickedId);
+    if (emp && String(emp.pin) === pin) {
+      const a = { id: emp.id, name: emp.name };
+      try {
+        window.sessionStorage.setItem("callcenter-agent", JSON.stringify(a));
+      } catch (e) {
+        // fine — they'll just sign in again after a refresh
+      }
+      setAgent(a);
+      setCcPin("");
+      setCcPinError(false);
+    } else {
+      setCcPinError(true);
+      setCcPin("");
+    }
+  };
+  const ccSignOut = () => {
+    try {
+      window.sessionStorage.removeItem("callcenter-agent");
+    } catch (e) {
+      // nothing to clean up
+    }
+    setAgent(null);
+    setCcPickedId(null);
+    setCcPin("");
+    setCcRecognized(null);
+  };
+  const ccFillFromCustomer = (c) => {
+    setOnlineCustomerName(c.name || "");
+    setOnlineCustomerPhone(c.phone || "");
+    setOnlineCustomerAddress(c.address || "");
+    setCcRecognized(c);
+    setCcShowSuggestions(false);
+  };
+  const ccHandlePhoneChange = (value) => {
+    setOnlineCustomerPhone(value);
+    setCcShowSuggestions(true);
+    setCcRecognized(null);
+    const match = ccCustomers[value.trim()];
+    if (match && !onlineCustomerName && !onlineCustomerAddress) ccFillFromCustomer(match);
+  };
 
   // The browser's online/offline events are still a useful hint (kept below), but this view no
   // longer treats them as authoritative for gating submission — only an actual failed submit
@@ -9778,6 +10134,12 @@ function CustomerMenuView({ tableId, tenantId }) {
         setTimeout(() => setCustomerInfoError(false), 2500);
         return;
       }
+      if (callCenter && deliveryMethodChoice === "pickup" && !onlineCustomerPhone.trim()) {
+        setSendError(false);
+        setCustomerInfoError(true);
+        setTimeout(() => setCustomerInfoError(false), 2500);
+        return;
+      }
     }
     // No longer pre-blocked on the isOnline flag — that check was gating the button on
     // navigator.onLine's initial snapshot, which can be wrong inside embedded WebViews. Now every
@@ -9789,13 +10151,15 @@ function CustomerMenuView({ tableId, tenantId }) {
       const existing = await storage.get("pending-orders", true).catch(() => null);
       const list = existing?.value ? JSON.parse(existing.value) : [];
       const order = {
-        id: `qr_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        id: `${callCenter ? "cc" : "qr"}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        source: callCenter ? "callcenter" : isGeneralLink ? "online" : "qr",
+        agent: callCenter ? agent : null,
         tableId: isGeneralLink ? (deliveryMethodChoice === "delivery" ? "delivery" : null) : tableId,
         items: cartLines.map((l) => ({ id: l.id, name: l.name, price: l.price, qty: l.qty, note: l.note || "" })),
         deliveryMethod: isGeneralLink ? deliveryMethodChoice : null,
         deliveryFee: isGeneralLink ? deliveryFeeAmount : 0,
         deliveryZoneLabel: isGeneralLink && deliveryMethodChoice === "delivery" ? selectedZone?.label || "" : "",
-        customer: isGeneralLink && deliveryMethodChoice === "delivery"
+        customer: (isGeneralLink && deliveryMethodChoice === "delivery") || (callCenter && onlineCustomerPhone.trim())
           ? { name: onlineCustomerName.trim(), phone: onlineCustomerPhone.trim(), address: onlineCustomerAddress.trim() }
           : null,
         submittedAt: new Date().toISOString(),
@@ -9803,6 +10167,15 @@ function CustomerMenuView({ tableId, tenantId }) {
       await storage.set("pending-orders", JSON.stringify([...list, order]), true);
       setIsOnline(true); // it just worked — whatever the flag said before, we're clearly connected
       setCart({});
+      if (callCenter) {
+        // Ready for the next caller.
+        setOnlineCustomerName("");
+        setOnlineCustomerPhone("");
+        setOnlineCustomerAddress("");
+        setCcRecognized(null);
+        setDeliveryMethodChoice(null);
+        setSelectedZoneId("");
+      }
       setJustSent(true);
       setOrderConfirmed(false);
       setSubmittedOrderId(order.id);
@@ -9874,6 +10247,64 @@ function CustomerMenuView({ tableId, tenantId }) {
     }
   };
 
+  if (callCenter && !agent) {
+    const picked = ccRoster.find((e) => e.id === ccPickedId) || null;
+    const pressDigit = (d) => {
+      if (ccPin.length >= 4) return;
+      const next = ccPin + d;
+      setCcPin(next);
+      setCcPinError(false);
+      if (next.length === 4) setTimeout(() => ccTryLogin(next), 120);
+    };
+    return (
+      <div dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: COLORS.ink, minHeight: "100vh", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <style>{FONTS}</style>
+        <div style={{ width: "100%", maxWidth: 340, textAlign: "center" }}>
+          <div style={{ fontFamily: "Fraunces, serif", fontSize: 24, fontWeight: 600, marginBottom: 4 }}>{restaurantName}</div>
+          <div style={{ fontSize: 14, color: theme.secondaryLight, marginBottom: 22 }}>{t("callCenterSignInTitle")}</div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 18 }}>
+            {["en", "ar"].map((code) => (
+              <button key={code} onClick={() => setLang(code)} style={{ padding: "5px 11px", borderRadius: 999, border: "1px solid var(--border)", background: lang === code ? theme.primary : "transparent", color: lang === code ? COLORS.paper : "var(--text-muted)", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>{code === "en" ? "EN" : "AR"}</button>
+            ))}
+          </div>
+          {!picked ? (
+            <>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 10 }}>{t("callCenterPickName")}</div>
+              {ccRoster.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("callCenterNoStaff")}</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {ccRoster.map((e) => (
+                    <button key={e.id} onClick={() => { setCcPickedId(e.id); setCcPin(""); setCcPinError(false); }} style={{ padding: "13px 0", borderRadius: 9, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontSize: 15, cursor: "pointer" }}>{e.name}</button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{picked.name}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 14 }}>{t("callCenterEnterPin")}</div>
+              <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 10 }}>
+                {[0, 1, 2, 3].map((i) => (
+                  <span key={i} style={{ width: 13, height: 13, borderRadius: "50%", border: `2px solid ${ccPinError ? COLORS.red : theme.secondary}`, background: i < ccPin.length ? theme.secondary : "transparent", display: "inline-block" }} />
+                ))}
+              </div>
+              <div style={{ height: 18, fontSize: 12, color: "#E3A79C", marginBottom: 6 }}>{ccPinError ? t("callCenterWrongPin") : ""}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
+                  <button key={d} onClick={() => pressDigit(d)} style={{ padding: "15px 0", borderRadius: 9, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontSize: 19, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}>{d}</button>
+                ))}
+                <button onClick={() => { setCcPickedId(null); setCcPin(""); setCcPinError(false); }} style={{ padding: "15px 0", borderRadius: 9, border: "none", background: "transparent", color: "var(--text-muted)", fontSize: 13, cursor: "pointer" }}>{t("callCenterBack")}</button>
+                <button onClick={() => pressDigit("0")} style={{ padding: "15px 0", borderRadius: 9, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontSize: 19, fontFamily: "IBM Plex Mono, monospace", cursor: "pointer" }}>0</button>
+                <button onClick={() => setCcPin((p) => p.slice(0, -1))} style={{ padding: "15px 0", borderRadius: 9, border: "none", background: "transparent", color: "var(--text-muted)", fontSize: 18, cursor: "pointer" }}>&larr;</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: COLORS.ink, minHeight: "100vh", color: "var(--text-primary)", paddingBottom: cartCount > 0 ? 90 : 0 }}>
       <style>{FONTS}</style>
@@ -9892,7 +10323,7 @@ function CustomerMenuView({ tableId, tenantId }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
           <div style={{ fontSize: 14, color: theme.secondaryLight, fontWeight: 500 }}>
-            {isGeneralLink ? t("onlineOrderingHeading") : t("viewingMenuFor", { table: t("tableNumbered", { n: tableId }) })}
+            {callCenter ? t("callCenterHeading") : isGeneralLink ? t("onlineOrderingHeading") : t("viewingMenuFor", { table: t("tableNumbered", { n: tableId }) })}
           </div>
           <div style={{ display: "flex", background: "var(--surface)", borderRadius: 999, padding: 3, border: "1px solid var(--border)" }}>
             {["en", "ar"].map((code) => (
@@ -9907,6 +10338,13 @@ function CustomerMenuView({ tableId, tenantId }) {
           </div>
         </div>
 
+        {callCenter && agent && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 8, fontSize: 12.5, color: "var(--text-muted)" }}>
+            <span>{t("callCenterSignedInAs", { name: agent.name })}</span>
+            <button onClick={ccSignOut} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 999, color: "var(--text-muted)", fontSize: 11.5, padding: "4px 12px", cursor: "pointer" }}>{t("callCenterSignOut")}</button>
+          </div>
+        )}
+
         {orderConfirmed && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 10, padding: "12px 16px", borderRadius: 10, border: "1px solid #4E7A47", background: "rgba(159,203,142,0.15)", color: "#9FCB8E" }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>✅ {t("orderConfirmedBanner")}</div>
@@ -9919,7 +10357,7 @@ function CustomerMenuView({ tableId, tenantId }) {
           </div>
         )}
 
-        {isGeneralLink && (buildMapsHref(mapsLink) || phoneNumber.trim()) && (
+        {isGeneralLink && !callCenter && (buildMapsHref(mapsLink) || phoneNumber.trim()) && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
             {buildMapsHref(mapsLink) && (
               <a
@@ -9939,6 +10377,52 @@ function CustomerMenuView({ tableId, tenantId }) {
                 📞 {t("callButton")}
               </a>
             )}
+          </div>
+        )}
+
+        {callCenter && (
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 14, marginTop: 10 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 8 }}>{t("callCenterCustomerTitle")}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <input
+                type="tel"
+                value={onlineCustomerPhone}
+                onChange={(e) => ccHandlePhoneChange(e.target.value)}
+                onFocus={() => setCcShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setCcShowSuggestions(false), 150)}
+                placeholder={t("phoneSearchPlaceholder")}
+                style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid var(--border)", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
+              />
+              {ccShowSuggestions && onlineCustomerPhone.trim() && (
+                <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "var(--bg)" }}>
+                  {ccMatches.length === 0 ? (
+                    <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-faint)" }}>{t("noMatchesNewCustomer")}</div>
+                  ) : (
+                    ccMatches.map((c) => (
+                      <button key={c.phone} onMouseDown={() => ccFillFromCustomer(c)} style={{ display: "block", width: "100%", textAlign: isRtl ? "right" : "left", background: "transparent", border: "none", borderBottom: "1px solid var(--border)", padding: "9px 12px", cursor: "pointer", color: "var(--text-primary)" }}>
+                        <div style={{ fontSize: 13 }}>{c.name || t("unnamed")}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "IBM Plex Mono, monospace" }}>{c.phone}{c.address ? ` · ${c.address}` : ""}</div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+              {ccRecognized && <div style={{ fontSize: 11.5, color: "#9FCB8E" }}>{t("callCenterReturning", { n: ccRecognized.orderCount || 0 })}</div>}
+              <input
+                type="text"
+                value={onlineCustomerName}
+                onChange={(e) => setOnlineCustomerName(e.target.value)}
+                placeholder={t("namePlaceholder")}
+                style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid var(--border)", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
+              />
+              <input
+                type="text"
+                value={onlineCustomerAddress}
+                onChange={(e) => setOnlineCustomerAddress(e.target.value)}
+                placeholder={t("addressPlaceholder")}
+                style={{ width: "100%", boxSizing: "border-box", background: "#FFFFFF", border: "1px solid var(--border)", borderRadius: 7, padding: "9px 12px", color: "#111111", fontSize: 13 }}
+              />
+            </div>
           </div>
         )}
 
@@ -9973,7 +10457,7 @@ function CustomerMenuView({ tableId, tenantId }) {
                     ))}
                   </select>
                 )}
-                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ marginTop: 10, display: callCenter ? "none" : "flex", flexDirection: "column", gap: 6 }}>
                   <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("deliveryDetailsLabel")}</div>
                   <input
                     type="text"
@@ -10000,11 +10484,11 @@ function CustomerMenuView({ tableId, tenantId }) {
               </div>
             )}
             {zoneChoiceError && <div style={{ fontSize: 11.5, color: "#E3A79C", marginTop: 8 }}>{t("notice_chooseZoneFirst")}</div>}
-            {customerInfoError && <div style={{ fontSize: 11.5, color: "#E3A79C", marginTop: 8 }}>{t("notice_deliveryDetailsRequired")}</div>}
+            {customerInfoError && <div style={{ fontSize: 11.5, color: "#E3A79C", marginTop: 8 }}>{callCenter && deliveryMethodChoice === "pickup" ? t("callCenterPhoneRequired") : t("notice_deliveryDetailsRequired")}</div>}
           </div>
         )}
 
-        <div style={{ fontSize: 12.5, color: "var(--text-faint)", marginBottom: 6 }}>{t("customerMenuHint")}</div>
+        {!callCenter && <div style={{ fontSize: 12.5, color: "var(--text-faint)", marginBottom: 6 }}>{t("customerMenuHint")}</div>}
         <div style={{ fontSize: 11, color: "#6E7580", marginBottom: !isGeneralLink ? 14 : 28, paddingBottom: !isGeneralLink ? 0 : 20, borderBottom: !isGeneralLink ? "none" : "1px solid #333945", display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#6FA86F", display: "inline-block" }} />
           {t("liveMenuNote")}
@@ -10232,14 +10716,18 @@ function CustomerMenuView({ tableId, tenantId }) {
 export default function App({ tenantId }) {
   let tableParam = null;
   let isStoreLink = false;
+  let isCallCenter = false;
   try {
     const params = new URLSearchParams(window.location.search);
     tableParam = params.get("table");
     isStoreLink = params.get("order") === "1";
+    isCallCenter = params.get("callcenter") === "1";
   } catch (e) {
     tableParam = null;
     isStoreLink = false;
+    isCallCenter = false;
   }
+  if (isCallCenter) return <CustomerMenuView tableId={null} tenantId={tenantId} callCenter />;
   if (tableParam) return <CustomerMenuView tableId={tableParam} tenantId={tenantId} />;
   if (isStoreLink) return <CustomerMenuView tableId={null} tenantId={tenantId} />;
   return <POSPrototype tenantId={tenantId} />;
