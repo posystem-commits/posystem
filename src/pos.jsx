@@ -9963,6 +9963,37 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false }) {
     setCcPin("");
     setCcRecognized(null);
   };
+  const ccPressDigit = (d) => {
+    if (ccPin.length >= 4) return;
+    const next = ccPin + d;
+    setCcPin(next);
+    setCcPinError(false);
+    if (next.length === 4) setTimeout(() => ccTryLogin(next), 120);
+  };
+  const ccBackToNames = () => {
+    setCcPickedId(null);
+    setCcPin("");
+    setCcPinError(false);
+  };
+  // Physical keyboard (including the numpad) works on the PIN screen: digits enter the PIN,
+  // Backspace removes the last one, Escape goes back to the name list.
+  useEffect(() => {
+    if (!callCenter || agent || !ccPickedId) return;
+    const onKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        ccPressDigit(e.key);
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        setCcPin((p) => p.slice(0, -1));
+      } else if (e.key === "Escape") {
+        ccBackToNames();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [agent, ccPickedId, ccPin, ccRoster]);
   const ccFillFromCustomer = (c) => {
     setOnlineCustomerName(c.name || "");
     setOnlineCustomerPhone(c.phone || "");
@@ -10249,13 +10280,7 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false }) {
 
   if (callCenter && !agent) {
     const picked = ccRoster.find((e) => e.id === ccPickedId) || null;
-    const pressDigit = (d) => {
-      if (ccPin.length >= 4) return;
-      const next = ccPin + d;
-      setCcPin(next);
-      setCcPinError(false);
-      if (next.length === 4) setTimeout(() => ccTryLogin(next), 120);
-    };
+    const pressDigit = ccPressDigit;
     return (
       <div dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: COLORS.ink, minHeight: "100vh", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
         <style>{FONTS}</style>
