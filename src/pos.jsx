@@ -368,6 +368,8 @@ const STRINGS = {
     themeLight: "Light",
     themeHint: "Applies to this terminal's screens. Every device signed into this restaurant sees the same theme.",
     shiftHoursTitle: "Shift hours",
+    shiftHoursTypeHint: "Type each time yourself — for example 18:00, 1830 or 6pm — then press Enter or tap outside the box.",
+    shiftHoursInvalid: "That isn't a valid time — try something like 18:00 or 6pm",
     shiftHoursHint: "When each day's shift starts and ends. An order placed after midnight but before the next shift's start still counts toward the day the shift began — so a 6pm–2am shift never gets split across two days on the Dashboard.",
     shiftHoursToLabel: "to",
     weekday_sun: "Sunday",
@@ -1077,6 +1079,8 @@ const STRINGS = {
     themeLight: "فاتح",
     themeHint: "يُطبَّق على شاشات هذا الجهاز. كل جهاز مسجّل دخول في هذا المطعم يرى نفس المظهر.",
     shiftHoursTitle: "ساعات الشِفت",
+    shiftHoursTypeHint: "اكتب كل وقت بنفسك — مثل 18:00 أو 1830 أو 6م — ثم اضغط Enter أو اضغط خارج الخانة.",
+    shiftHoursInvalid: "هذا ليس وقتًا صحيحًا — جرّب مثل 18:00 أو 6م",
     shiftHoursHint: "متى يبدأ وينتهي شِفت كل يوم. الطلب الذي يتم تسجيله بعد منتصف الليل وقبل بداية الشِفت التالي يظل محسوبًا على اليوم الذي بدأ فيه الشِفت — بحيث لا يُقسَّم شِفت من 6 مساءً حتى 2 صباحًا بين يومين في لوحة المعلومات.",
     shiftHoursToLabel: "إلى",
     weekday_sun: "الأحد",
@@ -1664,7 +1668,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. "Clock out" ends their shift and shows a recap. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
-- **Settings**: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
+- **Settings**: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (type each time into its box — like 18:00, 1830 or 6pm — then press Enter or tap away; a time that isn't valid is rejected and the old one kept) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How staff log in
 The app requires signing in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
@@ -1857,7 +1861,91 @@ const monthGridDays = (viewMonthKey) => {
   });
 };
 
-// Native date/month/time inputs report "" while a value is only partly typed or a segment has been
+// Reads a time the way people actually write it and returns "HH:MM" (24-hour), or null if it isn't
+// a real time. Accepts 18:00, 18.30, 1830, 830, 18, 6pm, 6:30 pm, 6م, ٦:٣٠ م (Arabic digits and
+// ص/م for AM/PM included). Without am/pm the hour must be 0-23.
+const parseTypedTime = (raw) => {
+  let str = String(raw || "").trim().toLowerCase().replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+  let meridian = null;
+  const mer = str.match(/(am|pm|a|p|ص|م)\.?\s*$/);
+  if (mer) {
+    meridian = /^(pm|p|م)$/.test(mer[1]) ? "pm" : "am";
+    str = str.slice(0, mer.index).trim();
+  }
+  let h, m;
+  const sep = str.match(/^(\d{1,2})\s*[:.\s]\s*(\d{1,2})$/);
+  if (sep) {
+    h = Number(sep[1]);
+    m = Number(sep[2]);
+  } else if (/^\d{1,2}$/.test(str)) {
+    h = Number(str);
+    m = 0;
+  } else if (/^\d{3,4}$/.test(str)) {
+    h = Number(str.slice(0, -2));
+    m = Number(str.slice(-2));
+  } else {
+    return null;
+  }
+  if (m > 59) return null;
+  if (meridian) {
+    if (h < 1 || h > 12) return null;
+    if (meridian === "pm" && h < 12) h += 12;
+    if (meridian === "am" && h === 12) h = 0;
+  } else if (h > 23) {
+    return null;
+  }
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+// A plain text box for a time of day. The native time input is picker-only on many phones and
+// tablets (nothing to type into) and fiddly on some desktops, so shift hours use this instead: it
+// always accepts typing, and saves when Enter is pressed or the box is left with a valid time.
+function TypedTimeInput({ value, onCommit, invalidText, style }) {
+  const [draft, setDraft] = useState(value);
+  const [bad, setBad] = useState(false);
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+  const finish = () => {
+    if (draft.trim() === value) return;
+    const parsed = parseTypedTime(draft);
+    if (parsed) {
+      setBad(false);
+      setDraft(parsed);
+      if (parsed !== value) onCommit(parsed);
+    } else {
+      setBad(true);
+      setDraft(value);
+      setTimeout(() => setBad(false), 2500);
+    }
+  };
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column" }}>
+      <input
+        type="text"
+        inputMode="numeric"
+        dir="ltr"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={finish}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            finish();
+            e.target.blur();
+          }
+        }}
+        onFocus={(e) => e.target.select()}
+        placeholder="HH:MM"
+        autoComplete="off"
+        className="field"
+        style={{ width: 92, textAlign: "center", fontFamily: "IBM Plex Mono, monospace", ...(bad ? { borderColor: "#C0392B" } : null), ...style }}
+      />
+      {bad && <span style={{ fontSize: 10.5, color: "#E3A79C", marginTop: 3, maxWidth: 160 }}>{invalidText}</span>}
+    </span>
+  );
+}
+
+// Native date/month inputs report "" while a value is only partly typed or a segment has been
 // cleared. Wiring them straight to saved state either wiped what the person was typing (the field
 // snapped back to a default) or saved a half-entered value. This keeps the in-progress text local
 // and only hands a COMPLETE, valid value to the app; leaving the field with an unfinished entry
@@ -1865,9 +1953,8 @@ const monthGridDays = (viewMonthKey) => {
 // get a plain text box, which is validated the same way.
 const isValidDateStr = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v;
 const isValidMonthStr = (v) => /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
-const isValidTimeStr = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 function CommitOnValidInput({ type, value, onCommit, ...rest }) {
-  const isValid = type === "month" ? isValidMonthStr : type === "time" ? isValidTimeStr : isValidDateStr;
+  const isValid = type === "month" ? isValidMonthStr : isValidDateStr;
   const [draft, setDraft] = useState(value);
   useEffect(() => {
     setDraft(value);
@@ -9725,27 +9812,22 @@ function POSPrototype({ tenantId }) {
 
               <div>
                 <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("shiftHoursTitle")}</div>
-                <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 10, lineHeight: 1.5 }}>{t("shiftHoursHint")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 6, lineHeight: 1.5 }}>{t("shiftHoursHint")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10, lineHeight: 1.5 }}>{t("shiftHoursTypeHint")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {WEEKDAY_KEYS.map((wd) => (
                     <div key={wd} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                       <div style={{ width: 90, fontSize: 12.5, flexShrink: 0 }}>{t(`weekday_${wd}`)}</div>
-                      <CommitOnValidInput
-                        type="time"
+                      <TypedTimeInput
                         value={shiftHoursConfig[wd]?.start || "00:00"}
                         onCommit={(v) => updateShiftHours(wd, "start", v)}
-                        placeholder="HH:MM"
-                        className="field"
-                        style={{ colorScheme: "dark" }}
+                        invalidText={t("shiftHoursInvalid")}
                       />
                       <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("shiftHoursToLabel")}</span>
-                      <CommitOnValidInput
-                        type="time"
+                      <TypedTimeInput
                         value={shiftHoursConfig[wd]?.end || "23:59"}
                         onCommit={(v) => updateShiftHours(wd, "end", v)}
-                        placeholder="HH:MM"
-                        className="field"
-                        style={{ colorScheme: "dark" }}
+                        invalidText={t("shiftHoursInvalid")}
                       />
                     </div>
                   ))}
