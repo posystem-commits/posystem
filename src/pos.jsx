@@ -1825,6 +1825,11 @@ const nextMonthKey = (monthKey) => {
 const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const DEFAULT_SHIFT_HOURS = Object.fromEntries(WEEKDAY_KEYS.map((k) => [k, { start: "00:00", end: "23:59" }]));
 const localDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// "Today" and "this month" as the person at the terminal sees them. Using the UTC date here (as the
+// pickers used to) is a day behind for the first hours after local midnight (UTC+2/+3), which made
+// today's date unselectable right when late-night shifts were being reviewed.
+const todayLocalStr = () => localDateStr(new Date());
+const monthLocalKey = () => todayLocalStr().slice(0, 7);
 // The "business date" an order counts toward for reporting — its own calendar day, unless it
 // landed before that day's configured shift start, in which case it still belongs to the day
 // before (the shift that's still running). Local wall-clock time throughout, since that's what a
@@ -1851,6 +1856,36 @@ const monthGridDays = (viewMonthKey) => {
     return { dateStr: d.toISOString().slice(0, 10), day: d.getUTCDate(), inMonth: d.getUTCMonth() === m - 1 };
   });
 };
+
+// Native date/month/time inputs report "" while a value is only partly typed or a segment has been
+// cleared. Wiring them straight to saved state either wiped what the person was typing (the field
+// snapped back to a default) or saved a half-entered value. This keeps the in-progress text local
+// and only hands a COMPLETE, valid value to the app; leaving the field with an unfinished entry
+// restores the last good value. Browsers without a native month picker (desktop Safari/Firefox)
+// get a plain text box, which is validated the same way.
+const isValidDateStr = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v;
+const isValidMonthStr = (v) => /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
+const isValidTimeStr = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+function CommitOnValidInput({ type, value, onCommit, ...rest }) {
+  const isValid = type === "month" ? isValidMonthStr : type === "time" ? isValidTimeStr : isValidDateStr;
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+  return (
+    <input
+      type={type}
+      value={draft}
+      onChange={(e) => {
+        const v = e.target.value;
+        setDraft(v);
+        if (isValid(v)) onCommit(v);
+      }}
+      onBlur={() => setDraft(value)}
+      {...rest}
+    />
+  );
+}
 
 // A small popover calendar for picking a start/end day pair — used by the dashboard's custom
 // range filter instead of two separate native date inputs, which are fiddlier to use for picking
@@ -3568,7 +3603,7 @@ function POSPrototype({ tenantId }) {
   // — a receipt's business date can spill into a neighboring month's storage bucket).
   useEffect(() => {
     if (receiptsFilterMode === "range") {
-      const end = receiptsFilterRangeEnd || new Date().toISOString().slice(0, 10);
+      const end = receiptsFilterRangeEnd || todayLocalStr();
       const start = receiptsFilterRangeStart || addDaysStr(end, -6);
       const [s, e] = start <= end ? [start, end] : [end, start];
       const reportingKeys = monthKeysInRange(s, e);
@@ -3577,7 +3612,7 @@ function POSPrototype({ tenantId }) {
       return;
     }
     const monthKey = receiptsFilterMode === "day"
-      ? (receiptsFilterDay || new Date().toISOString().slice(0, 10)).slice(0, 7)
+      ? (receiptsFilterDay || todayLocalStr()).slice(0, 7)
       : selectedMonth || thisMonthKey();
     [prevMonthKey(monthKey), monthKey, nextMonthKey(monthKey)].forEach((mk) => ensureMonthLoaded(mk));
   }, [receiptsFilterMode, selectedMonth, receiptsFilterDay, receiptsFilterRangeStart, receiptsFilterRangeEnd]);
@@ -3591,7 +3626,7 @@ function POSPrototype({ tenantId }) {
     ensureExpenseMonthLoaded(thisMonthKey());
   }, []);
   useEffect(() => {
-    const monthKey = dashboardMode === "day" ? (dashboardDay || new Date().toISOString().slice(0, 10)).slice(0, 7) : dashboardMonth || thisMonthKey();
+    const monthKey = dashboardMode === "day" ? (dashboardDay || todayLocalStr()).slice(0, 7) : dashboardMonth || monthLocalKey();
     // Widened one month either side — a receipt's business date (see businessDateForTimestamp)
     // can land a day, and therefore a month, earlier than the real timestamp it was filed under.
     [prevMonthKey(monthKey), monthKey, nextMonthKey(monthKey)].forEach((mk) => ensureMonthLoaded(mk));
@@ -3602,7 +3637,7 @@ function POSPrototype({ tenantId }) {
   // above, one month either side of the whole span for business-date spillover).
   useEffect(() => {
     if (dashboardMode !== "range") return;
-    const end = dashboardRangeEnd || new Date().toISOString().slice(0, 10);
+    const end = dashboardRangeEnd || todayLocalStr();
     const start = dashboardRangeStart || addDaysStr(end, -6);
     const [s, e] = start <= end ? [start, end] : [end, start];
     const reportingKeys = monthKeysInRange(s, e);
@@ -4743,8 +4778,8 @@ function POSPrototype({ tenantId }) {
   // dashboardReportingMonthKeys) — Month mode keeps using the dropdown above (only months that
   // actually have data); Day and Range pick their own period independent of it, exactly like the
   // Dashboard's equivalent modes.
-  const effectiveReceiptsDay = receiptsFilterDay || new Date().toISOString().slice(0, 10);
-  const rawReceiptsRangeEnd = receiptsFilterRangeEnd || new Date().toISOString().slice(0, 10);
+  const effectiveReceiptsDay = receiptsFilterDay || todayLocalStr();
+  const rawReceiptsRangeEnd = receiptsFilterRangeEnd || todayLocalStr();
   const rawReceiptsRangeStart = receiptsFilterRangeStart || addDaysStr(rawReceiptsRangeEnd, -6);
   const effectiveReceiptsRangeStart = rawReceiptsRangeStart <= rawReceiptsRangeEnd ? rawReceiptsRangeStart : rawReceiptsRangeEnd;
   const effectiveReceiptsRangeEnd = rawReceiptsRangeStart <= rawReceiptsRangeEnd ? rawReceiptsRangeEnd : rawReceiptsRangeStart;
@@ -4797,11 +4832,11 @@ function POSPrototype({ tenantId }) {
   // current month / today until changed. The month containing whichever period is selected gets
   // fetched on demand (see the effect near ensureMonthLoaded) since it may not be the one already
   // loaded eagerly at startup.
-  const effectiveDashboardMonth = dashboardMonth || thisMonthKey();
-  const effectiveDashboardDay = dashboardDay || new Date().toISOString().slice(0, 10);
+  const effectiveDashboardMonth = dashboardMonth || monthLocalKey();
+  const effectiveDashboardDay = dashboardDay || todayLocalStr();
   // A custom range clamps to (start <= end) regardless of which end the manager last edited, so
   // the two date pickers can never silently produce an inverted, empty-looking period.
-  const rawRangeEnd = dashboardRangeEnd || new Date().toISOString().slice(0, 10);
+  const rawRangeEnd = dashboardRangeEnd || todayLocalStr();
   const rawRangeStart = dashboardRangeStart || addDaysStr(rawRangeEnd, -6);
   const effectiveDashboardRangeStart = rawRangeStart <= rawRangeEnd ? rawRangeStart : rawRangeEnd;
   const effectiveDashboardRangeEnd = rawRangeStart <= rawRangeEnd ? rawRangeEnd : rawRangeStart;
@@ -4852,7 +4887,7 @@ function POSPrototype({ tenantId }) {
   // useful breakdown instead — also doubles as a simple peak-hours read for staffing).
   const daysInDashboardMonth = (() => {
     const [y, m] = dashboardActiveMonthKey.split("-").map(Number);
-    return dashboardActiveMonthKey === thisMonthKey() ? new Date().getDate() : new Date(y, m, 0).getDate();
+    return dashboardActiveMonthKey === monthLocalKey() ? new Date().getDate() : new Date(y, m, 0).getDate();
   })();
   const dailyRevenue = Array.from({ length: daysInDashboardMonth }, (_, i) => {
     const dayStr = `${dashboardActiveMonthKey}-${String(i + 1).padStart(2, "0")}`;
@@ -5018,7 +5053,7 @@ function POSPrototype({ tenantId }) {
     setExpenseEditor({
       mode: "new",
       id: null,
-      date: new Date().toISOString().slice(0, 10),
+      date: todayLocalStr(),
       supplierId: "",
       category: EXPENSE_CATEGORIES[0],
       amount: "",
@@ -7701,11 +7736,12 @@ function POSPrototype({ tenantId }) {
                     {availableMonths.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
                   </select>
                 ) : receiptsFilterMode === "day" ? (
-                  <input
+                  <CommitOnValidInput
                     type="date"
                     value={effectiveReceiptsDay}
-                    max={new Date().toISOString().slice(0, 10)}
-                    onChange={(e) => e.target.value && setReceiptsFilterDay(e.target.value)}
+                    max={todayLocalStr()}
+                    onCommit={setReceiptsFilterDay}
+                    placeholder="YYYY-MM-DD"
                     className="field"
                     style={{ colorScheme: "dark" }}
                   />
@@ -7728,7 +7764,7 @@ function POSPrototype({ tenantId }) {
                           <DateRangeCalendar
                             startDate={effectiveReceiptsRangeStart}
                             endDate={effectiveReceiptsRangeEnd}
-                            maxDate={new Date().toISOString().slice(0, 10)}
+                            maxDate={todayLocalStr()}
                             isRtl={isRtl}
                             theme={theme}
                             onPickDay={handleReceiptsRangeDayClick}
@@ -8214,20 +8250,22 @@ function POSPrototype({ tenantId }) {
               </button>
             </div>
             {dashboardMode === "month" ? (
-              <input
+              <CommitOnValidInput
                 type="month"
                 value={effectiveDashboardMonth}
-                max={thisMonthKey()}
-                onChange={(e) => e.target.value && setDashboardMonth(e.target.value)}
+                max={monthLocalKey()}
+                onCommit={setDashboardMonth}
+                placeholder="YYYY-MM"
                 className="field"
                 style={{ colorScheme: "dark" }}
               />
             ) : dashboardMode === "day" ? (
-              <input
+              <CommitOnValidInput
                 type="date"
                 value={effectiveDashboardDay}
-                max={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => e.target.value && setDashboardDay(e.target.value)}
+                max={todayLocalStr()}
+                onCommit={setDashboardDay}
+                placeholder="YYYY-MM-DD"
                 className="field"
                 style={{ colorScheme: "dark" }}
               />
@@ -8250,7 +8288,7 @@ function POSPrototype({ tenantId }) {
                       <DateRangeCalendar
                         startDate={effectiveDashboardRangeStart}
                         endDate={effectiveDashboardRangeEnd}
-                        maxDate={new Date().toISOString().slice(0, 10)}
+                        maxDate={todayLocalStr()}
                         isRtl={isRtl}
                         theme={theme}
                         onPickDay={handleDashboardRangeDayClick}
@@ -9692,18 +9730,20 @@ function POSPrototype({ tenantId }) {
                   {WEEKDAY_KEYS.map((wd) => (
                     <div key={wd} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                       <div style={{ width: 90, fontSize: 12.5, flexShrink: 0 }}>{t(`weekday_${wd}`)}</div>
-                      <input
+                      <CommitOnValidInput
                         type="time"
                         value={shiftHoursConfig[wd]?.start || "00:00"}
-                        onChange={(e) => updateShiftHours(wd, "start", e.target.value)}
+                        onCommit={(v) => updateShiftHours(wd, "start", v)}
+                        placeholder="HH:MM"
                         className="field"
                         style={{ colorScheme: "dark" }}
                       />
                       <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("shiftHoursToLabel")}</span>
-                      <input
+                      <CommitOnValidInput
                         type="time"
                         value={shiftHoursConfig[wd]?.end || "23:59"}
-                        onChange={(e) => updateShiftHours(wd, "end", e.target.value)}
+                        onCommit={(v) => updateShiftHours(wd, "end", v)}
+                        placeholder="HH:MM"
                         className="field"
                         style={{ colorScheme: "dark" }}
                       />
