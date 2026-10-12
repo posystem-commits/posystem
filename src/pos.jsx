@@ -201,6 +201,18 @@ const STRINGS = {
     selectIngredient: "Select ingredient…",
     searchIngredient: "Search ingredient…",
     noIngredientMatches: "No ingredient matches that search.",
+    shiftAutoClosedBadge: "auto-closed",
+    shiftAutoClosedHint: "This shift was never clocked out — it was closed automatically when the same person signed in again (or after 24 hours).",
+    dayCheckTitle: "Day check — does it add up?",
+    dayCheckHint: "Every completed order of the chosen business day, grouped by the shift it was rung up in. The total is the same figure as the Dashboard for that day.",
+    dayCheckNoShift: "Not in any logged shift",
+    dayCheckNoShiftHint: "Orders taken while that person had no shift in the log — usually a clock-out or clock-in that was missed.",
+    dayCheckOrders: "Orders",
+    dayCheckCash: "Cash",
+    dayCheckOther: "Other methods",
+    dayCheckTotal: "Total",
+    dayCheckMatches: "Same as Dashboard revenue for this day",
+    dayCheckEmpty: "No completed orders on this business day.",
     markOutOfStock: "Mark out of stock",
     markAvailable: "Mark available",
     manuallyOutBadge: "Marked out of stock",
@@ -910,6 +922,18 @@ const STRINGS = {
     selectIngredient: "اختر مكونًا…",
     searchIngredient: "ابحث عن مكوّن…",
     noIngredientMatches: "لا يوجد مكوّن مطابق للبحث.",
+    shiftAutoClosedBadge: "أُغلقت تلقائيًا",
+    shiftAutoClosedHint: "هذه الوردية لم يُسجَّل لها انصراف — أُغلقت تلقائيًا عندما سجّل نفس الشخص دخوله مرة أخرى (أو بعد 24 ساعة).",
+    dayCheckTitle: "مراجعة اليوم — هل الأرقام متطابقة؟",
+    dayCheckHint: "كل الطلبات المكتملة في يوم العمل المختار، مجمّعة حسب الوردية التي سُجّلت فيها. الإجمالي هو نفس رقم لوحة المعلومات لنفس اليوم.",
+    dayCheckNoShift: "خارج أي وردية مسجلة",
+    dayCheckNoShiftHint: "طلبات سُجّلت بينما لم يكن لهذا الشخص وردية في السجل — غالبًا نسيان تسجيل حضور أو انصراف.",
+    dayCheckOrders: "الطلبات",
+    dayCheckCash: "نقدًا",
+    dayCheckOther: "طرق أخرى",
+    dayCheckTotal: "الإجمالي",
+    dayCheckMatches: "مطابق لإيرادات لوحة المعلومات لهذا اليوم",
+    dayCheckEmpty: "لا توجد طلبات مكتملة في يوم العمل هذا.",
     markOutOfStock: "تحديد كنافد",
     markAvailable: "إتاحة الصنف",
     manuallyOutBadge: "محدد كنافد",
@@ -1663,7 +1687,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. "Clock out" ends their shift and shows a recap. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
-- **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
+- **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Shift numbers in this list are always worked out from the current orders (so an order edited or a pay-later bill that grew after clock-out is reflected) and show the payment-method split; a shift nobody clocked out of is closed automatically the next time that person signs in, and marked "auto-closed". Managers also get a "Day check" card: pick a business day and see every completed order grouped by the shift it was rung up in — plus a "Not in any logged shift" row for orders taken while the person had no shift in the log — adding up to exactly the Dashboard's revenue for that day. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
 - **Settings**: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How staff log in
@@ -2316,6 +2340,7 @@ function POSPrototype({ tenantId }) {
   // which only land in the shared shift-log once someone clocks out.
   const [openShifts, setOpenShifts] = useState({});
   const [openShiftsLoaded, setOpenShiftsLoaded] = useState(false);
+  const [dayCheckDate, setDayCheckDate] = useState(null); // business date picked in the Staff tab's "Day check"; null = today's business day
   const [viewingShiftDetail, setViewingShiftDetail] = useState(null); // a past shift-log entry a manager tapped, to show its orders/breakdown
   const [shiftLog, setShiftLog] = useState([]); // shared history of completed shifts
   const [shiftLogLoaded, setShiftLogLoaded] = useState(false);
@@ -5457,6 +5482,35 @@ function POSPrototype({ tenantId }) {
     cancelEditReceipt();
   };
 
+  // A shift's numbers are always worked out from the CURRENT receipts inside its clock-in..clock-out
+  // window (by the employee who served them), never from the totals saved at clock-out — an open
+  // pay-later bill can grow, or an order can be edited, after the person has gone home. Counts
+  // exactly what the Dashboard counts: completed orders at their current total. Returns null until
+  // every month the shift touches has been loaded.
+  const shiftLiveStats = (sh) => {
+    const ongoing = !sh.clockOut;
+    const end = sh.clockOut || new Date(nowTick).toISOString();
+    const keys = monthKeysInRange(new Date(sh.clockIn).toISOString().slice(0, 7), new Date(end).toISOString().slice(0, 7));
+    if (!keys.every((mk) => receiptsByMonth[mk] !== undefined)) return null;
+    const all = keys
+      .flatMap((mk) => receiptsByMonth[mk] || [])
+      .filter((r) => r.servedBy?.id === sh.employeeId && r.timestamp >= sh.clockIn && (ongoing || r.timestamp <= sh.clockOut));
+    const completed = all.filter((r) => r.status === "completed");
+    const methodAmounts = completed.flatMap(receiptMethodAmounts);
+    const byMethod = {};
+    PAYMENT_METHODS.forEach((m) => {
+      byMethod[m.id] = methodAmounts.filter((a) => a.method === m.id).reduce((sum, a) => sum + a.amount, 0);
+    });
+    return {
+      all,
+      completed,
+      cancelled: all.filter((r) => r.status === "cancelled"),
+      refunded: all.filter((r) => r.status === "refunded"),
+      orders: completed.length,
+      revenue: completed.reduce((sum, r) => sum + r.total, 0),
+      byMethod,
+    };
+  };
   const monthReceiptsForShift = receiptsByMonth[thisMonthKey()] || [];
   // Every shift currently open on any device, with orders/revenue computed live from shared
   // receipts — same idea as this device's own shiftCompleted/shiftGross below, generalized to
@@ -5466,6 +5520,8 @@ function POSPrototype({ tenantId }) {
   const openShiftsList = Object.values(openShifts)
     .filter((s) => Date.now() - new Date(s.clockIn).getTime() < 24 * 60 * 60 * 1000)
     .map((s) => {
+      const live = shiftLiveStats(s);
+      if (live) return { ...s, orders: live.orders, revenue: live.revenue };
       const receipts = monthReceiptsForShift.filter((r) => r.servedBy?.id === s.employeeId && r.timestamp >= s.clockIn && r.status === "completed");
       return { ...s, orders: receipts.length, revenue: receipts.reduce((sum, r) => sum + r.total, 0) };
     })
@@ -5799,6 +5855,29 @@ function POSPrototype({ tenantId }) {
     if (fresh.some((e) => e.employeeId === entry.employeeId && e.clockIn === entry.clockIn)) return;
     return persistShiftLog([entry, ...fresh]);
   };
+  // Puts a shift that was left open (never clocked out — a session replaced on another device, a
+  // closed browser, a crash) into the shift log instead of letting it vanish when the open-shifts
+  // registry entry is replaced or expires. Closed at the moment the same person clocks in again, or
+  // 24 hours after it started, whichever is first; marked autoClosed so it's visible as such. A
+  // shift that's already in the log is never added twice (see appendShiftLogEntry).
+  const closeStaleShift = async (old, closeAtIso) => {
+    const maxEnd = new Date(new Date(old.clockIn).getTime() + 24 * 60 * 60 * 1000).toISOString();
+    const clockOut = closeAtIso < maxEnd ? closeAtIso : maxEnd;
+    if (clockOut <= old.clockIn) return;
+    const keys = monthKeysInRange(new Date(old.clockIn).toISOString().slice(0, 7), new Date(clockOut).toISOString().slice(0, 7));
+    const months = await Promise.all(keys.map((mk) => fetchFreshMonth(mk)));
+    const mine = months.flat().filter((r) => r.status === "completed" && r.servedBy?.id === old.employeeId && r.timestamp >= old.clockIn && r.timestamp <= clockOut);
+    await appendShiftLogEntry({
+      id: `shift_${Date.now()}_auto`,
+      employeeId: old.employeeId,
+      employeeName: old.employeeName,
+      clockIn: old.clockIn,
+      clockOut,
+      orders: mine.length,
+      revenue: mine.reduce((sum, r) => sum + r.total, 0),
+      autoClosed: true,
+    });
+  };
   const doClockIn = async (emp) => {
     const now = new Date().toISOString();
     setCurrentEmployee({ id: emp.id, name: emp.name });
@@ -5829,6 +5908,19 @@ function POSPrototype({ tenantId }) {
         const latest = await storage.get("open-shifts", true);
         const current = latest?.value ? JSON.parse(latest.value) : {};
         const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+        // Anything about to be dropped or replaced here was an open shift nobody clocked out of —
+        // log it first so it isn't lost.
+        for (const [id, stale] of Object.entries(current)) {
+          const expired = new Date(stale.clockIn).getTime() <= cutoff;
+          const replaced = id === emp.id && stale.clockIn !== now;
+          if (expired || replaced) {
+            try {
+              await closeStaleShift(stale, now);
+            } catch (e) {
+              // best effort — a failure here must never block signing in
+            }
+          }
+        }
         const pruned = Object.fromEntries(Object.entries(current).filter(([, s]) => new Date(s.clockIn).getTime() > cutoff));
         const next = { ...pruned, [emp.id]: { employeeId: emp.id, employeeName: emp.name, clockIn: now } };
         setOpenShifts(next);
@@ -5960,9 +6052,9 @@ function POSPrototype({ tenantId }) {
   // reconstructed on demand from that shift's own real receipts. Always force-refreshes the month
   // (rather than trusting whatever's cached) so the numbers are current the moment it's opened.
   const openShiftDetail = async (s) => {
-    const monthKey = new Date(s.clockIn).toISOString().slice(0, 7);
     setViewingShiftDetail(s);
-    await refreshMonthLoaded(monthKey);
+    const endIso = s.clockOut || new Date().toISOString();
+    await Promise.all(monthKeysInRange(new Date(s.clockIn).toISOString().slice(0, 7), new Date(endIso).toISOString().slice(0, 7)).map((mk) => refreshMonthLoaded(mk)));
   };
   // While the detail modal is open on a shift that's still in progress, keep polling that month's
   // receipts so a manager watching it sees new orders land without having to close and reopen it.
@@ -5972,6 +6064,19 @@ function POSPrototype({ tenantId }) {
     const interval = setInterval(() => refreshMonthLoaded(monthKey), 8000);
     return () => clearInterval(interval);
   }, [viewingShiftDetail]);
+  useEffect(() => {
+    if (view !== "staff") return;
+    const keys = new Set();
+    recentShiftLog.forEach((sh) => {
+      monthKeysInRange(new Date(sh.clockIn).toISOString().slice(0, 7), new Date(sh.clockOut).toISOString().slice(0, 7)).forEach((mk) => keys.add(mk));
+    });
+    keys.forEach((mk) => ensureMonthLoaded(mk));
+  }, [view, shiftLog]);
+  useEffect(() => {
+    if (view !== "staff" || !isManager) return;
+    const mk = (dayCheckDate || businessDateForTimestamp(new Date().toISOString(), shiftHoursConfig)).slice(0, 7);
+    [prevMonthKey(mk), mk, nextMonthKey(mk)].forEach((k) => ensureMonthLoaded(k));
+  }, [view, dayCheckDate, isManager]);
   const addStaffMember = async () => {
     const name = newStaffName.trim();
     if (!name) {
@@ -9400,6 +9505,93 @@ function POSPrototype({ tenantId }) {
             </div>
           )}
 
+          {isManager && (() => {
+            const day = dayCheckDate || businessDateForTimestamp(new Date().toISOString(), shiftHoursConfig);
+            const dayMonth = day.slice(0, 7);
+            const loadedAll = storageMonthKeysFor([dayMonth]).every((mk) => receiptsByMonth[mk] !== undefined);
+            const dayReceipts = receiptsForReportingMonths([dayMonth], (r) => r.status === "completed").filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === day);
+            const shiftsForCheck = [
+              ...shiftLog.map((e) => ({ key: e.id, employeeId: e.employeeId, name: e.employeeName, clockIn: e.clockIn, clockOut: e.clockOut, auto: !!e.autoClosed })),
+              ...Object.values(openShifts).map((e) => ({ key: `open_${e.employeeId}`, employeeId: e.employeeId, name: e.employeeName, clockIn: e.clockIn, clockOut: null, auto: false })),
+            ];
+            const rowsByKey = new Map();
+            const orphan = { key: "none", name: null, clockIn: "9999", orders: 0, cash: 0, other: 0, total: 0, names: new Set() };
+            dayReceipts.forEach((r) => {
+              const sh = shiftsForCheck.find((x) => x.employeeId === r.servedBy?.id && r.timestamp >= x.clockIn && (!x.clockOut || r.timestamp <= x.clockOut));
+              const target = sh ? rowsByKey.get(sh.key) || rowsByKey.set(sh.key, { ...sh, orders: 0, cash: 0, other: 0, total: 0 }).get(sh.key) : orphan;
+              const amts = receiptMethodAmounts(r);
+              const cash = amts.filter((a) => a.method === "cash").reduce((sum, a) => sum + a.amount, 0);
+              target.orders += 1;
+              target.cash += cash;
+              target.other += r.total - cash;
+              target.total += r.total;
+              if (!sh) target.names.add(r.servedBy?.name || "—");
+            });
+            const rows = [...rowsByKey.values()].sort((a, b) => a.clockIn.localeCompare(b.clockIn));
+            const sumOf = (f) => [...rows, orphan].reduce((sum, r) => sum + r[f], 0);
+            const timeFmt = { hour: "numeric", minute: "2-digit" };
+            const dateTimeFmt = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
+            const cell = { fontFamily: "IBM Plex Mono, monospace", fontSize: 12.5, textAlign: "right" };
+            return (
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginBottom: 24 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
+                  <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600 }}>{t("dayCheckTitle")}</div>
+                  <DayPickerButton value={day} maxDate={todayLocalStr()} isRtl={isRtl} theme={theme} onChange={setDayCheckDate} />
+                </div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 12, lineHeight: 1.5 }}>{t("dayCheckHint")}</div>
+                {!loadedAll ? (
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
+                ) : dayReceipts.length === 0 ? (
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("dayCheckEmpty")}</div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "minmax(150px, 1fr) 56px 84px 96px 92px", gap: "6px 10px", alignItems: "center", minWidth: 480 }}>
+                      <div />
+                      {["dayCheckOrders", "dayCheckCash", "dayCheckOther", "dayCheckTotal"].map((k) => (
+                        <div key={k} style={{ fontSize: 10.5, color: "var(--text-muted)", textAlign: "right", textTransform: "uppercase", letterSpacing: 0.3 }}>{t(k)}</div>
+                      ))}
+                      {rows.map((r) => (
+                        <React.Fragment key={r.key}>
+                          <div>
+                            <div style={{ fontSize: 13 }}>
+                              {r.name}
+                              {r.auto && <span title={t("shiftAutoClosedHint")} style={{ marginInlineStart: 6, fontSize: 10, color: "#E3C98A", border: "1px solid #E3C98A", borderRadius: 20, padding: "1px 6px" }}>{t("shiftAutoClosedBadge")}</span>}
+                            </div>
+                            <div style={{ fontSize: 10.5, color: "var(--text-faint)" }}>
+                              {new Date(r.clockIn).toLocaleString(isRtl ? "ar-EG" : "en-US", dateTimeFmt)} &ndash; {r.clockOut ? new Date(r.clockOut).toLocaleString(isRtl ? "ar-EG" : "en-US", timeFmt) : t("openShiftOngoingLabel")}
+                            </div>
+                          </div>
+                          <div style={cell}>{r.orders}</div>
+                          <div style={cell}>{money(r.cash)}</div>
+                          <div style={cell}>{money(r.other)}</div>
+                          <div style={cell}>{money(r.total)}</div>
+                        </React.Fragment>
+                      ))}
+                      {orphan.orders > 0 && (
+                        <React.Fragment>
+                          <div title={t("dayCheckNoShiftHint")}>
+                            <div style={{ fontSize: 13, color: "#E3C98A" }}>{t("dayCheckNoShift")}</div>
+                            <div style={{ fontSize: 10.5, color: "var(--text-faint)" }}>{[...orphan.names].join(", ")}</div>
+                          </div>
+                          <div style={{ ...cell, color: "#E3C98A" }}>{orphan.orders}</div>
+                          <div style={{ ...cell, color: "#E3C98A" }}>{money(orphan.cash)}</div>
+                          <div style={{ ...cell, color: "#E3C98A" }}>{money(orphan.other)}</div>
+                          <div style={{ ...cell, color: "#E3C98A" }}>{money(orphan.total)}</div>
+                        </React.Fragment>
+                      )}
+                      <div style={{ fontSize: 13, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}>{t("dayCheckTotal")}</div>
+                      <div style={{ ...cell, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}>{sumOf("orders")}</div>
+                      <div style={{ ...cell, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}>{money(sumOf("cash"))}</div>
+                      <div style={{ ...cell, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}>{money(sumOf("other"))}</div>
+                      <div style={{ ...cell, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8, color: theme.secondaryLight }}>{money(sumOf("total"))}</div>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>{t("dayCheckMatches")}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           <div style={{ fontSize: 12, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>{t("shiftHistoryTitle")}</div>
           {!shiftLogLoaded ? (
             <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
@@ -9407,7 +9599,12 @@ function POSPrototype({ tenantId }) {
             <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noShiftHistory")}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {recentShiftLog.map((s) => (
+              {recentShiftLog.map((s) => {
+                const live = shiftLiveStats(s);
+                const shownOrders = live ? live.orders : s.orders;
+                const shownRevenue = live ? live.revenue : s.revenue;
+                const split = live ? PAYMENT_METHODS.filter((m) => live.byMethod[m.id] > 0).map((m) => `${t(`payment_${m.id}`)} ${money(live.byMethod[m.id])}`).join(" · ") : "";
+                return (
                 <button
                   key={s.id}
                   onClick={() => isManager && openShiftDetail(s)}
@@ -9416,14 +9613,19 @@ function POSPrototype({ tenantId }) {
                   style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", flexWrap: "wrap", gap: 6, width: "100%", textAlign: isRtl ? "right" : "left", font: "inherit", color: "inherit", cursor: isManager ? "pointer" : "default" }}
                 >
                   <div>
-                    <div style={{ fontSize: 13 }}>{s.employeeName}</div>
+                    <div style={{ fontSize: 13 }}>
+                      {s.employeeName}
+                      {s.autoClosed && <span title={t("shiftAutoClosedHint")} style={{ marginInlineStart: 6, fontSize: 10, color: "#E3C98A", border: "1px solid #E3C98A", borderRadius: 20, padding: "1px 6px" }}>{t("shiftAutoClosedBadge")}</span>}
+                    </div>
                     <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{new Date(s.clockIn).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} &ndash; {new Date(s.clockOut).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })}</div>
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    {t("shiftHistoryLine", { orders: s.orders, revenue: money(s.revenue), hours: formatDuration(new Date(s.clockOut) - new Date(s.clockIn)) })}
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: isRtl ? "left" : "right" }}>
+                    <div>{t("shiftHistoryLine", { orders: shownOrders, revenue: money(shownRevenue), hours: formatDuration(new Date(s.clockOut) - new Date(s.clockIn)) })}</div>
+                    {split && <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 2 }}>{split}</div>}
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -9436,11 +9638,9 @@ function POSPrototype({ tenantId }) {
         // capping it at nowTick (which only ticks once a minute) was excluding orders placed within
         // the last few tens of seconds. A finished shift still uses its real clockOut as the cutoff.
         const endTime = s.clockOut || new Date(nowTick).toISOString();
-        const monthKey = new Date(s.clockIn).toISOString().slice(0, 7);
-        const loaded = receiptsByMonth[monthKey] !== undefined;
-        const detailReceipts = loaded
-          ? (receiptsByMonth[monthKey] || []).filter((r) => r.servedBy?.id === s.employeeId && r.timestamp >= s.clockIn && (isOngoing || r.timestamp <= s.clockOut))
-          : [];
+        const liveDetail = shiftLiveStats(s);
+        const loaded = liveDetail !== null;
+        const detailReceipts = liveDetail ? liveDetail.all : [];
         const completed = detailReceipts.filter((r) => r.status === "completed");
         const cancelled = detailReceipts.filter((r) => r.status === "cancelled");
         const refunded = detailReceipts.filter((r) => r.status === "refunded");
@@ -9476,7 +9676,7 @@ function POSPrototype({ tenantId }) {
                     </div>
                     <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: 12 }}>
                       <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginBottom: 4 }}>{t("netSales")}</div>
-                      <div style={{ fontSize: 17, fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(gross - refundsTotal)}</div>
+                      <div style={{ fontSize: 17, fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(gross)}</div>
                     </div>
                     <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: 12 }}>
                       <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginBottom: 4 }}>{t("avgOrderValue")}</div>
