@@ -5794,6 +5794,9 @@ function POSPrototype({ tenantId }) {
     } catch (e) {
       fresh = shiftLog;
     }
+    // A shift is identified by who clocked in and when. If that exact shift is already in the log
+    // (a second tap on Clock out, or the same session still open on another screen), don't add it twice.
+    if (fresh.some((e) => e.employeeId === entry.employeeId && e.clockIn === entry.clockIn)) return;
     return persistShiftLog([entry, ...fresh]);
   };
   const doClockIn = async (emp) => {
@@ -5908,7 +5911,9 @@ function POSPrototype({ tenantId }) {
     doClockIn(emp);
   };
   const clockOut = () => {
-    if (!currentEmployee) return;
+    // While the recap is on screen the shift has already been logged — pressing Clock out again
+    // used to log the same shift a second time.
+    if (!currentEmployee || shiftRecap) return;
     setConfirmDialog({
       message: t("confirm_clockOut"),
       onConfirm: () => {
