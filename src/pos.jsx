@@ -1682,7 +1682,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
-- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served) both ask for a confirmation before going through, since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match) and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
+- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the refund time is recorded) both ask for a confirmation before going through, since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match) and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
 - **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
@@ -1701,7 +1701,7 @@ Each table's QR code, and the general online-ordering link, land on the same cus
 ## Known limitations — mention these proactively if relevant
 - **Printing and QR codes only fully work once this app is deployed to a real, published URL.** If someone is testing inside Claude's chat preview, "Print receipt" and the QR code links won't function — use the "Download" button instead (downloads a receipt/flyer file they can open and print manually), and know that QR codes will start working once the app is actually deployed/published somewhere with a real public URL.
 - **Offline behavior**: the staff app keeps working through a lost connection — orders, menu edits, stock changes all still work and are queued to sync automatically once back online (shown via a "changes waiting to sync" indicator in the header). However, nothing survives closing the tab or refreshing while offline. Customer QR ordering is deliberately blocked while offline (no queueing) so no order can exist that the restaurant never sees.
-- **Ticket numbers** are simple ascending numbers (1, 2, 3...) that reset each morning, shared across every terminal.
+- **Ticket numbers** are simple ascending numbers (1, 2, 3...) that restart when the business day starts (the shift start set in Settings > Shift hours, e.g. 08:00 — not at midnight), shared across every terminal.
 - **Split bill** divides the total evenly and rounds to the cent for display — with an odd total split many ways, the per-person amounts may not add up to the exact total to the last cent.
 - If someone describes a bug or something not behaving as expected that ISN'T explained by the above, say so plainly rather than guessing, and suggest they double check with whoever manages/built their system.
 
@@ -2206,7 +2206,8 @@ function POSPrototype({ tenantId }) {
   const [cart, setCart] = useState([]);
   const [editingNoteLineId, setEditingNoteLineId] = useState(null); // which cart line's note input is open, if any
   const [ticketNo, setTicketNo] = useState(null); // null until ensureTicketNo() actually assigns one — see blankDraft's comment
-  const ticketCounterRef = useRef({ date: null, next: 1 }); // { date: "YYYY-MM-DD", next: number } — resets each day, shared across every terminal
+  const ticketCounterRef = useRef({ date: null, next: 1 }); // { date: "YYYY-MM-DD", next: number } — resets each BUSINESS day (see Settings > Shift hours), shared across every terminal
+  const shiftHoursRef = useRef(DEFAULT_SHIFT_HOURS);
   const [ticketCounterLoaded, setTicketCounterLoaded] = useState(false);
   const [saved, setSaved] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false); // guards saveOrder against a fast double-click/tap re-submitting the same cart as two orders
@@ -2284,6 +2285,7 @@ function POSPrototype({ tenantId }) {
   const [dashboardRangePickingEnd, setDashboardRangePickingEnd] = useState(false); // whether the next calendar click sets the end day (vs. starting a fresh range)
   const [shiftHoursConfig, setShiftHoursConfig] = useState(DEFAULT_SHIFT_HOURS);
   const [shiftHoursLoaded, setShiftHoursLoaded] = useState(false);
+  shiftHoursRef.current = shiftHoursConfig; // always current for code that runs outside a render (see issueTicketNumber)
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [editingReceiptId, setEditingReceiptId] = useState(null);
   const [editDraftItems, setEditDraftItems] = useState([]);
@@ -2795,13 +2797,15 @@ function POSPrototype({ tenantId }) {
     // Ticket numbers ascend sequentially and reset each morning (order #1, #2, #3...), shared
     // across every terminal so two stations never hand out the same number for the same day.
     (async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      // The saved counter is loaded as-is; whether it's still "today's" is decided when a ticket is
+      // actually issued (issueTicketNumber), by which time the shift hours have loaded — deciding it
+      // here, before they have, would use the wrong notion of when the business day starts.
       try {
         const result = await getSharedWithRetry(storage, "ticket-counter");
         const parsed = result?.value ? JSON.parse(result.value) : null;
-        ticketCounterRef.current = parsed && parsed.date === today ? parsed : { date: today, next: 1 };
+        ticketCounterRef.current = parsed || { date: null, next: 1 };
       } catch (e) {
-        ticketCounterRef.current = { date: today, next: 1 };
+        ticketCounterRef.current = { date: null, next: 1 };
       } finally {
         setTicketCounterLoaded(true);
       }
@@ -3952,9 +3956,11 @@ function POSPrototype({ tenantId }) {
   // there's no real transactional backend here to prevent it — an acceptable, rare edge case for
   // a display number, not something the business logic depends on being unique.
   const issueTicketNumber = () => {
-    const today = new Date().toISOString().slice(0, 10);
+    // The business day, not the UTC date: with a 08:00–04:00 shift, a UTC-midnight reset restarted
+    // the numbering at 03:00 in the middle of the night shift, so two tickets could share a number.
+    const today = businessDateForTimestamp(new Date().toISOString(), shiftHoursRef.current);
     if (ticketCounterRef.current.date !== today) {
-      ticketCounterRef.current = { date: today, next: 1 }; // new day — start the count over at 1
+      ticketCounterRef.current = { date: today, next: 1 }; // new business day — start the count over at 1
     }
     const n = ticketCounterRef.current.next;
     ticketCounterRef.current = { ...ticketCounterRef.current, next: n + 1 };
@@ -5245,7 +5251,9 @@ function POSPrototype({ tenantId }) {
     setConfirmDialog({
       message: t("confirm_refundOrder", { n: r.ticketNo }),
       onConfirm: () => {
-        updateReceiptInStorage(r, (x) => ({ ...x, status: "refunded" }));
+        const refundedAt = new Date().toISOString();
+        const refundedBy = currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null;
+        updateReceiptInStorage(r, (x) => ({ ...x, status: "refunded", refundedAt, refundedBy }));
         flashNotice(t("notice_orderRefunded", { n: r.ticketNo }));
       },
     });
@@ -5530,8 +5538,12 @@ function POSPrototype({ tenantId }) {
   const shiftCompleted = shiftReceipts.filter((r) => r.status === "completed");
   const shiftCancelled = shiftReceipts.filter((r) => r.status === "cancelled");
   const shiftRefunded = shiftReceipts.filter((r) => r.status === "refunded");
-  const shiftGross = shiftCompleted.reduce((s, r) => s + r.total, 0);
   const shiftRefundsTotal = shiftRefunded.reduce((s, r) => s + r.total, 0);
+  // "Gross" is everything rung up this shift, INCLUDING orders since refunded — a refunded order
+  // stops being "completed", so counting only completed orders here and then subtracting refunds
+  // again took every refund off twice. Gross minus refunds is therefore exactly the completed
+  // orders, the same figure the Dashboard reports.
+  const shiftGross = shiftCompleted.reduce((s, r) => s + r.total, 0) + shiftRefundsTotal;
   // Expenses only carry a business `date` (day granularity), not a precise time, so an expense
   // logged before this field existed falls back to midnight of its date — good enough to tell
   // whether it landed within this shift's window, just not to the minute like receipts are.
@@ -5580,7 +5592,16 @@ function POSPrototype({ tenantId }) {
   // shiftCashSalesTotal above) — the rider is still holding it, so refunding it doesn't remove
   // anything from the drawer either. Without this exclusion, refunding one of these swung the
   // drawer negative by subtracting cash that was never added.
-  const shiftCashRefundsTotal = shiftRefunded
+  //
+  // And only a refund of money collected BEFORE this shift (so it's in an earlier drawer count) takes
+  // cash out of this drawer. A sale that was collected and refunded within this same shift never
+  // counted as a sale here (a refunded order isn't "completed"), so subtracting its refund as well
+  // came out short by that amount every time. Needs refundedAt, which is recorded from now on;
+  // older refunds carry none, so they're treated as same-shift and subtract nothing.
+  const shiftRefundsPaidOutThisShift = shiftStart
+    ? monthReceiptsForShift.filter((r) => r.status === "refunded" && r.refundedAt && r.refundedAt >= shiftStart && r.paid !== false && (r.paidAt || r.timestamp) < shiftStart)
+    : [];
+  const shiftCashRefundsTotal = shiftRefundsPaidOutThisShift
     .filter((r) => !(r.tableId === "delivery" && !r.deliverySettled))
     .flatMap(receiptMethodAmounts)
     .filter((a) => a.method === "cash")
@@ -5606,7 +5627,7 @@ function POSPrototype({ tenantId }) {
   // an electronic balance doesn't carry a physical float over from one shift to the next.
   const shiftElectronicMethods = PAYMENT_METHODS.filter((m) => m.id !== "cash").map((m) => {
     const sales = shiftByMethod.find((x) => x.id === m.id)?.total || 0;
-    const refunds = shiftRefunded.flatMap(receiptMethodAmounts).filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0);
+    const refunds = shiftRefundsPaidOutThisShift.flatMap(receiptMethodAmounts).filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0);
     const expected = Math.round((sales - refunds) * 100) / 100;
     const confirmedRaw = confirmedElectronic[m.id];
     const confirmedNum = confirmedRaw === undefined || confirmedRaw === "" ? null : Number(confirmedRaw) || 0;
