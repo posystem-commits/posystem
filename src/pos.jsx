@@ -224,17 +224,17 @@ const STRINGS = {
     cdStillOpen: "still open",
     cdWholeDay: "Whole day",
     cdHandover: "Opened with {{opening}}, but {{name}} counted {{previous}} at closing — {{diff}} of cash is unaccounted for between the two shifts.",
-    cdDayGapExplain: "The whole-day gap is the sum of the shift gaps ({{shiftGaps}}) and the gaps between shifts ({{handovers}}).",
+    cdDayGapExplain: "The whole-day gap is the sum of the shift gaps ({{shiftGaps}}) and the unexplained differences between shifts ({{residuals}}).",
     cdGapsTitle: "Why there is a gap",
     cdNoGaps: "Every counted drawer matches what the system expected, and every handover matches.",
     cdGapShort: "{{name}}'s drawer is {{amount}} short of what the system expected.",
     cdGapOver: "{{name}}'s drawer has {{amount}} more than the system expected.",
     cdLikely: "Most likely:",
     cdCheck: "Worth checking:",
-    cdEditCashToOther: "Order #{{n}} ({{amount}}) was changed from {{from}} to {{to}} by {{by}} after it was paid. If the customer really paid cash, that cash is in the drawer but the system counted it as {{to}}.",
-    cdEditOtherToCash: "Order #{{n}} ({{amount}}) was changed from {{from}} to {{to}} by {{by}} after it was paid. If the customer really paid by {{from}}, the system now expects cash that was never in the drawer.",
+    cdEditCashToOther: "Order #{{n}} ({{amount}}) was paid at {{paidAt}}, then changed from {{from}} to {{to}} by {{by}} at {{at}}. If the customer really paid cash, that cash is in the drawer but the system counted it as {{to}}.",
+    cdEditOtherToCash: "Order #{{n}} ({{amount}}) was paid at {{paidAt}}, then changed from {{from}} to {{to}} by {{by}} at {{at}}. If the customer really paid by {{from}}, the system now expects cash that was never in the drawer.",
     cdReduced: "Items were removed from {{list}} after they were rung up. If customers paid the original amount, the extra cash shows up as over.",
-    cdNoCause: "No payment change, refund or expense explains it. Recount the drawer and ask whether cash was taken out or given as change without being recorded.",
+    cdNoCause: "Nothing recorded explains it. Recount the drawer, and ask whether cash was taken out or given as change without being recorded.",
     cdHandoverGapTitle: "{{diff}} of cash changed between {{from}}'s closing count and {{to}}'s opening count.",
     cdHandoverMissing: "Cash left the drawer after it was counted at closing and before the next shift counted it — nobody's shift accounts for it.",
     cdHandoverExtra: "The drawer held more when the next shift counted than when the last shift closed it — one of the two counts is probably wrong.",
@@ -245,6 +245,39 @@ const STRINGS = {
     cdOpenShift: "{{name}}'s shift is still open — its drawer hasn't been counted yet.",
     cdAutoClosed: "{{name}}'s shift was never clocked out and was closed automatically.",
     cdNoCount: "{{name}}'s shift has no cash count (it started before counts were required).",
+    cdAfterClose: "(This happened after the shift was closed, so the gap appeared later.)",
+    cdAtClosing: "When the shift closed, the system expected {{expected}} and the gap was {{gap}}. Changes made since then moved the expected amount to {{now}}.",
+    cdFound: "Recorded events in this shift that could be involved:",
+    cdItemQtyDown: "Order #{{n}} had {{list}} removed by {{by}} at {{at}}, after it was paid — about {{amount}} less on the bill. If the customer paid the original price, the extra cash is in the drawer.",
+    cdItemQtyUp: "Order #{{n}} had {{list}} added by {{by}} at {{at}}, after it was paid — about {{amount}} more on the bill. If the customer didn't pay the difference, the drawer is short by that much.",
+    cdItemLegacyVoid: "Order #{{n}} ({{amount}} cash) was {{status}}, but nothing records how the money went back. If it wasn't handed back in cash, it is still in the drawer.",
+    cdItemLooseExpense: "A cash expense ({{what}}, {{amount}}) is dated this day but isn't inside any shift, so it reduced no drawer. If it was paid from this drawer, that explains a shortage.",
+    cdExplainedExact: "Together these explain the whole gap ({{sum}}).",
+    cdExplainedPartial: "These explain {{explained}} of the {{gap}} gap. {{rest}} is still unexplained — recount the drawer and ask whether cash was taken out or given as change without being recorded.",
+    cdOutsideRow: "Outside any shift",
+    cdHandoverFlowTitle: "Between {{from}}'s closing and {{to}}'s opening:",
+    cdHandoverFlow: "{{from}} counted {{previous}} at closing. Until the next shift opened, the system recorded {{received}} cash received ({{who}}) and {{paidOut}} paid out, so the drawer should have held {{expected}}. {{to}} opened with {{opening}} — {{result}}",
+    cdHandoverFlowMatch: "that matches.",
+    cdHandoverFlowMissing: "{{diff}} less than expected: cash left the drawer without being recorded.",
+    cdHandoverFlowExtra: "{{diff}} more than expected: cash entered the drawer without being recorded, or one of the counts is off.",
+    cdHandoverNoShift: "That cash was received while nobody had a shift in the log — a clock-in or clock-out for that period was missed.",
+    cdClosedBy: "Closed by {{name}} on {{time}}",
+    cdClosedNote: "Note: {{note}}",
+    cdChangedSince: "Changed since it was closed:",
+    cdChangeLine: "{{what}}: {{before}} when closed, {{after}} now",
+    closeDayBtn: "Close the day",
+    cdCloseAgain: "Close the day again",
+    cdCloseBlockedOpen: "Close every open shift first.",
+    cdCloseModalTitle: "Close {{date}}",
+    cdCloseModalHint: "This saves the day's figures as its official record. If anything changes afterwards, this screen will show what changed since closing.",
+    cdCloseNoteRequired: "There is a cash gap. Write what you found or decided about it.",
+    cdCloseNotePlaceholderGap: "What did you find out about the gap?",
+    cdCloseNoteOptional: "Notes (optional)",
+    cdCloseConfirm: "Save and close the day",
+    cdPrint: "Print",
+    cdDownload: "Download",
+    cdReportTitle: "Close the day report",
+    notice_dayClosed: "The day is closed — its figures are saved",
     openingCountTitle: "Count the cash in the drawer",
     openingCountSubtitle: "Before you start the shift, count every note and coin in the drawer and type the total. You can't start the shift without it.",
     openingCountPlaceholder: "Total cash counted",
@@ -1007,17 +1040,17 @@ const STRINGS = {
     cdStillOpen: "ما زالت مفتوحة",
     cdWholeDay: "اليوم كله",
     cdHandover: "بدأت بـ {{opening}}، لكن {{name}} عدّ {{previous}} عند الإغلاق — {{diff}} من النقدية غير محسوبة بين الورديتين.",
-    cdDayGapExplain: "فرق اليوم كله هو مجموع فروق الورديات ({{shiftGaps}}) والفروق بين الورديات ({{handovers}}).",
+    cdDayGapExplain: "فرق اليوم كله هو مجموع فروق الورديات ({{shiftGaps}}) والفروق غير المفسَّرة بين الورديات ({{residuals}}).",
     cdGapsTitle: "سبب وجود الفرق",
     cdNoGaps: "كل درج تم عدّه يطابق ما توقعه النظام، وكل تسليم بين الورديات مطابق.",
     cdGapShort: "درج {{name}} ينقص {{amount}} عمّا توقعه النظام.",
     cdGapOver: "درج {{name}} فيه {{amount}} زيادة عمّا توقعه النظام.",
     cdLikely: "الأرجح:",
     cdCheck: "يستحق المراجعة:",
-    cdEditCashToOther: "الفاتورة رقم {{n}} ({{amount}}) تم تغييرها من {{from}} إلى {{to}} بواسطة {{by}} بعد دفعها. لو دفع العميل نقدًا فعلًا، فالنقدية موجودة في الدرج لكن النظام حسبها {{to}}.",
-    cdEditOtherToCash: "الفاتورة رقم {{n}} ({{amount}}) تم تغييرها من {{from}} إلى {{to}} بواسطة {{by}} بعد دفعها. لو دفع العميل فعلًا بـ{{from}}، فالنظام الآن يتوقع نقدية لم تدخل الدرج أصلًا.",
+    cdEditCashToOther: "الفاتورة رقم {{n}} ({{amount}}) دُفعت الساعة {{paidAt}}، ثم غيّر {{by}} طريقة دفعها من {{from}} إلى {{to}} الساعة {{at}}. لو دفع العميل نقدًا فعلًا، فالنقدية موجودة في الدرج لكن النظام حسبها {{to}}.",
+    cdEditOtherToCash: "الفاتورة رقم {{n}} ({{amount}}) دُفعت الساعة {{paidAt}}، ثم غيّر {{by}} طريقة دفعها من {{from}} إلى {{to}} الساعة {{at}}. لو دفع العميل فعلًا بـ{{from}}، فالنظام الآن يتوقع نقدية لم تدخل الدرج أصلًا.",
     cdReduced: "تمت إزالة أصناف من {{list}} بعد تسجيلها. لو دفع العملاء المبلغ الأصلي، فالنقدية الزائدة تظهر كزيادة.",
-    cdNoCause: "لا يوجد تغيير في طريقة الدفع أو استرجاع أو مصروف يفسر الفرق. أعد عدّ الدرج واسأل إن كانت نقدية قد أُخذت أو أُعطيت كباقي دون تسجيل.",
+    cdNoCause: "لا شيء مسجَّل يفسّر الفرق. أعد عدّ الدرج، واسأل إن كانت نقدية قد أُخذت أو أُعطيت كباقي دون تسجيل.",
     cdHandoverGapTitle: "تغيّرت النقدية بمقدار {{diff}} بين عدّ إغلاق {{from}} وعدّ بداية {{to}}.",
     cdHandoverMissing: "خرجت نقدية من الدرج بعد عدّه عند الإغلاق وقبل أن تعدّه الوردية التالية — ولا تفسّرها وردية أي موظف.",
     cdHandoverExtra: "كان في الدرج أكثر عند عدّ الوردية التالية مما كان عند إغلاق الوردية السابقة — غالبًا أحد العدّين خاطئ.",
@@ -1028,6 +1061,39 @@ const STRINGS = {
     cdOpenShift: "وردية {{name}} ما زالت مفتوحة — لم يتم عدّ درجها بعد.",
     cdAutoClosed: "وردية {{name}} لم يُسجَّل لها انصراف وأُغلقت تلقائيًا.",
     cdNoCount: "وردية {{name}} بلا عدّ للنقدية (بدأت قبل أن يصبح العدّ إلزاميًا).",
+    cdAfterClose: "(حدث هذا بعد إغلاق الوردية، لذلك ظهر الفرق لاحقًا.)",
+    cdAtClosing: "عند إغلاق الوردية كان النظام يتوقع {{expected}} وكان الفرق {{gap}}. التغييرات التي حدثت بعد ذلك غيّرت المبلغ المتوقع إلى {{now}}.",
+    cdFound: "أحداث مسجَّلة في هذه الوردية قد تكون مرتبطة بالفرق:",
+    cdItemQtyDown: "في الفاتورة رقم {{n}} أزال {{by}} الساعة {{at}} الأصناف {{list}} بعد دفعها — أي حوالي {{amount}} أقل في الفاتورة. لو دفع العميل السعر الأصلي، فالنقدية الزائدة موجودة في الدرج.",
+    cdItemQtyUp: "في الفاتورة رقم {{n}} أضاف {{by}} الساعة {{at}} الأصناف {{list}} بعد دفعها — أي حوالي {{amount}} أكثر في الفاتورة. لو لم يدفع العميل الفرق، فالدرج ناقص بهذا المبلغ.",
+    cdItemLegacyVoid: "الفاتورة رقم {{n}} ({{amount}} نقدًا) {{status}}، لكن لا يوجد ما يسجّل كيف أُعيد المبلغ. لو لم يُرجَع نقدًا، فهو ما زال في الدرج.",
+    cdItemLooseExpense: "مصروف نقدي ({{what}}، {{amount}}) مؤرَّخ بهذا اليوم لكنه خارج أي وردية، فلم يخصم من أي درج. لو دُفع من هذا الدرج، فهذا يفسّر النقص.",
+    cdExplainedExact: "هذه الأسباب مجتمعة تفسّر الفرق بالكامل ({{sum}}).",
+    cdExplainedPartial: "هذه الأسباب تفسّر {{explained}} من فرق {{gap}}. ما زال {{rest}} بلا تفسير — أعد عدّ الدرج واسأل إن كانت نقدية قد أُخذت أو أُعطيت كباقي دون تسجيل.",
+    cdOutsideRow: "خارج أي وردية",
+    cdHandoverFlowTitle: "بين إغلاق {{from}} وبداية {{to}}:",
+    cdHandoverFlow: "{{from}} عدّ {{previous}} عند الإغلاق. حتى بدأت الوردية التالية سجّل النظام {{received}} نقدية مستلمة ({{who}}) و{{paidOut}} مصروفة، فالمفروض أن في الدرج {{expected}}. بدأ {{to}} بـ {{opening}} — {{result}}",
+    cdHandoverFlowMatch: "وهذا مطابق.",
+    cdHandoverFlowMissing: "أقل من المتوقع بمقدار {{diff}}: خرجت نقدية من الدرج دون تسجيل.",
+    cdHandoverFlowExtra: "أكثر من المتوقع بمقدار {{diff}}: دخلت نقدية الدرج دون تسجيل، أو أحد العدّين خاطئ.",
+    cdHandoverNoShift: "هذه النقدية استُلمت بينما لم تكن لأحد وردية في السجل — نُسي تسجيل حضور أو انصراف لتلك الفترة.",
+    cdClosedBy: "أغلق اليوم {{name}} في {{time}}",
+    cdClosedNote: "ملاحظة: {{note}}",
+    cdChangedSince: "تغيّر منذ الإغلاق:",
+    cdChangeLine: "{{what}}: {{before}} عند الإغلاق، و{{after}} الآن",
+    closeDayBtn: "إغلاق اليوم",
+    cdCloseAgain: "إغلاق اليوم مرة أخرى",
+    cdCloseBlockedOpen: "أغلق كل الورديات المفتوحة أولًا.",
+    cdCloseModalTitle: "إغلاق {{date}}",
+    cdCloseModalHint: "هذا يحفظ أرقام اليوم كسجل رسمي له. لو تغيّر أي شيء بعد ذلك، ستعرض هذه الشاشة ما تغيّر منذ الإغلاق.",
+    cdCloseNoteRequired: "يوجد فرق في النقدية. اكتب ما اكتشفته أو قررته بشأنه.",
+    cdCloseNotePlaceholderGap: "ماذا اكتشفت بشأن الفرق؟",
+    cdCloseNoteOptional: "ملاحظات (اختياري)",
+    cdCloseConfirm: "حفظ وإغلاق اليوم",
+    cdPrint: "طباعة",
+    cdDownload: "تنزيل",
+    cdReportTitle: "تقرير إغلاق اليوم",
+    notice_dayClosed: "تم إغلاق اليوم — وحُفظت أرقامه",
     openingCountTitle: "عدّ النقدية في الدرج",
     openingCountSubtitle: "قبل بدء الوردية، عدّ كل الأوراق والعملات في الدرج واكتب الإجمالي. لا يمكنك بدء الوردية بدون ذلك.",
     openingCountPlaceholder: "إجمالي النقدية المعدودة",
@@ -1811,7 +1877,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
-- **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words: it points to the most likely cause (for example an order whose payment method was changed after it was paid, or items removed after it was rung up), flags cash that changed between one shift's closing count and the next shift's opening count, and says when nothing explains it. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count.
+- **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Shift numbers in this list are always worked out from the current orders (so an order edited or a pay-later bill that grew after clock-out is reflected) and show the payment-method split; a shift nobody clocked out of is closed automatically the next time that person signs in, and marked "auto-closed". Managers also get a "Day check" card: pick a business day and see every completed order grouped by the shift it was rung up in — plus a "Not in any logged shift" row for orders taken while the person had no shift in the log — adding up to exactly the Dashboard's revenue for that day. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
 - **Settings**: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
@@ -2467,6 +2533,9 @@ function POSPrototype({ tenantId }) {
   // which only land in the shared shift-log once someone clocks out.
   const [openShifts, setOpenShifts] = useState({});
   const [openShiftsLoaded, setOpenShiftsLoaded] = useState(false);
+  const [dayClosings, setDayClosings] = useState({}); // { "YYYY-MM-DD": [ { id, closedAt, closedBy, note, snapshot } ] }
+  const [closeDayModal, setCloseDayModal] = useState(null);
+  const [closingDaySaving, setClosingDaySaving] = useState(false);
   const [closeDayDate, setCloseDayDate] = useState(null); // business date shown on the Close the day tab; null = today's business day
   const [dayCheckDate, setDayCheckDate] = useState(null); // business date picked in the Staff tab's "Day check"; null = today's business day
   const [viewingShiftDetail, setViewingShiftDetail] = useState(null); // a past shift-log entry a manager tapped, to show its orders/breakdown
@@ -5737,14 +5806,16 @@ function POSPrototype({ tenantId }) {
   const returnTimeOf = (r) => (r.status === "cancelled" ? r.cancelledAt : r.status === "refunded" ? r.refundedAt : null);
   const returnAmountsOf = (r) => r.returnedAmounts || (r.paid === false ? [] : receiptMethodAmounts(r));
   const notHeldByRider = (r) => !(r.tableId === "delivery" && !r.deliverySettled);
+  // When an order's cash actually reached the drawer: when it was paid — except delivery cash, which a
+  // rider holds until they settle up, so it arrives at the settlement.
+  const cashTimeOf = (r) => (r.tableId === "delivery" && r.deliverySettledAt ? r.deliverySettledAt : r.paidAt || r.timestamp);
   const reconCollected = shiftStart
     ? monthReceiptsForShift.filter((r) => r.paid !== false && (r.status === "completed" || returnTimeOf(r)) && (r.paidAt || r.timestamp) >= shiftStart)
     : [];
   const returnsThisShift = shiftStart
     ? monthReceiptsForShift.filter((r) => returnTimeOf(r) && returnTimeOf(r) >= shiftStart && r.paid !== false)
     : [];
-  const shiftCashSalesTotal = reconCollected
-    .filter(notHeldByRider)
+  const shiftCashSalesTotal = (shiftStart ? monthReceiptsForShift.filter((r) => r.paid !== false && (r.status === "completed" || returnTimeOf(r)) && notHeldByRider(r) && cashTimeOf(r) >= shiftStart) : [])
     .flatMap(receiptMethodAmounts)
     .filter((a) => a.method === "cash")
     .reduce((s, a) => s + a.amount, 0);
@@ -5809,13 +5880,17 @@ function POSPrototype({ tenantId }) {
     return map;
   })();
   const cdIsPayLabel = (name) => ["en", "ar"].some((l) => STRINGS[l].paymentMethodEditLabel === name);
-  // The payment method an order started with vs. the one it ends up with, ignoring edits that
-  // cancel each other out (cash -> InstaPay -> cash -> InstaPay is one change, not three).
-  const cdNetPaymentChange = (r) => {
+  const cdRound = (n) => Math.round(n * 100) / 100;
+  const cdSortedEdits = (r, notBefore) => [...(r.editHistory || [])].filter((h) => h.timestamp >= notBefore).sort((a, b) => (a.timestamp < b.timestamp ? -1 : 1));
+  // The payment method an order had when it was paid vs the one it ends up with, ignoring edits that
+  // cancel each other out (cash -> InstaPay -> cash -> InstaPay is one change, not three). Only edits
+  // made AFTER the money was collected matter to a drawer.
+  const cdNetPaymentChange = (r, notBefore) => {
     let first = null;
     let last = null;
     let by = null;
-    [...(r.editHistory || [])].sort((a, b) => (a.timestamp < b.timestamp ? -1 : 1)).forEach((h) => {
+    let at = null;
+    cdSortedEdits(r, notBefore).forEach((h) => {
       (h.changes || []).forEach((c) => {
         if (!cdIsPayLabel(c.name)) return;
         const f = CD_METHOD_BY_LABEL[c.from];
@@ -5824,11 +5899,74 @@ function POSPrototype({ tenantId }) {
         if (!first) first = f;
         last = to;
         by = h.editedBy?.name || null;
+        at = h.timestamp;
       });
     });
-    return first && last && first !== last ? { from: first, to: last, by } : null;
+    return first && last && first !== last ? { from: first, to: last, by, at } : null;
   };
-  const cdRound = (n) => Math.round(n * 100) / 100;
+  // Dishes added or removed from an order after it was paid, with the rough money value (unit price x
+  // quantity, scaled by the order's own discount / service / VAT).
+  const cdItemEdits = (r, notBefore, priceOf) => {
+    const lines = [];
+    let by = null;
+    let at = null;
+    cdSortedEdits(r, notBefore).forEach((h) => {
+      (h.changes || []).forEach((c) => {
+        if (cdIsPayLabel(c.name)) return;
+        const from = Number(c.from);
+        const to = Number(c.to);
+        if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) return;
+        lines.push({ name: c.name, delta: to - from });
+        by = h.editedBy?.name || by;
+        at = h.timestamp;
+      });
+    });
+    if (lines.length === 0) return null;
+    const factor = r.subtotal > 0 ? (r.total - (r.deliveryFee || 0)) / r.subtotal : 1;
+    const merged = {};
+    lines.forEach((l) => { merged[l.name] = (merged[l.name] || 0) + l.delta; });
+    const parts = Object.entries(merged).filter(([, d]) => d !== 0);
+    if (parts.length === 0) return null;
+    const value = parts.reduce((s, [name, d]) => s + d * (priceOf(name, r) || 0), 0) * factor; // negative = bill went down
+    const down = parts.filter(([, d]) => d < 0).map(([name, d]) => `${name} ×${-d}`).join(", ");
+    const up = parts.filter(([, d]) => d > 0).map(([name, d]) => `${name} ×${d}`).join(", ");
+    return { by, at, value: cdRound(value), down, up };
+  };
+  const cdFlows = (pool, expensePool, inWin) => {
+    const cashOrders = pool.filter((r) => r.paid !== false && (r.status === "completed" || returnTimeOf(r)) && notHeldByRider(r) && inWin(cashTimeOf(r)));
+    const cashIn = cashOrders.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
+    const cashReturned = pool.filter((r) => returnTimeOf(r) && inWin(returnTimeOf(r)) && r.paid !== false && notHeldByRider(r)).flatMap(returnAmountsOf).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
+    const cashExpenses = expensePool.filter((e) => e.status === "paid" && e.paymentMethod === "cash" && inWin(e.recordedAt || `${e.date}T00:00:00.000Z`)).reduce((s, e) => s + e.amount, 0);
+    const who = {};
+    cashOrders.forEach((r) => {
+      const cash = receiptMethodAmounts(r).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
+      if (cash > 0) who[r.servedBy?.name || "—"] = (who[r.servedBy?.name || "—"] || 0) + cash;
+    });
+    return { cashIn, cashReturned, cashExpenses, paidOut: cashReturned + cashExpenses, who };
+  };
+  // Finds the set of recorded events whose combined effect best accounts for a gap.
+  const cdSolve = (gap, items) => {
+    const list = items.filter((i) => Math.abs(i.amount) >= 0.01).slice(0, 14);
+    let best = null;
+    for (let mask = 1; mask < 1 << list.length; mask++) {
+      let sum = 0;
+      let count = 0;
+      let approx = false;
+      for (let i = 0; i < list.length; i++) {
+        if (mask & (1 << i)) { sum += list[i].amount; count++; if (list[i].approx) approx = true; }
+      }
+      const diff = Math.abs(gap - sum);
+      const tol = approx ? 0.03 * Math.abs(gap) + 0.05 : 0.015;
+      const score = diff + count * 0.001;
+      if (!best || score < best.score) best = { mask, sum, diff, exact: diff <= tol, score };
+    }
+    if (!best) return { type: "none", items: [], explained: 0, rest: gap };
+    const chosen = list.filter((_, i) => best.mask & (1 << i));
+    const sameDirection = Math.sign(best.sum) === Math.sign(gap);
+    if (best.exact) return { type: "exact", items: chosen, explained: cdRound(best.sum), rest: 0 };
+    if (sameDirection && Math.abs(best.sum) >= 0.4 * Math.abs(gap)) return { type: "partial", items: chosen, explained: cdRound(best.sum), rest: cdRound(gap - best.sum) };
+    return { type: "none", items: [], explained: 0, rest: gap };
+  };
   const buildCloseDay = (day) => {
     const mk = day.slice(0, 7);
     if (!storageMonthKeysFor([mk]).every((k) => receiptsByMonth[k] !== undefined)) return null;
@@ -5838,68 +5976,263 @@ function POSPrototype({ tenantId }) {
     const voided = dayAll.filter((r) => r.status === "cancelled" || r.status === "refunded");
     const revenue = completed.reduce((s, r) => s + r.total, 0);
     const amounts = completed.flatMap(receiptMethodAmounts);
-    const byMethod = PAYMENT_METHODS.map((m) => ({ ...m, total: amounts.filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0) })).filter((m) => m.total > 0);
+    const byMethod = PAYMENT_METHODS.map((m) => ({ id: m.id, total: amounts.filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0) })).filter((m) => m.total > 0);
     const discounted = completed.filter((r) => (r.discountAmount || 0) > 0);
-    const expenseTotal = (expensesByMonth[mk] || []).filter((e) => e.date === day).reduce((s, e) => s + e.amount, 0);
+    const dayExpenses = (expensesByMonth[mk] || []).filter((e) => e.date === day);
+    const expenseTotal = dayExpenses.reduce((s, e) => s + e.amount, 0);
+
+    const priceByName = new Map();
+    Object.values(menu).flat().forEach((i) => priceByName.set(i.name, i.price));
+    Object.values(receiptsByMonth).flat().forEach((r) => (r.items || []).forEach((i) => priceByName.set(i.name, i.price)));
+    const priceOf = (name, r) => ((r.items || []).find((i) => i.name === name) || {}).price || priceByName.get(name) || 0;
+    const monthsOf = (a, b) => monthKeysInRange(new Date(a).toISOString().slice(0, 7), new Date(b).toISOString().slice(0, 7));
+    const poolFor = (a, b) => {
+      const keys = monthsOf(a, b);
+      if (!keys.every((k) => receiptsByMonth[k] !== undefined)) return null;
+      return { pool: keys.flatMap((k) => receiptsByMonth[k] || []), expenses: keys.flatMap((k) => expensesByMonth[k] || []) };
+    };
 
     // Every shift we know about, oldest first: the log plus anything still open.
-    const logged = shiftLog.map((e) => ({ key: e.id, employeeId: e.employeeId, name: e.employeeName, clockIn: e.clockIn, clockOut: e.clockOut, auto: !!e.autoClosed, opening: typeof e.openingCash === "number" && e.openingCounted !== false ? e.openingCash : null, counted: typeof e.countedCash === "number" ? e.countedCash : null }));
+    const logged = shiftLog.map((e) => ({ key: e.id, employeeId: e.employeeId, name: e.employeeName, clockIn: e.clockIn, clockOut: e.clockOut, auto: !!e.autoClosed, opening: typeof e.openingCash === "number" && e.openingCounted !== false ? e.openingCash : null, counted: typeof e.countedCash === "number" ? e.countedCash : null, savedExpected: typeof e.expectedCash === "number" ? e.expectedCash : null }));
     const open = Object.values(openShifts)
       .filter((e) => !logged.some((l) => l.employeeId === e.employeeId && l.clockIn === e.clockIn))
-      .map((e) => ({ key: `open_${e.employeeId}`, employeeId: e.employeeId, name: e.employeeName, clockIn: e.clockIn, clockOut: null, auto: false, opening: typeof e.openingCash === "number" ? e.openingCash : null, counted: null }));
+      .map((e) => ({ key: `open_${e.employeeId}`, employeeId: e.employeeId, name: e.employeeName, clockIn: e.clockIn, clockOut: null, auto: false, opening: typeof e.openingCash === "number" ? e.openingCash : null, counted: null, savedExpected: null }));
     const allShifts = [...logged, ...open].sort((a, b) => a.clockIn.localeCompare(b.clockIn));
     const dayShifts = allShifts.filter((sh) => businessDateForTimestamp(sh.clockIn, shiftHoursConfig) === day);
+    const coverShift = (r) => allShifts.find((x) => x.employeeId === r.servedBy?.id && r.timestamp >= x.clockIn && (!x.clockOut || r.timestamp <= x.clockOut));
+    const insideAnyShift = (iso) => allShifts.some((x) => iso >= x.clockIn && iso <= (x.clockOut || nowIso));
 
     const drawers = dayShifts.map((sh) => {
       const end = sh.clockOut || nowIso;
       const inWin = (iso) => iso >= sh.clockIn && iso <= end;
-      const keys = monthKeysInRange(new Date(sh.clockIn).toISOString().slice(0, 7), new Date(end).toISOString().slice(0, 7));
-      if (!keys.every((k) => receiptsByMonth[k] !== undefined)) return { ...sh, loading: true };
-      const pool = keys.flatMap((k) => receiptsByMonth[k] || []);
-      const cashIn = pool.filter((r) => r.paid !== false && (r.status === "completed" || returnTimeOf(r)) && inWin(r.paidAt || r.timestamp) && notHeldByRider(r)).flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
-      const cashReturned = pool.filter((r) => returnTimeOf(r) && inWin(returnTimeOf(r)) && r.paid !== false && notHeldByRider(r)).flatMap(returnAmountsOf).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
-      const cashExpenses = keys.flatMap((k) => expensesByMonth[k] || []).filter((e) => e.status === "paid" && e.paymentMethod === "cash" && inWin(e.recordedAt || `${e.date}T00:00:00.000Z`)).reduce((s, e) => s + e.amount, 0);
-      const paidOut = cashReturned + cashExpenses;
-      const expected = sh.opening !== null ? cdRound(sh.opening + cashIn - paidOut) : null;
+      const src = poolFor(sh.clockIn, end);
+      if (!src) return { ...sh, loading: true };
+      const { pool, expenses } = src;
+      const flows = cdFlows(pool, expenses, inWin);
+      const expected = sh.opening !== null ? cdRound(sh.opening + flows.cashIn - flows.paidOut) : null;
       const gap = expected !== null && sh.counted !== null ? cdRound(sh.counted - expected) : null;
+      const gapAtClosing = sh.savedExpected !== null && sh.counted !== null ? cdRound(sh.counted - sh.savedExpected) : null;
 
-      // What could explain a gap: orders collected in this shift whose payment method or contents
-      // were changed afterwards.
+      // Recorded events that could explain a difference between the drawer and the books.
+      const events = [];
       const collected = pool.filter((r) => r.paid !== false && r.status === "completed" && inWin(r.paidAt || r.timestamp));
-      const payEdits = collected
-        .map((r) => ({ r, ch: cdNetPaymentChange(r) }))
-        .filter((x) => x.ch && (x.ch.from === "cash" || x.ch.to === "cash"))
-        .map((x) => ({ ticket: x.r.ticketNo, amount: x.r.total, from: x.ch.from, to: x.ch.to, by: x.ch.by, signed: x.ch.from === "cash" ? x.r.total : -x.r.total }));
-      const reduced = collected.filter((r) => (r.editHistory || []).some((h) => (h.changes || []).some((c) => !cdIsPayLabel(c.name) && Number(c.from) > Number(c.to)))).map((r) => r.ticketNo);
-      return { ...sh, cashIn, cashReturned, cashExpenses, paidOut, expected, gap, payEdits, reduced };
+      collected.forEach((r) => {
+        const since = r.paidAt || r.timestamp;
+        const pay = cdNetPaymentChange(r, since);
+        if (pay && (pay.from === "cash" || pay.to === "cash")) {
+          events.push({ kind: "pay", n: r.ticketNo, amount: pay.from === "cash" ? r.total : -r.total, orderTotal: r.total, from: pay.from, to: pay.to, by: pay.by, at: pay.at, paidAt: since, afterClose: !!sh.clockOut && pay.at > sh.clockOut });
+        }
+        if (r.paymentMethod === "cash") {
+          const ed = cdItemEdits(r, since, priceOf);
+          if (ed && Math.abs(ed.value) >= 0.01) events.push({ kind: ed.value < 0 ? "qtyDown" : "qtyUp", n: r.ticketNo, amount: cdRound(-ed.value), approx: true, by: ed.by, at: ed.at, list: ed.value < 0 ? ed.down : ed.up, afterClose: !!sh.clockOut && ed.at > sh.clockOut });
+        }
+      });
+      pool.filter((r) => (r.status === "cancelled" || r.status === "refunded") && !returnTimeOf(r) && r.paid !== false && inWin(r.paidAt || r.timestamp)).forEach((r) => {
+        const cash = receiptMethodAmounts(r).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
+        if (cash > 0) events.push({ kind: "legacyVoid", n: r.ticketNo, amount: cash, status: r.status });
+      });
+      expenses.filter((e) => e.status === "paid" && e.paymentMethod === "cash" && e.date === day && !insideAnyShift(e.recordedAt || `${e.date}T00:00:00.000Z`)).forEach((e) => {
+        events.push({ kind: "looseExpense", what: e.category, amount: -e.amount });
+      });
+      const solve = gap !== null && Math.abs(gap) >= 0.01 ? cdSolve(gap, events) : null;
+      return { ...sh, ...flows, expected, gap, gapAtClosing, events, solve };
     });
 
-    // Handover: this shift's opening count vs what the shift before it counted at closing.
+    // The cash that moved between one shift's closing count and the next one's opening count.
     drawers.forEach((d) => {
-      const prev = [...allShifts].reverse().find((x) => x.clockIn < d.clockIn && x.counted !== null);
+      const prev = [...allShifts].reverse().find((x) => x.clockOut && x.clockOut <= d.clockIn && x.counted !== null);
       d.prevName = prev ? prev.name : null;
-      d.handover = prev && d.opening !== null ? cdRound(d.opening - prev.counted) : null;
       d.prevCounted = prev ? prev.counted : null;
+      d.prevOut = prev ? prev.clockOut : null;
+      d.handover = prev && d.opening !== null ? cdRound(d.opening - prev.counted) : null;
+      d.between = null;
+      if (prev && d.opening !== null && !d.loading) {
+        const src = poolFor(prev.clockOut, d.clockIn);
+        if (src) {
+          const f = cdFlows(src.pool, src.expenses, (iso) => iso > prev.clockOut && iso < d.clockIn);
+          const expectedOpening = cdRound(prev.counted + f.cashIn - f.paidOut);
+          d.between = { ...f, expectedOpening, residual: cdRound(d.opening - expectedOpening) };
+        }
+      }
     });
 
-    const coverShift = (r) => allShifts.find((x) => x.employeeId === r.servedBy?.id && r.timestamp >= x.clockIn && (!x.clockOut || r.timestamp <= x.clockOut));
-    const outside = completed.filter((r) => !coverShift(r));
-    const unpaid = completed.filter((r) => r.paid === false);
+    // Whole-day cash chain: the first shift's opening, every cash movement from then until the last
+    // shift closed (inside shifts AND in the gaps between them), against the final count.
     const first = drawers[0];
     const last = drawers[drawers.length - 1];
-    const countedShifts = drawers.filter((d) => d.gap !== null);
-    const dayTotals = {
-      opening: first && first.opening !== null ? first.opening : null,
-      cashIn: drawers.reduce((s, d) => s + (d.cashIn || 0), 0),
-      paidOut: drawers.reduce((s, d) => s + (d.paidOut || 0), 0),
-      finalCounted: last && last.counted !== null ? last.counted : null,
-      shiftGaps: cdRound(countedShifts.reduce((s, d) => s + d.gap, 0)),
-      handovers: cdRound(drawers.reduce((s, d) => s + (d.handover || 0), 0)),
-    };
-    dayTotals.expectedEnd = dayTotals.opening !== null ? cdRound(dayTotals.opening + dayTotals.cashIn - dayTotals.paidOut) : null;
-    dayTotals.gap = dayTotals.expectedEnd !== null && dayTotals.finalCounted !== null ? cdRound(dayTotals.finalCounted - dayTotals.expectedEnd) : null;
+    let dayTotals = { opening: null, cashIn: 0, paidOut: 0, finalCounted: null, expectedEnd: null, gap: null, shiftGaps: 0, residuals: 0 };
+    if (first && last && !first.loading) {
+      const lastEnd = last.clockOut || nowIso;
+      const src = poolFor(first.clockIn, lastEnd);
+      if (src) {
+        const f = cdFlows(src.pool, src.expenses, (iso) => iso >= first.clockIn && iso <= lastEnd);
+        dayTotals = {
+          opening: first.opening,
+          cashIn: f.cashIn,
+          paidOut: f.paidOut,
+          finalCounted: last.counted,
+          expectedEnd: first.opening !== null ? cdRound(first.opening + f.cashIn - f.paidOut) : null,
+          gap: null,
+          shiftGaps: cdRound(drawers.reduce((s, d) => s + (d.gap || 0), 0)),
+          residuals: cdRound(drawers.slice(1).reduce((s, d) => s + (d.between ? d.between.residual : d.handover || 0), 0)),
+        };
+        dayTotals.gap = dayTotals.expectedEnd !== null && dayTotals.finalCounted !== null ? cdRound(dayTotals.finalCounted - dayTotals.expectedEnd) : null;
+      }
+    }
 
+    const outside = completed.filter((r) => !coverShift(r));
+    const unpaid = completed.filter((r) => r.paid === false);
     return { day, revenue, orders: completed.length, byMethod, discounts: { n: discounted.length, total: discounted.reduce((s, r) => s + (r.discountAmount || 0), 0) }, voided: { n: voided.length, total: voided.reduce((s, r) => s + r.total, 0) }, expenseTotal, drawers, dayTotals, outside, unpaid };
+  };
+  // Plain-language explanation of one shift's gap, as a list of lines (used on screen and in the report).
+  const cdFmtTime = (iso) => new Date(iso).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" });
+  const cdEventText = (e) => {
+    const lbl = (id) => t(`payment_${id}`);
+    if (e.kind === "pay") return t(e.from === "cash" ? "cdEditCashToOther" : "cdEditOtherToCash", { n: e.n, amount: money(e.orderTotal), from: lbl(e.from), to: lbl(e.to), by: e.by || "—", at: cdFmtTime(e.at), paidAt: cdFmtTime(e.paidAt) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
+    if (e.kind === "qtyDown") return t("cdItemQtyDown", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
+    if (e.kind === "qtyUp") return t("cdItemQtyUp", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
+    if (e.kind === "legacyVoid") return t("cdItemLegacyVoid", { n: e.n, amount: money(e.amount), status: t(e.status === "cancelled" ? "cancelledBadge" : "refundedBadge").toLowerCase() });
+    return t("cdItemLooseExpense", { what: e.what, amount: money(Math.abs(e.amount)) });
+  };
+  const cdSigned = (n) => `${n >= 0 ? "+" : "-"}${money(Math.abs(n))}`;
+  const cdGapLines = (d) => {
+    const lines = [];
+    const short = d.gap < 0;
+    lines.push({ strong: true, text: t(short ? "cdGapShort" : "cdGapOver", { name: d.name, amount: money(Math.abs(d.gap)) }) });
+    if (d.gapAtClosing !== null && Math.abs(d.gapAtClosing - d.gap) >= 0.01) {
+      lines.push({ text: t("cdAtClosing", { expected: money(d.savedExpected), gap: cdSigned(d.gapAtClosing), now: money(d.expected) }) });
+    }
+    if (d.solve && d.solve.items.length > 0) {
+      d.solve.items.forEach((e) => lines.push({ bullet: true, text: cdEventText(e) }));
+      lines.push({ text: d.solve.type === "exact" ? t("cdExplainedExact", { sum: cdSigned(d.solve.explained) }) : t("cdExplainedPartial", { explained: money(Math.abs(d.solve.explained)), gap: money(Math.abs(d.gap)), rest: money(Math.abs(d.solve.rest)) }) });
+    } else if (d.events.length > 0) {
+      lines.push({ text: t("cdFound") });
+      d.events.slice(0, 4).forEach((e) => lines.push({ bullet: true, text: cdEventText(e) }));
+      lines.push({ text: t("cdNoCause") });
+    } else {
+      lines.push({ text: t("cdNoCause") });
+    }
+    return lines;
+  };
+  const cdHandoverLines = (d) => {
+    if (d.handover === null || Math.abs(d.handover) < 0.01) return [];
+    const lines = [];
+    const b = d.between;
+    if (b && (b.cashIn > 0 || b.paidOut > 0)) {
+      const who = Object.entries(b.who).map(([n, a]) => `${n} ${money(a)}`).join(", ") || "—";
+      const residualText = Math.abs(b.residual) < 0.01 ? t("cdHandoverFlowMatch") : t(b.residual < 0 ? "cdHandoverFlowMissing" : "cdHandoverFlowExtra", { diff: money(Math.abs(b.residual)) });
+      lines.push({ strong: true, text: t("cdHandoverFlowTitle", { from: d.prevName, to: d.name }) });
+      lines.push({ text: t("cdHandoverFlow", { from: d.prevName, previous: money(d.prevCounted), received: money(b.cashIn), who, paidOut: money(b.paidOut), expected: money(b.expectedOpening), to: d.name, opening: money(d.opening), result: residualText }) });
+      if (b.cashIn > 0) lines.push({ text: t("cdHandoverNoShift") });
+    } else {
+      lines.push({ strong: true, text: t("cdHandoverGapTitle", { diff: money(Math.abs(d.handover)), from: d.prevName, to: d.name }) });
+      lines.push({ text: t(d.handover < 0 ? "cdHandoverMissing" : "cdHandoverExtra") });
+    }
+    return lines;
+  };
+
+  // ---- Close the day: signing a day off ----
+  const cdSnapshot = (cd) => ({
+    revenue: cdRound(cd.revenue),
+    orders: cd.orders,
+    expenseTotal: cdRound(cd.expenseTotal),
+    byMethod: cd.byMethod.map((m) => ({ id: m.id, total: cdRound(m.total) })),
+    drawers: cd.drawers.filter((d) => !d.loading).map((d) => ({ key: d.key, name: d.name, clockIn: d.clockIn, clockOut: d.clockOut, opening: d.opening, cashIn: cdRound(d.cashIn), paidOut: cdRound(d.paidOut), expected: d.expected, counted: d.counted, gap: d.gap })),
+    dayTotals: cd.dayTotals,
+  });
+  // What is different now compared with when the day was signed off (late edits, late payments...).
+  const cdChangesSince = (before, after) => {
+    const out = [];
+    const diff = (what, x, y) => {
+      if (x === null || x === undefined || y === null || y === undefined) return;
+      if (Math.abs(x - y) >= 0.01) out.push(t("cdChangeLine", { what, before: money(x), after: money(y) }));
+    };
+    diff(t("cdRevenue"), before.revenue, after.revenue);
+    if (before.orders !== after.orders) out.push(t("cdChangeLine", { what: t("cdOrders"), before: String(before.orders), after: String(after.orders) }));
+    diff(t("cdExpenses"), before.expenseTotal, after.expenseTotal);
+    (before.drawers || []).forEach((bd) => {
+      const ad = (after.drawers || []).find((x) => x.key === bd.key);
+      if (ad) diff(`${bd.name}: ${t("cdShouldBe")}`, bd.expected, ad.expected);
+    });
+    if (before.dayTotals && after.dayTotals) diff(`${t("cdWholeDay")}: ${t("cdGap")}`, before.dayTotals.gap, after.dayTotals.gap);
+    return out;
+  };
+  const saveDayClosing = async (cd, note) => {
+    if (closingDaySaving) return;
+    setClosingDaySaving(true);
+    try {
+      let fresh;
+      try {
+        const result = await storage.get("day-closings", true);
+        fresh = result?.value ? JSON.parse(result.value) : {};
+      } catch (e) {
+        flashNotice(t("notice_outOfStockSaveFailed"));
+        return;
+      }
+      const record = {
+        id: newId("close"),
+        closedAt: new Date().toISOString(),
+        closedBy: currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null,
+        note,
+        snapshot: cdSnapshot(cd),
+      };
+      const next = { ...fresh, [cd.day]: [...(fresh[cd.day] || []), record] };
+      setDayClosings(next);
+      await syncSet("day-closings", JSON.stringify(next), true, t("syncLabelSettings"));
+      setCloseDayModal(null);
+      flashNotice(t("notice_dayClosed"));
+    } finally {
+      setClosingDaySaving(false);
+    }
+  };
+  const buildCloseDayReportHtml = (cd, closing, anyGap) => {
+    const e = (x) => escapeHtml(String(x ?? ""));
+    const row = (a, b, style = "") => `<div class="row" style="${style}"><span>${e(a)}</span><span>${e(b)}</span></div>`;
+    const dayLabel = new Date(`${cd.day}T00:00:00Z`).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+    const tf = { hour: "numeric", minute: "2-digit" };
+    const loc = isRtl ? "ar-EG" : "en-US";
+    const lines = (arr) => arr.map((l) => `<div style="margin-top:4px;${l.strong ? "font-weight:700;" : ""}${l.bullet ? "padding-inline-start:10px;" : ""}">${l.bullet ? "• " : ""}${e(l.text)}</div>`).join("");
+    const gapRows = cd.drawers.filter((d) => d.gap !== null && Math.abs(d.gap) >= 0.01).map((d) => `<div style="margin-bottom:8px;">${lines(cdGapLines(d))}</div>`).join("");
+    const handoverRows = cd.drawers.map((d) => cdHandoverLines(d)).filter((l) => l.length > 0).map((l) => `<div style="margin-bottom:8px;">${lines(l)}</div>`).join("");
+    return `
+      <div style="text-align:center;font-weight:700;font-size:16px;">${e(restaurantName)}</div>
+      <div style="text-align:center;font-size:13px;">${e(t("cdReportTitle"))} — ${e(dayLabel)}</div>
+      ${closing ? `<div style="text-align:center;font-size:11px;margin:4px 0;">${e(t("cdClosedBy", { name: closing.closedBy?.name || "—", time: new Date(closing.closedAt).toLocaleString(loc, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) }))}</div>` : ""}
+      <div class="dashed" style="font-size:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">${e(t("closeDaySalesTitle"))}</div>
+        ${row(t("cdRevenue"), money(cd.revenue))}
+        ${row(t("cdOrders"), cd.orders)}
+        ${cd.byMethod.map((m) => row(t(`payment_${m.id}`), money(m.total))).join("")}
+        ${cd.discounts.n > 0 ? row(t("cdDiscounts", { n: cd.discounts.n, amount: money(cd.discounts.total) }), "") : ""}
+        ${cd.voided.n > 0 ? row(t("cdVoided", { n: cd.voided.n, amount: money(cd.voided.total) }), "") : ""}
+        ${row(t("cdExpenses"), money(cd.expenseTotal))}
+        ${row(t("cdNet"), money(cd.revenue - cd.expenseTotal), "font-weight:700;")}
+      </div>
+      <div class="dashed" style="font-size:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">${e(t("closeDayDrawerTitle"))}</div>
+        ${cd.drawers.filter((d) => !d.loading).map((d) => `
+          <div style="margin-bottom:8px;">
+            <div style="font-weight:600;">${e(d.name)} &middot; ${e(new Date(d.clockIn).toLocaleString(loc, tf))} – ${e(d.clockOut ? new Date(d.clockOut).toLocaleString(loc, tf) : t("cdStillOpen"))}</div>
+            ${row(t("cdOpened"), d.opening !== null ? money(d.opening) : "—")}
+            ${row(t("cdReceived"), money(d.cashIn))}
+            ${row(t("cdPaidOut"), money(d.paidOut))}
+            ${row(t("cdShouldBe"), d.expected !== null ? money(d.expected) : "—")}
+            ${row(t("cdCounted"), d.counted !== null ? money(d.counted) : t("cdNotCounted"))}
+            ${row(t("cdGap"), d.gap === null ? "—" : Math.abs(d.gap) < 0.01 ? t("varianceMatch") : cdSigned(d.gap), "font-weight:700;")}
+          </div>`).join("")}
+        ${cd.dayTotals.opening !== null ? `
+          <div style="border-top:1px solid #000;padding-top:6px;">
+            <div style="font-weight:700;">${e(t("cdWholeDay"))}</div>
+            ${row(t("cdOpened"), money(cd.dayTotals.opening))}
+            ${row(t("cdReceived"), money(cd.dayTotals.cashIn))}
+            ${row(t("cdPaidOut"), money(cd.dayTotals.paidOut))}
+            ${row(t("cdShouldBe"), money(cd.dayTotals.expectedEnd))}
+            ${row(t("cdCounted"), cd.dayTotals.finalCounted !== null ? money(cd.dayTotals.finalCounted) : "—")}
+            ${row(t("cdGap"), cd.dayTotals.gap === null ? "—" : Math.abs(cd.dayTotals.gap) < 0.01 ? t("varianceMatch") : cdSigned(cd.dayTotals.gap), "font-weight:700;")}
+          </div>` : ""}
+      </div>
+      ${gapRows || handoverRows ? `<div class="dashed" style="font-size:12px;"><div style="font-weight:600;margin-bottom:6px;">${e(t("cdGapsTitle"))}</div>${gapRows}${handoverRows}</div>` : ""}
+      ${closing && closing.note ? `<div class="dashed" style="font-size:12px;">${e(t("cdClosedNote", { note: closing.note }))}</div>` : ""}`;
   };
 
   // Personal stats for whoever is currently clocked in — same receipts, filtered to just theirs.
@@ -6428,11 +6761,42 @@ function POSPrototype({ tenantId }) {
     if (view !== "closeday") return;
     const day = closeDayDate || businessDateForTimestamp(new Date().toISOString(), shiftHoursConfig);
     const mk = day.slice(0, 7);
-    [prevMonthKey(mk), mk, nextMonthKey(mk)].forEach((k) => {
-      ensureMonthLoaded(k);
-      ensureExpenseMonthLoaded(k);
+    // Always read fresh from the server (and keep doing so while the tab is open): this screen adds up
+    // other terminals' orders, so a copy cached hours ago on this device would give wrong totals.
+    const refreshExpenses = async (k) => {
+      try {
+        const result = await getSharedWithRetry(storage, `expenses:${k}`);
+        setExpensesByMonth((prev) => ({ ...prev, [k]: result?.value ? JSON.parse(result.value) : [] }));
+      } catch (e) {
+        // keep what we have
+      }
+    };
+    const refreshAll = () => [prevMonthKey(mk), mk, nextMonthKey(mk)].forEach((k) => {
+      refreshMonthLoaded(k);
+      refreshExpenses(k);
     });
+    refreshAll();
+    const interval = setInterval(refreshAll, 20000);
+    return () => clearInterval(interval);
   }, [view, closeDayDate, shiftHoursLoaded]);
+  useEffect(() => {
+    if (view !== "closeday") return;
+    let cancelled = false;
+    const loadClosings = async () => {
+      try {
+        const result = await storage.get("day-closings", true);
+        if (!cancelled) setDayClosings(result?.value ? JSON.parse(result.value) : {});
+      } catch (e) {
+        // keep what we had
+      }
+    };
+    loadClosings();
+    const interval = setInterval(loadClosings, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [view]);
   const addStaffMember = async () => {
     const name = newStaffName.trim();
     if (!name) {
@@ -6569,15 +6933,17 @@ function POSPrototype({ tenantId }) {
   const settleDeliveryCash = (rider) => {
     setConfirmDialog({
       message: t("confirm_settleDelivery", { name: rider.name }),
-      onConfirm: () => {
+      onConfirm: async () => {
         const monthKey = thisMonthKey();
-        const list = receiptsByMonth[monthKey] || [];
+        // Re-read the month first: writing back this device's cached copy could erase orders another
+        // terminal saved since this one last refreshed.
+        const list = await fetchFreshMonth(monthKey);
         const updated = list.map((r) =>
           r.tableId === "delivery" && r.status === "completed" && r.assignedTo?.id === rider.id && r.paid !== false && !r.deliverySettled
             ? { ...r, deliverySettled: true, deliverySettledAt: new Date().toISOString() }
             : r
         );
-        persistMonth(monthKey, updated);
+        await persistMonth(monthKey, updated);
         flashNotice(t("notice_deliverySettled", { name: rider.name }));
       },
     });
@@ -9030,46 +9396,58 @@ function POSPrototype({ tenantId }) {
         const timeFmt = { hour: "numeric", minute: "2-digit" };
         const dtFmt = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
         const loc = isRtl ? "ar-EG" : "en-US";
-        // A short, plain explanation of why a shift's drawer doesn't match what the system expected.
-        const explainGap = (d) => {
-          const out = [];
-          const short = d.gap < 0;
-          out.push({ strong: true, text: t(short ? "cdGapShort" : "cdGapOver", { name: d.name, amount: m2(d.gap) }) });
-          const single = d.payEdits.find((e) => Math.abs(e.signed - d.gap) < 0.01);
-          const sum = d.payEdits.length > 1 && Math.abs(d.payEdits.reduce((s, e) => s + e.signed, 0) - d.gap) < 0.01;
-          const line = (e) => t(e.from === "cash" ? "cdEditCashToOther" : "cdEditOtherToCash", { n: e.ticket, amount: money(e.amount), from: lbl(e.from), to: lbl(e.to), by: e.by || "—" });
-          if (single) {
-            out.push({ text: `${t("cdLikely")} ${line(single)}` });
-          } else if (sum) {
-            d.payEdits.forEach((e) => out.push({ text: `${t("cdLikely")} ${line(e)}` }));
-          } else {
-            d.payEdits.slice(0, 3).forEach((e) => out.push({ text: `${t("cdCheck")} ${line(e)}` }));
-            if (!short && d.reduced.length > 0) out.push({ text: `${t("cdCheck")} ${t("cdReduced", { list: d.reduced.slice(0, 4).map((n) => `#${n}`).join(", ") })}` });
-            if (d.payEdits.length === 0 && !(d.reduced.length > 0 && !short)) out.push({ text: t("cdNoCause") });
-          }
-          return out;
-        };
+        const gapColor = (g) => (g === null ? "var(--text-faint)" : Math.abs(g) < 0.01 ? "#9FCB8E" : "#E3A79C");
+        const gapText = (g) => (g === null ? "—" : Math.abs(g) < 0.01 ? t("varianceMatch") : `${g > 0 ? "+" : "-"}${m2(g)}`);
         const gapShifts = cd ? cd.drawers.filter((d) => d.gap !== null && Math.abs(d.gap) >= 0.01) : [];
-        const handoverIssues = cd ? cd.drawers.filter((d) => d.handover !== null && Math.abs(d.handover) >= 0.01) : [];
-        const noCount = cd ? cd.drawers.filter((d) => !d.loading && d.counted === null && d.clockOut) : [];
+        const handoverShifts = cd ? cd.drawers.filter((d) => d.handover !== null && Math.abs(d.handover) >= 0.01) : [];
         const stillOpen = cd ? cd.drawers.filter((d) => !d.clockOut) : [];
-        const autoClosed = cd ? cd.drawers.filter((d) => d.auto) : [];
         const alsoCheck = cd
           ? [
               ...(cd.outside.length > 0 ? [t("cdOutsideShift", { n: cd.outside.length, amount: money(cd.outside.reduce((s, r) => s + r.total, 0)), names: [...new Set(cd.outside.map((r) => r.servedBy?.name || "—"))].join(", ") })] : []),
               ...(cd.unpaid.length > 0 ? [t("cdUnpaid", { n: cd.unpaid.length, amount: money(cd.unpaid.reduce((s, r) => s + r.total, 0)) })] : []),
               ...stillOpen.map((d) => t("cdOpenShift", { name: d.name })),
-              ...autoClosed.map((d) => t("cdAutoClosed", { name: d.name })),
-              ...noCount.map((d) => t("cdNoCount", { name: d.name })),
+              ...cd.drawers.filter((d) => d.auto).map((d) => t("cdAutoClosed", { name: d.name })),
+              ...cd.drawers.filter((d) => !d.loading && d.counted === null && d.clockOut).map((d) => t("cdNoCount", { name: d.name })),
             ]
           : [];
+        const anyGap = !!cd && (gapShifts.length > 0 || handoverShifts.some((d) => !d.between || Math.abs(d.between.residual) >= 0.01) || (cd.dayTotals.gap !== null && Math.abs(cd.dayTotals.gap) >= 0.01));
+        const closings = dayClosings[day] || [];
+        const latest = closings[closings.length - 1] || null;
+        const snap = cd ? cdSnapshot(cd) : null;
+        const changes = latest && snap ? cdChangesSince(latest.snapshot, snap) : [];
+        const Lines = ({ lines }) => (
+          <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>
+            {lines.map((l, i) => (
+              <div key={i} style={{ fontWeight: l.strong ? 600 : 400, color: l.strong ? "var(--text-primary)" : "var(--text-muted)", marginTop: i ? 4 : 0, paddingInlineStart: l.bullet ? 14 : 0, position: "relative" }}>
+                {l.bullet && <span style={{ position: "absolute", insetInlineStart: 2 }}>•</span>}
+                {l.text}
+              </div>
+            ))}
+          </div>
+        );
+        const cellTop = { borderTop: "1px solid var(--border)", paddingTop: 8 };
         return (
-          <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 860 }}>
+          <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 900 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
               <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 600 }}>{t("closeDayTitle")}</div>
               <DayPickerButton value={day} maxDate={todayLocalStr()} isRtl={isRtl} theme={theme} onChange={setCloseDayDate} />
             </div>
-            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20, lineHeight: 1.5 }}>{t("closeDayHint")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 }}>{t("closeDayHint")}</div>
+
+            {latest && (
+              <div style={{ ...card, borderColor: changes.length > 0 ? "#C9A24A" : "#4E7A47", marginBottom: 18 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: changes.length > 0 ? "#E3C98A" : "#9FCB8E" }}>
+                  ✔ {t("cdClosedBy", { name: latest.closedBy?.name || "—", time: new Date(latest.closedAt).toLocaleString(loc, dtFmt) })}
+                </div>
+                {latest.note && <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 6 }}>{t("cdClosedNote", { note: latest.note })}</div>}
+                {changes.length > 0 && (
+                  <div style={{ marginTop: 8, fontSize: 12.5, color: "#E3C98A", lineHeight: 1.55 }}>
+                    <div style={{ fontWeight: 600 }}>{t("cdChangedSince")}</div>
+                    {changes.map((c, i) => <div key={i}>• {c}</div>)}
+                  </div>
+                )}
+              </div>
+            )}
 
             {!cd ? (
               <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
@@ -9108,10 +9486,22 @@ function POSPrototype({ tenantId }) {
                         {["cdOpened", "cdReceived", "cdPaidOut", "cdShouldBe", "cdCounted", "cdGap"].map((k) => (
                           <div key={k} title={k === "cdPaidOut" ? t("cdPaidOutHint") : undefined} style={{ fontSize: 10.5, color: "var(--text-muted)", textAlign: "right", textTransform: "uppercase", letterSpacing: 0.3 }}>{t(k)}</div>
                         ))}
-                        {cd.drawers.map((d) => (
+                        {cd.drawers.map((d, idx) => (
                           <React.Fragment key={d.key}>
+                            {idx > 0 && d.between && (d.between.cashIn > 0 || d.between.paidOut > 0) && (
+                              <>
+                                <div>
+                                  <div style={{ fontSize: 12.5, color: "#E3C98A" }}>{t("cdOutsideRow")}</div>
+                                  <div style={{ fontSize: 10.5, color: "var(--text-faint)" }}>{new Date(d.prevOut).toLocaleString(loc, timeFmt)} &ndash; {new Date(d.clockIn).toLocaleString(loc, timeFmt)}</div>
+                                </div>
+                                <div />
+                                <div style={{ ...num, color: "#E3C98A" }}>{money(d.between.cashIn)}</div>
+                                <div style={{ ...num, color: "#E3C98A" }}>{money(d.between.paidOut)}</div>
+                                <div /><div /><div />
+                              </>
+                            )}
                             <div>
-                              <div style={{ fontSize: 13 }}>{d.name}</div>
+                              <div style={{ fontSize: 13 }}>{d.name}{d.auto && <span title={t("shiftAutoClosedHint")} style={{ marginInlineStart: 6, fontSize: 10, color: "#E3C98A", border: "1px solid #E3C98A", borderRadius: 20, padding: "1px 6px" }}>{t("shiftAutoClosedBadge")}</span>}</div>
                               <div style={{ fontSize: 10.5, color: "var(--text-faint)" }}>{new Date(d.clockIn).toLocaleString(loc, dtFmt)} &ndash; {d.clockOut ? new Date(d.clockOut).toLocaleString(loc, timeFmt) : t("cdStillOpen")}</div>
                             </div>
                             {d.loading ? (
@@ -9123,35 +9513,26 @@ function POSPrototype({ tenantId }) {
                                 <div style={num}>{money(d.paidOut)}</div>
                                 <div style={num}>{d.expected !== null ? money(d.expected) : "—"}</div>
                                 <div style={num}>{d.counted !== null ? money(d.counted) : <span style={{ color: "var(--text-faint)", fontSize: 11 }}>{d.clockOut ? t("cdNotCounted") : t("cdStillOpen")}</span>}</div>
-                                <div style={{ ...num, fontWeight: 700, color: d.gap === null ? "var(--text-faint)" : Math.abs(d.gap) < 0.01 ? "#9FCB8E" : "#E3A79C" }}>
-                                  {d.gap === null ? "—" : Math.abs(d.gap) < 0.01 ? t("varianceMatch") : `${d.gap > 0 ? "+" : "-"}${m2(d.gap)}`}
-                                </div>
+                                <div style={{ ...num, fontWeight: 700, color: gapColor(d.gap) }}>{gapText(d.gap)}</div>
                               </>
-                            )}
-                            {d.handover !== null && Math.abs(d.handover) >= 0.01 && (
-                              <div style={{ gridColumn: "1 / -1", fontSize: 11.5, color: "#E3C98A", marginTop: -3 }}>
-                                {t("cdHandover", { opening: money(d.opening), name: d.prevName, previous: money(d.prevCounted), diff: m2(d.handover) })}
-                              </div>
                             )}
                           </React.Fragment>
                         ))}
                         {cd.dayTotals.opening !== null && (
                           <>
-                            <div style={{ fontSize: 13, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}>{t("cdWholeDay")}</div>
-                            <div style={{ ...num, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}>{money(cd.dayTotals.opening)}</div>
-                            <div style={{ ...num, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}>{money(cd.dayTotals.cashIn)}</div>
-                            <div style={{ ...num, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}>{money(cd.dayTotals.paidOut)}</div>
-                            <div style={{ ...num, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}>{money(cd.dayTotals.expectedEnd)}</div>
-                            <div style={{ ...num, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}>{cd.dayTotals.finalCounted !== null ? money(cd.dayTotals.finalCounted) : "—"}</div>
-                            <div style={{ ...num, fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8, color: cd.dayTotals.gap === null ? "var(--text-faint)" : Math.abs(cd.dayTotals.gap) < 0.01 ? "#9FCB8E" : "#E3A79C" }}>
-                              {cd.dayTotals.gap === null ? "—" : Math.abs(cd.dayTotals.gap) < 0.01 ? t("varianceMatch") : `${cd.dayTotals.gap > 0 ? "+" : "-"}${m2(cd.dayTotals.gap)}`}
-                            </div>
+                            <div style={{ fontSize: 13, fontWeight: 700, ...cellTop }}>{t("cdWholeDay")}</div>
+                            <div style={{ ...num, fontWeight: 700, ...cellTop }}>{money(cd.dayTotals.opening)}</div>
+                            <div style={{ ...num, fontWeight: 700, ...cellTop }}>{money(cd.dayTotals.cashIn)}</div>
+                            <div style={{ ...num, fontWeight: 700, ...cellTop }}>{money(cd.dayTotals.paidOut)}</div>
+                            <div style={{ ...num, fontWeight: 700, ...cellTop }}>{money(cd.dayTotals.expectedEnd)}</div>
+                            <div style={{ ...num, fontWeight: 700, ...cellTop }}>{cd.dayTotals.finalCounted !== null ? money(cd.dayTotals.finalCounted) : "—"}</div>
+                            <div style={{ ...num, fontWeight: 700, ...cellTop, color: gapColor(cd.dayTotals.gap) }}>{gapText(cd.dayTotals.gap)}</div>
                           </>
                         )}
                       </div>
                       {cd.dayTotals.gap !== null && Math.abs(cd.dayTotals.gap) >= 0.01 && (
                         <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 10, lineHeight: 1.5 }}>
-                          {t("cdDayGapExplain", { shiftGaps: `${cd.dayTotals.shiftGaps >= 0 ? "+" : "-"}${m2(cd.dayTotals.shiftGaps)}`, handovers: `${cd.dayTotals.handovers >= 0 ? "+" : "-"}${m2(cd.dayTotals.handovers)}` })}
+                          {t("cdDayGapExplain", { shiftGaps: cdSigned(cd.dayTotals.shiftGaps), residuals: cdSigned(cd.dayTotals.residuals) })}
                         </div>
                       )}
                     </div>
@@ -9160,23 +9541,12 @@ function POSPrototype({ tenantId }) {
 
                 <div style={card}>
                   <div style={h}>{t("cdGapsTitle")}</div>
-                  {gapShifts.length === 0 && handoverIssues.length === 0 ? (
+                  {gapShifts.length === 0 && !handoverShifts.some((d) => cdHandoverLines(d).length > 0) ? (
                     <div style={{ fontSize: 13, color: "#9FCB8E" }}>{t("cdNoGaps")}</div>
                   ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      {gapShifts.map((d) => (
-                        <div key={d.key} style={{ fontSize: 12.5, lineHeight: 1.55 }}>
-                          {explainGap(d).map((l, i) => (
-                            <div key={i} style={{ fontWeight: l.strong ? 600 : 400, color: l.strong ? "var(--text-primary)" : "var(--text-muted)", marginTop: i ? 3 : 0 }}>{l.text}</div>
-                          ))}
-                        </div>
-                      ))}
-                      {handoverIssues.map((d) => (
-                        <div key={`h_${d.key}`} style={{ fontSize: 12.5, lineHeight: 1.55 }}>
-                          <div style={{ fontWeight: 600 }}>{t("cdHandoverGapTitle", { diff: m2(d.handover), from: d.prevName, to: d.name })}</div>
-                          <div style={{ color: "var(--text-muted)", marginTop: 3 }}>{t(d.handover < 0 ? "cdHandoverMissing" : "cdHandoverExtra")}</div>
-                        </div>
-                      ))}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      {gapShifts.map((d) => <Lines key={d.key} lines={cdGapLines(d)} />)}
+                      {handoverShifts.map((d) => <Lines key={`h_${d.key}`} lines={cdHandoverLines(d)} />)}
                     </div>
                   )}
                 </div>
@@ -9191,7 +9561,48 @@ function POSPrototype({ tenantId }) {
                     </ul>
                   )}
                 </div>
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <button
+                    disabled={stillOpen.length > 0 || cd.drawers.some((d) => d.loading)}
+                    onClick={() => setCloseDayModal({ day, note: "", anyGap })}
+                    style={{ padding: "11px 20px", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13.5, fontWeight: 600, cursor: stillOpen.length > 0 ? "not-allowed" : "pointer", opacity: stillOpen.length > 0 ? 0.5 : 1 }}
+                  >
+                    {latest ? t("cdCloseAgain") : t("closeDayBtn")}
+                  </button>
+                  <button onClick={() => printViaHiddenFrame(t("cdReportTitle"), buildCloseDayReportHtml(cd, latest, anyGap), isRtl)} style={{ padding: "11px 16px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 13, cursor: "pointer" }}>{t("cdPrint")}</button>
+                  <button onClick={() => { downloadReceiptFile(t("cdReportTitle"), buildCloseDayReportHtml(cd, latest, anyGap), isRtl); flashNotice(t("notice_shiftReportDownloaded")); }} style={{ padding: "11px 16px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 13, cursor: "pointer" }}>{t("cdDownload")}</button>
+                  {stillOpen.length > 0 && <span style={{ fontSize: 12, color: "#E3C98A" }}>{t("cdCloseBlockedOpen")}</span>}
+                </div>
               </>
+            )}
+
+            {closeDayModal && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setCloseDayModal(null)}>
+                <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 24, width: "100%", maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+                  <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 600, marginBottom: 6 }}>{t("cdCloseModalTitle", { date: new Date(`${closeDayModal.day}T00:00:00Z`).toLocaleDateString(loc, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }) })}</div>
+                  <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 12, lineHeight: 1.5 }}>{t("cdCloseModalHint")}</div>
+                  {closeDayModal.anyGap && <div style={{ fontSize: 12.5, color: "#A6534A", marginBottom: 8, fontWeight: 600 }}>{t("cdCloseNoteRequired")}</div>}
+                  <textarea
+                    value={closeDayModal.note}
+                    onChange={(e) => setCloseDayModal((m) => ({ ...m, note: e.target.value }))}
+                    placeholder={closeDayModal.anyGap ? t("cdCloseNotePlaceholderGap") : t("cdCloseNoteOptional")}
+                    rows={3}
+                    maxLength={400}
+                    style={{ width: "100%", boxSizing: "border-box", borderRadius: 8, border: "1px solid #C9C2B2", padding: 10, fontSize: 13, fontFamily: "inherit", background: "#FFFFFF", color: "#111111", marginBottom: 14, resize: "vertical" }}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => setCloseDayModal(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, cursor: "pointer" }}>{t("cancel")}</button>
+                    <button
+                      disabled={closingDaySaving || (closeDayModal.anyGap && closeDayModal.note.trim().length < 3)}
+                      onClick={() => saveDayClosing(cd, closeDayModal.note.trim())}
+                      style={{ flex: 2, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: closingDaySaving || (closeDayModal.anyGap && closeDayModal.note.trim().length < 3) ? 0.5 : 1 }}
+                    >
+                      {t("cdCloseConfirm")}
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         );
