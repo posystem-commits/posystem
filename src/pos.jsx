@@ -248,8 +248,9 @@ const STRINGS = {
     cdAfterClose: "(This happened after the shift was closed, so the gap appeared later.)",
     cdAtClosing: "When the shift closed, the system expected {{expected}} and the gap was {{gap}}. Changes made since then moved the expected amount to {{now}}.",
     cdFound: "Recorded events in this shift that could be involved:",
-    cdItemQtyDown: "Order #{{n}} had {{list}} removed by {{by}} at {{at}}, after it was paid — about {{amount}} less on the bill. If the customer paid the original price, the extra cash is in the drawer.",
-    cdItemQtyUp: "Order #{{n}} had {{list}} added by {{by}} at {{at}}, after it was paid — about {{amount}} more on the bill. If the customer didn't pay the difference, the drawer is short by that much.",
+    cdItemQtyDown: "Order #{{n}} had {{list}} removed by {{by}} at {{at}}, after it was paid — {{about}}{{amount}} less on the bill. If the customer paid the original price, the extra cash is in the drawer.",
+    cdItemQtyUp: "Order #{{n}} had {{list}} added by {{by}} at {{at}}, after it was paid — {{about}}{{amount}} more on the bill. If the customer didn't pay the difference, the drawer is short by that much.",
+    cdAbout: "about ",
     cdItemLegacyVoid: "Order #{{n}} ({{amount}} cash) was {{status}}, but nothing records how the money went back. If it wasn't handed back in cash, it is still in the drawer.",
     cdItemLooseExpense: "A cash expense ({{what}}, {{amount}}) is dated this day but isn't inside any shift, so it reduced no drawer. If it was paid from this drawer, that explains a shortage.",
     cdExplainedExact: "Together these explain the whole gap ({{sum}}).",
@@ -1064,8 +1065,9 @@ const STRINGS = {
     cdAfterClose: "(حدث هذا بعد إغلاق الوردية، لذلك ظهر الفرق لاحقًا.)",
     cdAtClosing: "عند إغلاق الوردية كان النظام يتوقع {{expected}} وكان الفرق {{gap}}. التغييرات التي حدثت بعد ذلك غيّرت المبلغ المتوقع إلى {{now}}.",
     cdFound: "أحداث مسجَّلة في هذه الوردية قد تكون مرتبطة بالفرق:",
-    cdItemQtyDown: "في الفاتورة رقم {{n}} أزال {{by}} الساعة {{at}} الأصناف {{list}} بعد دفعها — أي حوالي {{amount}} أقل في الفاتورة. لو دفع العميل السعر الأصلي، فالنقدية الزائدة موجودة في الدرج.",
-    cdItemQtyUp: "في الفاتورة رقم {{n}} أضاف {{by}} الساعة {{at}} الأصناف {{list}} بعد دفعها — أي حوالي {{amount}} أكثر في الفاتورة. لو لم يدفع العميل الفرق، فالدرج ناقص بهذا المبلغ.",
+    cdItemQtyDown: "في الفاتورة رقم {{n}} أزال {{by}} الساعة {{at}} الأصناف {{list}} بعد دفعها — أي {{about}}{{amount}} أقل في الفاتورة. لو دفع العميل السعر الأصلي، فالنقدية الزائدة موجودة في الدرج.",
+    cdItemQtyUp: "في الفاتورة رقم {{n}} أضاف {{by}} الساعة {{at}} الأصناف {{list}} بعد دفعها — أي {{about}}{{amount}} أكثر في الفاتورة. لو لم يدفع العميل الفرق، فالدرج ناقص بهذا المبلغ.",
+    cdAbout: "حوالي ",
     cdItemLegacyVoid: "الفاتورة رقم {{n}} ({{amount}} نقدًا) {{status}}، لكن لا يوجد ما يسجّل كيف أُعيد المبلغ. لو لم يُرجَع نقدًا، فهو ما زال في الدرج.",
     cdItemLooseExpense: "مصروف نقدي ({{what}}، {{amount}}) مؤرَّخ بهذا اليوم لكنه خارج أي وردية، فلم يخصم من أي درج. لو دُفع من هذا الدرج، فهذا يفسّر النقص.",
     cdExplainedExact: "هذه الأسباب مجتمعة تفسّر الفرق بالكامل ({{sum}}).",
@@ -5683,6 +5685,12 @@ function POSPrototype({ tenantId }) {
         }
       : null;
     const newTotal = newNet + newServiceAmt + newVatAmt + (r.deliveryFee || 0);
+    // Saved with the edit so what an edit did to the bill is known exactly, not worked out later from
+    // dish prices (Close the day uses this to explain cash gaps).
+    if (historyEntry) {
+      historyEntry.totalBefore = r.total;
+      historyEntry.totalAfter = newTotal;
+    }
     // A split-payment breakdown is fixed dollar amounts, not a formula like the discount/VAT
     // rates above — editing quantities changes the total, so rescale each method's share
     // proportionally to keep receiptMethodAmounts(r) still summing to the new total. Not a
@@ -5904,33 +5912,38 @@ function POSPrototype({ tenantId }) {
     });
     return first && last && first !== last ? { from: first, to: last, by, at } : null;
   };
-  // Dishes added or removed from an order after it was paid, with the rough money value (unit price x
-  // quantity, scaled by the order's own discount / service / VAT).
+  // Dishes added or removed from an order after it was paid, and what that did to the bill. Edits made
+  // from now on carry the order's exact total before and after; older edits only recorded quantities,
+  // so their money value is estimated from the dish price (unit price x quantity, scaled by the order's
+  // own discount / service / VAT) and flagged as an estimate.
   const cdItemEdits = (r, notBefore, priceOf) => {
-    const lines = [];
+    const nets = {};
+    let value = 0;
+    let exact = true;
     let by = null;
     let at = null;
-    cdSortedEdits(r, notBefore).forEach((h) => {
-      (h.changes || []).forEach((c) => {
-        if (cdIsPayLabel(c.name)) return;
-        const from = Number(c.from);
-        const to = Number(c.to);
-        if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) return;
-        lines.push({ name: c.name, delta: to - from });
-        by = h.editedBy?.name || by;
-        at = h.timestamp;
-      });
-    });
-    if (lines.length === 0) return null;
+    let any = false;
     const factor = r.subtotal > 0 ? (r.total - (r.deliveryFee || 0)) / r.subtotal : 1;
-    const merged = {};
-    lines.forEach((l) => { merged[l.name] = (merged[l.name] || 0) + l.delta; });
-    const parts = Object.entries(merged).filter(([, d]) => d !== 0);
+    cdSortedEdits(r, notBefore).forEach((h) => {
+      const item = (h.changes || []).filter((c) => !cdIsPayLabel(c.name) && Number.isFinite(Number(c.from)) && Number.isFinite(Number(c.to)) && Number(c.from) !== Number(c.to));
+      if (item.length === 0) return;
+      any = true;
+      by = h.editedBy?.name || by;
+      at = h.timestamp;
+      item.forEach((c) => { nets[c.name] = (nets[c.name] || 0) + (Number(c.to) - Number(c.from)); });
+      if (typeof h.totalBefore === "number" && typeof h.totalAfter === "number") {
+        value += h.totalAfter - h.totalBefore;
+      } else {
+        exact = false;
+        value += item.reduce((sum, c) => sum + (Number(c.to) - Number(c.from)) * (priceOf(c.name, r) || 0), 0) * factor;
+      }
+    });
+    if (!any) return null;
+    const parts = Object.entries(nets).filter(([, d]) => d !== 0);
     if (parts.length === 0) return null;
-    const value = parts.reduce((s, [name, d]) => s + d * (priceOf(name, r) || 0), 0) * factor; // negative = bill went down
     const down = parts.filter(([, d]) => d < 0).map(([name, d]) => `${name} ×${-d}`).join(", ");
     const up = parts.filter(([, d]) => d > 0).map(([name, d]) => `${name} ×${d}`).join(", ");
-    return { by, at, value: cdRound(value), down, up };
+    return { by, at, value: cdRound(value), down, up, exact };
   };
   const cdFlows = (pool, expensePool, inWin) => {
     const cashOrders = pool.filter((r) => r.paid !== false && (r.status === "completed" || returnTimeOf(r)) && notHeldByRider(r) && inWin(cashTimeOf(r)));
@@ -6024,7 +6037,7 @@ function POSPrototype({ tenantId }) {
         }
         if (r.paymentMethod === "cash") {
           const ed = cdItemEdits(r, since, priceOf);
-          if (ed && Math.abs(ed.value) >= 0.01) events.push({ kind: ed.value < 0 ? "qtyDown" : "qtyUp", n: r.ticketNo, amount: cdRound(-ed.value), approx: true, by: ed.by, at: ed.at, list: ed.value < 0 ? ed.down : ed.up, afterClose: !!sh.clockOut && ed.at > sh.clockOut });
+          if (ed && Math.abs(ed.value) >= 0.01) events.push({ kind: ed.value < 0 ? "qtyDown" : "qtyUp", n: r.ticketNo, amount: cdRound(-ed.value), approx: !ed.exact, by: ed.by, at: ed.at, list: ed.value < 0 ? ed.down : ed.up, afterClose: !!sh.clockOut && ed.at > sh.clockOut });
         }
       });
       pool.filter((r) => (r.status === "cancelled" || r.status === "refunded") && !returnTimeOf(r) && r.paid !== false && inWin(r.paidAt || r.timestamp)).forEach((r) => {
@@ -6089,8 +6102,8 @@ function POSPrototype({ tenantId }) {
   const cdEventText = (e) => {
     const lbl = (id) => t(`payment_${id}`);
     if (e.kind === "pay") return t(e.from === "cash" ? "cdEditCashToOther" : "cdEditOtherToCash", { n: e.n, amount: money(e.orderTotal), from: lbl(e.from), to: lbl(e.to), by: e.by || "—", at: cdFmtTime(e.at), paidAt: cdFmtTime(e.paidAt) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
-    if (e.kind === "qtyDown") return t("cdItemQtyDown", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
-    if (e.kind === "qtyUp") return t("cdItemQtyUp", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
+    if (e.kind === "qtyDown") return t("cdItemQtyDown", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), about: e.approx ? t("cdAbout") : "", amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
+    if (e.kind === "qtyUp") return t("cdItemQtyUp", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), about: e.approx ? t("cdAbout") : "", amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
     if (e.kind === "legacyVoid") return t("cdItemLegacyVoid", { n: e.n, amount: money(e.amount), status: t(e.status === "cancelled" ? "cancelledBadge" : "refundedBadge").toLowerCase() });
     return t("cdItemLooseExpense", { what: e.what, amount: money(Math.abs(e.amount)) });
   };
