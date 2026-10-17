@@ -201,6 +201,24 @@ const STRINGS = {
     selectIngredient: "Select ingredient…",
     searchIngredient: "Search ingredient…",
     noIngredientMatches: "No ingredient matches that search.",
+    openingCountTitle: "Count the cash in the drawer",
+    openingCountSubtitle: "Before you start the shift, count every note and coin in the drawer and type the total. You can't start the shift without it.",
+    openingCountPlaceholder: "Total cash counted",
+    openingCountStart: "Start shift",
+    openingCountPrevious: "The last shift ({{name}}) counted {{amount}} at closing.",
+    closingCountTitle: "Count the cash in the drawer",
+    closingCountSubtitle: "Before you clock out, count every note and coin in the drawer and type the total. You can't clock out without it.",
+    closingCountConfirm: "Confirm count and clock out",
+    recapCashTitle: "Cash drawer",
+    handoverMismatch: "Opened with {{opening}}, but the last shift counted {{previous}} at closing",
+    shiftCashLine: "Opened {{opening}} · counted {{counted}} · expected {{expected}}",
+    returnMethodTitle: "Return the money to the customer by",
+    returnMethodSplit: "As paid (split)",
+    returnNothingToReturn: "This order is unpaid, so there is no money to return.",
+    returnedViaLabel: "Money returned: {{methods}}",
+    discountReasonPlaceholder: "Why is this discount given? (required)",
+    notice_discountReasonRequired: "Write the reason for the discount first",
+    discountReasonLabel: "Reason: {{reason}}",
     shiftAutoClosedBadge: "auto-closed",
     shiftAutoClosedHint: "This shift was never clocked out — it was closed automatically when the same person signed in again (or after 24 hours).",
     dayCheckTitle: "Day check — does it add up?",
@@ -330,7 +348,7 @@ const STRINGS = {
     cashSalesLabel: "Cash sales",
     unsettledDeliveryCashLabel: "Held by delivery riders (not yet settled)",
     unsettledDeliveryCashHint: "Already excluded from cash sales above — riders are still holding this cash until you settle up with them below.",
-    cashRefundsLabel: "Cash refunds",
+    cashRefundsLabel: "Cash returned to customers",
     cashExpensesLabel: "Cash expenses paid out",
     noCashExpensesThisShift: "No cash expenses logged this shift.",
     expectedCashLabel: "Expected cash in drawer",
@@ -922,6 +940,24 @@ const STRINGS = {
     selectIngredient: "اختر مكونًا…",
     searchIngredient: "ابحث عن مكوّن…",
     noIngredientMatches: "لا يوجد مكوّن مطابق للبحث.",
+    openingCountTitle: "عدّ النقدية في الدرج",
+    openingCountSubtitle: "قبل بدء الوردية، عدّ كل الأوراق والعملات في الدرج واكتب الإجمالي. لا يمكنك بدء الوردية بدون ذلك.",
+    openingCountPlaceholder: "إجمالي النقدية المعدودة",
+    openingCountStart: "ابدأ الوردية",
+    openingCountPrevious: "آخر وردية ({{name}}) عدّت {{amount}} عند الإغلاق.",
+    closingCountTitle: "عدّ النقدية في الدرج",
+    closingCountSubtitle: "قبل تسجيل الانصراف، عدّ كل الأوراق والعملات في الدرج واكتب الإجمالي. لا يمكنك تسجيل الانصراف بدون ذلك.",
+    closingCountConfirm: "تأكيد العد وتسجيل الانصراف",
+    recapCashTitle: "درج النقدية",
+    handoverMismatch: "بدأت بـ {{opening}} لكن آخر وردية عدّت {{previous}} عند الإغلاق",
+    shiftCashLine: "بدأت بـ {{opening}} · العد {{counted}} · المتوقع {{expected}}",
+    returnMethodTitle: "إرجاع المبلغ للعميل عن طريق",
+    returnMethodSplit: "كما دُفع (مقسّم)",
+    returnNothingToReturn: "هذا الطلب غير مدفوع، فلا يوجد مبلغ لإرجاعه.",
+    returnedViaLabel: "تم إرجاع المبلغ: {{methods}}",
+    discountReasonPlaceholder: "ما سبب هذا الخصم؟ (مطلوب)",
+    notice_discountReasonRequired: "اكتب سبب الخصم أولًا",
+    discountReasonLabel: "السبب: {{reason}}",
     shiftAutoClosedBadge: "أُغلقت تلقائيًا",
     shiftAutoClosedHint: "هذه الوردية لم يُسجَّل لها انصراف — أُغلقت تلقائيًا عندما سجّل نفس الشخص دخوله مرة أخرى (أو بعد 24 ساعة).",
     dayCheckTitle: "مراجعة اليوم — هل الأرقام متطابقة؟",
@@ -1051,7 +1087,7 @@ const STRINGS = {
     cashSalesLabel: "المبيعات النقدية",
     unsettledDeliveryCashLabel: "بحوزة عمال الدليفري (لم تتم تسويتها بعد)",
     unsettledDeliveryCashHint: "مستبعدة بالفعل من المبيعات النقدية أعلاه — لا تزال هذه النقدية بحوزة العمال حتى تتم التسوية معهم أدناه.",
-    cashRefundsLabel: "المسترجع نقدًا",
+    cashRefundsLabel: "نقدية أُعيدت للعملاء",
     cashExpensesLabel: "المصروفات المدفوعة نقدًا",
     noCashExpensesThisShift: "لا توجد مصروفات نقدية مسجّلة في هذه الوردية.",
     expectedCashLabel: "النقدية المتوقعة في الدرج",
@@ -1676,17 +1712,17 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
-- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the refund time is recorded) both ask for a confirmation before going through, since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match) and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
+- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match) and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
 - **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
-- **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. "Clock out" ends their shift and shows a recap. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
+- **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Shift numbers in this list are always worked out from the current orders (so an order edited or a pay-later bill that grew after clock-out is reflected) and show the payment-method split; a shift nobody clocked out of is closed automatically the next time that person signs in, and marked "auto-closed". Managers also get a "Day check" card: pick a business day and see every completed order grouped by the shift it was rung up in — plus a "Not in any logged shift" row for orders taken while the person had no shift in the log — adding up to exactly the Dashboard's revenue for that day. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
 - **Settings**: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
@@ -2243,7 +2279,7 @@ function POSPrototype({ tenantId }) {
   const [splitAmounts, setSplitAmounts] = useState({}); // {cash: "12.00", visa: "18.64", ...} — only used when paymentMethod === "split"
   const [discount, setDiscount] = useState(null);
   const [discountOpen, setDiscountOpen] = useState(false);
-  const [discountDraft, setDiscountDraft] = useState({ type: "percent", value: "" });
+  const [discountDraft, setDiscountDraft] = useState({ type: "percent", value: "", reason: "" });
   const [splitCount, setSplitCount] = useState(null); // null/1 = not split; any positive integer otherwise
   const [splitOpen, setSplitOpen] = useState(false);
   const [splitDraft, setSplitDraft] = useState("");
@@ -2353,6 +2389,11 @@ function POSPrototype({ tenantId }) {
   const [loginNewName, setLoginNewName] = useState("");
   const [loginNewPin, setLoginNewPin] = useState("");
   const [shiftRecap, setShiftRecap] = useState(null); // stats shown right after clocking out
+  const [pendingOpeningCount, setPendingOpeningCount] = useState(null); // employee about to start a shift, waiting for the opening cash count
+  const [openingCountDraft, setOpeningCountDraft] = useState("");
+  const [closingCountOpen, setClosingCountOpen] = useState(false);
+  const [closingCountDraft, setClosingCountDraft] = useState("");
+  const [returnDialog, setReturnDialog] = useState(null); // { receipt, action: "cancel" | "refund", method } — which way the money goes back to the customer
   const [confirmDialog, setConfirmDialog] = useState(null); // { message, onConfirm } | null — replaces window.confirm, which this preview's sandbox silently blocks
   const [helpChatOpen, setHelpChatOpen] = useState(false);
   const [helpChatMessages, setHelpChatMessages] = useState([]); // [{ role: "user"|"assistant", content: string }]
@@ -4480,12 +4521,17 @@ function POSPrototype({ tenantId }) {
       flashNotice(t("notice_enterDiscountValue"));
       return;
     }
-    setDiscount({ type: discountDraft.type, value: v });
+    const reason = (discountDraft.reason || "").trim();
+    if (reason.length < 3) {
+      flashNotice(t("notice_discountReasonRequired"));
+      return;
+    }
+    setDiscount({ type: discountDraft.type, value: v, reason });
     setDiscountOpen(false);
   };
   const removeDiscount = () => {
     setDiscount(null);
-    setDiscountDraft({ type: "percent", value: "" });
+    setDiscountDraft({ type: "percent", value: "", reason: "" });
     setDiscountOpen(false);
   };
 
@@ -4510,6 +4556,14 @@ function POSPrototype({ tenantId }) {
     // unsure their first tap registered, would otherwise re-run this on the same still-populated
     // cart and save the same order twice.
     if (cart.length === 0 || savingOrder) return;
+    // A discount already sitting on a ticket (e.g. one started before reasons were required) can't be
+    // saved without its reason.
+    if (discount && !(discount.reason || "").trim()) {
+      flashNotice(t("notice_discountReasonRequired"));
+      setDiscountDraft({ type: discount.type, value: String(discount.value), reason: "" });
+      setDiscountOpen(true);
+      return;
+    }
     setSavingOrder(true);
     const finalTicketNo = ensureTicketNo();
 
@@ -5235,28 +5289,37 @@ function POSPrototype({ tenantId }) {
   };
 
 
-  const cancelReceipt = (r) => {
+  // Cancelling or refunding asks HOW the money went back to the customer, defaulting to however
+  // the order was paid. That choice is saved on the receipt (returnedAmounts) so the cash
+  // reconciliation can take cash out of the drawer only when cash was actually handed back — an
+  // InstaPay order refunded in cash empties the drawer even though it never filled it.
+  const openReturnDialog = (r, action) => {
     if (r.status !== "completed") return;
-    setConfirmDialog({
-      message: t("confirm_cancelOrder", { n: r.ticketNo }),
-      onConfirm: () => {
-        r.items.forEach((it) => (it.recipeSnapshot || []).forEach((rec) => updateIngredientStock(rec.ingredientId, rec.qty * it.qty)));
-        updateReceiptInStorage(r, (x) => ({ ...x, status: "cancelled" }));
-        flashNotice(t("notice_orderCancelled", { n: r.ticketNo }));
-      },
-    });
+    const isSplit = r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0;
+    setReturnDialog({ receipt: r, action, method: isSplit ? "same" : r.paymentMethod || "cash" });
   };
-  const refundReceipt = (r) => {
-    if (r.status !== "completed") return;
-    setConfirmDialog({
-      message: t("confirm_refundOrder", { n: r.ticketNo }),
-      onConfirm: () => {
-        const refundedAt = new Date().toISOString();
-        const refundedBy = currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null;
-        updateReceiptInStorage(r, (x) => ({ ...x, status: "refunded", refundedAt, refundedBy }));
-        flashNotice(t("notice_orderRefunded", { n: r.ticketNo }));
-      },
-    });
+  const cancelReceipt = (r) => openReturnDialog(r, "cancel");
+  const refundReceipt = (r) => openReturnDialog(r, "refund");
+  const confirmReturnDialog = () => {
+    if (!returnDialog) return;
+    const { receipt: r, action, method } = returnDialog;
+    const wasPaid = r.paid !== false;
+    const returnedAmounts = !wasPaid
+      ? []
+      : method === "same"
+      ? receiptMethodAmounts(r).map((a) => ({ method: a.method, amount: a.amount }))
+      : [{ method, amount: r.total }];
+    const at = new Date().toISOString();
+    const by = currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null;
+    setReturnDialog(null);
+    if (action === "cancel") {
+      r.items.forEach((it) => (it.recipeSnapshot || []).forEach((rec) => updateIngredientStock(rec.ingredientId, rec.qty * it.qty)));
+      updateReceiptInStorage(r, (x) => ({ ...x, status: "cancelled", cancelledAt: at, cancelledBy: by, returnedAmounts }));
+      flashNotice(t("notice_orderCancelled", { n: r.ticketNo }));
+    } else {
+      updateReceiptInStorage(r, (x) => ({ ...x, status: "refunded", refundedAt: at, refundedBy: by, returnedAmounts }));
+      flashNotice(t("notice_orderRefunded", { n: r.ticketNo }));
+    }
   };
 
   // Sends the status-update WhatsApp message and logs it on the receipt.
@@ -5571,8 +5634,27 @@ function POSPrototype({ tenantId }) {
   // settled — until then it hasn't reached the drawer, so it doesn't belong in what the drawer
   // is expected to hold. The "by payment method" breakdown above still counts it as cash revenue
   // (it genuinely was paid in cash), only this drawer-facing total excludes it until settled.
-  const shiftCashSalesTotal = paymentsCollectedThisShift
-    .filter((r) => !(r.tableId === "delivery" && !r.deliverySettled))
+  //
+  // Money received and money handed back, per method, for the drawer / statement checks:
+  //  - Received: every paid order collected this shift — completed ones, plus cancelled/refunded
+  //    ones that carry a return time (the money DID come in when they were paid).
+  //  - Handed back: those same cancelled/refunded orders, by the method they were actually returned
+  //    in (returnedAmounts, defaulting to how they were paid) at the moment they were returned.
+  // So a sale paid and returned within one shift nets to zero; one paid in an earlier shift and
+  // returned now takes cash out of THIS drawer; and an InstaPay order handed back in cash empties
+  // the drawer even though it never filled it. Cancelled/refunded orders from before return times
+  // were recorded carry none of this and, as before, count as if they never happened.
+  const returnTimeOf = (r) => (r.status === "cancelled" ? r.cancelledAt : r.status === "refunded" ? r.refundedAt : null);
+  const returnAmountsOf = (r) => r.returnedAmounts || (r.paid === false ? [] : receiptMethodAmounts(r));
+  const notHeldByRider = (r) => !(r.tableId === "delivery" && !r.deliverySettled);
+  const reconCollected = shiftStart
+    ? monthReceiptsForShift.filter((r) => r.paid !== false && (r.status === "completed" || returnTimeOf(r)) && (r.paidAt || r.timestamp) >= shiftStart)
+    : [];
+  const returnsThisShift = shiftStart
+    ? monthReceiptsForShift.filter((r) => returnTimeOf(r) && returnTimeOf(r) >= shiftStart && r.paid !== false)
+    : [];
+  const shiftCashSalesTotal = reconCollected
+    .filter(notHeldByRider)
     .flatMap(receiptMethodAmounts)
     .filter((a) => a.method === "cash")
     .reduce((s, a) => s + a.amount, 0);
@@ -5592,18 +5674,9 @@ function POSPrototype({ tenantId }) {
   // shiftCashSalesTotal above) — the rider is still holding it, so refunding it doesn't remove
   // anything from the drawer either. Without this exclusion, refunding one of these swung the
   // drawer negative by subtracting cash that was never added.
-  //
-  // And only a refund of money collected BEFORE this shift (so it's in an earlier drawer count) takes
-  // cash out of this drawer. A sale that was collected and refunded within this same shift never
-  // counted as a sale here (a refunded order isn't "completed"), so subtracting its refund as well
-  // came out short by that amount every time. Needs refundedAt, which is recorded from now on;
-  // older refunds carry none, so they're treated as same-shift and subtract nothing.
-  const shiftRefundsPaidOutThisShift = shiftStart
-    ? monthReceiptsForShift.filter((r) => r.status === "refunded" && r.refundedAt && r.refundedAt >= shiftStart && r.paid !== false && (r.paidAt || r.timestamp) < shiftStart)
-    : [];
-  const shiftCashRefundsTotal = shiftRefundsPaidOutThisShift
-    .filter((r) => !(r.tableId === "delivery" && !r.deliverySettled))
-    .flatMap(receiptMethodAmounts)
+  const shiftCashRefundsTotal = returnsThisShift
+    .filter(notHeldByRider)
+    .flatMap(returnAmountsOf)
     .filter((a) => a.method === "cash")
     .reduce((s, a) => s + a.amount, 0);
   const shiftDiscountedOrders = shiftCompleted.filter((r) => (r.discountAmount || 0) > 0);
@@ -5616,7 +5689,10 @@ function POSPrototype({ tenantId }) {
     ? Object.values(expensesByMonth).flat().filter((e) => e.status === "paid" && e.paymentMethod === "cash" && e.date >= shiftStartDateStr)
     : [];
   const shiftCashExpensesTotal = shiftCashExpenses.reduce((s, e) => s + e.amount, 0);
-  const openingFloatNum = Number(openingFloat) || 0;
+  const myOpenShiftEntry = currentEmployee ? openShifts[currentEmployee.id] : null;
+  const openingCountedThisShift = !!(myOpenShiftEntry && myOpenShiftEntry.clockIn === shiftStart && myOpenShiftEntry.openingCash !== undefined);
+  // For a shift that started with the mandatory count, the counted figure IS the opening cash.
+  const openingFloatNum = openingCountedThisShift ? myOpenShiftEntry.openingCash : Number(openingFloat) || 0;
   const expectedCash = openingFloatNum + shiftCashSalesTotal - shiftCashRefundsTotal - shiftCashExpensesTotal;
   const countedCashNum = countedCash === "" ? null : Number(countedCash) || 0;
   const cashVariance = countedCashNum === null ? null : Math.round((countedCashNum - expectedCash) * 100) / 100;
@@ -5626,8 +5702,8 @@ function POSPrototype({ tenantId }) {
   // method (sales minus refunds) — same idea as the cash count above, just no opening float, since
   // an electronic balance doesn't carry a physical float over from one shift to the next.
   const shiftElectronicMethods = PAYMENT_METHODS.filter((m) => m.id !== "cash").map((m) => {
-    const sales = shiftByMethod.find((x) => x.id === m.id)?.total || 0;
-    const refunds = shiftRefundsPaidOutThisShift.flatMap(receiptMethodAmounts).filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0);
+    const sales = reconCollected.flatMap(receiptMethodAmounts).filter((a) => a.method === m.id).reduce((sum, a) => sum + a.amount, 0);
+    const refunds = returnsThisShift.flatMap(returnAmountsOf).filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0);
     const expected = Math.round((sales - refunds) * 100) / 100;
     const confirmedRaw = confirmedElectronic[m.id];
     const confirmedNum = confirmedRaw === undefined || confirmedRaw === "" ? null : Number(confirmedRaw) || 0;
@@ -5899,12 +5975,13 @@ function POSPrototype({ tenantId }) {
       autoClosed: true,
     });
   };
-  const doClockIn = async (emp) => {
+  const doClockIn = async (emp, openingCash = 0) => {
     const now = new Date().toISOString();
+    const lastCounted = [...shiftLog].filter((e) => typeof e.countedCash === "number").sort((a, b) => b.clockOut.localeCompare(a.clockOut))[0] || null;
     setCurrentEmployee({ id: emp.id, name: emp.name });
     setViewingOnly(false);
     setShiftStart(now);
-    setOpeningFloat("0");
+    setOpeningFloat(String(openingCash));
     setCountedCash("");
     setConfirmedElectronic({});
     setLoginSelectedId(null);
@@ -5919,7 +5996,7 @@ function POSPrototype({ tenantId }) {
     // enough to just queue quietly rather than block the person from getting to work.
     syncSet("current-employee", JSON.stringify({ id: emp.id, name: emp.name }), false, t("syncLabelSettings"));
     syncSet("shift-start", now, false, t("syncLabelSettings"));
-    syncSet("opening-float", "0", false, t("syncLabelSettings"));
+    syncSet("opening-float", String(openingCash), false, t("syncLabelSettings"));
     storage.delete("viewing-only", false).catch(() => {});
     // Register this shift in the shared open-shifts registry so any device viewing the system
     // (see viewingOnly) sees it live — also prunes any entry left behind by a device that closed
@@ -5943,7 +6020,17 @@ function POSPrototype({ tenantId }) {
           }
         }
         const pruned = Object.fromEntries(Object.entries(current).filter(([, s]) => new Date(s.clockIn).getTime() > cutoff));
-        const next = { ...pruned, [emp.id]: { employeeId: emp.id, employeeName: emp.name, clockIn: now } };
+        const next = {
+          ...pruned,
+          [emp.id]: {
+            employeeId: emp.id,
+            employeeName: emp.name,
+            clockIn: now,
+            openingCash,
+            previousCount: lastCounted ? lastCounted.countedCash : null,
+            previousCountedBy: lastCounted ? lastCounted.employeeName : null,
+          },
+        };
         setOpenShifts(next);
         await syncSet("open-shifts", JSON.stringify(next), true, t("syncLabelSettings"));
       } catch (e) {
@@ -5982,6 +6069,23 @@ function POSPrototype({ tenantId }) {
     setOpeningFloat(value);
     syncSet("opening-float", value, false, t("syncLabelSettings"));
   };
+  // Every shift starts with a counted drawer: nobody gets to clock in until they have typed in what
+  // is physically there. (A manager choosing "just view" never reaches this — no shift, no drawer.)
+  const startOpeningCount = (emp) => {
+    setPendingManagerLogin(null);
+    setLoginSelectedId(null);
+    setLoginPin("");
+    setPendingOpeningCount(emp);
+    setOpeningCountDraft("");
+  };
+  const confirmOpeningCount = () => {
+    const n = parseFloat(openingCountDraft);
+    if (!pendingOpeningCount || openingCountDraft.trim() === "" || !Number.isFinite(n) || n < 0) return;
+    const emp = pendingOpeningCount;
+    setPendingOpeningCount(null);
+    setOpeningCountDraft("");
+    doClockIn(emp, Math.round(n * 100) / 100);
+  };
   const attemptLogin = () => {
     const emp = employees.find((e) => e.id === loginSelectedId);
     if (!emp) return;
@@ -5997,7 +6101,7 @@ function POSPrototype({ tenantId }) {
       setLoginSelectedId(null);
       setLoginPin("");
     } else {
-      doClockIn(emp);
+      startOpeningCount(emp);
     }
   };
   const addEmployeeFromLogin = async () => {
@@ -6021,35 +6125,66 @@ function POSPrototype({ tenantId }) {
     const isFirstEver = employees.length === 0;
     const emp = { id: `emp_${Date.now()}`, name, pin: loginNewPin, role: isFirstEver ? "manager" : "staff" };
     await persistEmployees([...employees, emp]);
-    doClockIn(emp);
+    startOpeningCount(emp);
   };
   const clockOut = () => {
     // While the recap is on screen the shift has already been logged — pressing Clock out again
     // used to log the same shift a second time.
     if (!currentEmployee || shiftRecap) return;
-    setConfirmDialog({
-      message: t("confirm_clockOut"),
-      onConfirm: () => {
-        const clockOutTime = new Date().toISOString();
-        const hoursMs = shiftStart ? new Date(clockOutTime) - new Date(shiftStart) : 0;
-        const top = myTopSeller();
-        setShiftRecap({ name: currentEmployee.name, orders: myShiftCompleted.length, revenue: myShiftRevenue, avg: myShiftAvgOrder, hoursMs, topSeller: top });
-        appendShiftLogEntry({ id: `shift_${Date.now()}`, employeeId: currentEmployee.id, employeeName: currentEmployee.name, clockIn: shiftStart, clockOut: clockOutTime, orders: myShiftCompleted.length, revenue: myShiftRevenue });
-        // This shift is ending — it's captured in shiftLog above now, so drop it from the "open
-        // right now" registry.
-        (async () => {
-          try {
-            const latest = await storage.get("open-shifts", true);
-            const current = latest?.value ? JSON.parse(latest.value) : {};
-            const { [currentEmployee.id]: _removed, ...rest } = current;
-            setOpenShifts(rest);
-            await syncSet("open-shifts", JSON.stringify(rest), true, t("syncLabelSettings"));
-          } catch (e) {
-            // non-fatal — a stale entry here just self-prunes on the next clock-in's cutoff sweep
-          }
-        })();
-      },
+    setClosingCountDraft("");
+    setClosingCountOpen(true);
+  };
+  // Runs once the closing count has been typed in — the only way a shift gets closed. Saves the
+  // opening cash, what the app expected, what was counted and the difference with the shift.
+  const performClockOut = (counted) => {
+    if (!currentEmployee || shiftRecap) return;
+    setClosingCountOpen(false);
+    const clockOutTime = new Date().toISOString();
+    const hoursMs = shiftStart ? new Date(clockOutTime) - new Date(shiftStart) : 0;
+    const top = myTopSeller();
+    const expected = Math.round(expectedCash * 100) / 100;
+    const variance = Math.round((counted - expected) * 100) / 100;
+    const openEntry = openShifts[currentEmployee.id];
+    const openingCounted = !!(openEntry && openEntry.clockIn === shiftStart && openEntry.openingCash !== undefined);
+    const previousCount = openingCounted && typeof openEntry.previousCount === "number" ? openEntry.previousCount : null;
+    setCountedCash(String(counted));
+    setShiftRecap({
+      name: currentEmployee.name,
+      orders: myShiftCompleted.length,
+      revenue: myShiftRevenue,
+      avg: myShiftAvgOrder,
+      hoursMs,
+      topSeller: top,
+      cash: { opening: openingFloatNum, counted, expected, variance, previousCount },
     });
+    appendShiftLogEntry({
+      id: `shift_${Date.now()}`,
+      employeeId: currentEmployee.id,
+      employeeName: currentEmployee.name,
+      clockIn: shiftStart,
+      clockOut: clockOutTime,
+      orders: myShiftCompleted.length,
+      revenue: myShiftRevenue,
+      openingCash: openingFloatNum,
+      openingCounted,
+      previousCount,
+      countedCash: counted,
+      expectedCash: expected,
+      cashVariance: variance,
+    });
+    // This shift is ending — it's captured in shiftLog above now, so drop it from the "open
+    // right now" registry.
+    (async () => {
+      try {
+        const latest = await storage.get("open-shifts", true);
+        const current = latest?.value ? JSON.parse(latest.value) : {};
+        const { [currentEmployee.id]: _removed, ...rest } = current;
+        setOpenShifts(rest);
+        await syncSet("open-shifts", JSON.stringify(rest), true, t("syncLabelSettings"));
+      } catch (e) {
+        // non-fatal — a stale entry here just self-prunes on the next clock-in's cutoff sweep
+      }
+    })();
   };
   const finishClockOut = async () => {
     setShiftRecap(null);
@@ -6776,12 +6911,39 @@ function POSPrototype({ tenantId }) {
               <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 18, lineHeight: 1.5 }}>{t("rosterLoadFailedHint")}</div>
               <button onClick={retryRosterLoad} style={{ padding: "10px 20px", borderRadius: 8, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("retrySync")}</button>
             </div>
-          ) : pendingManagerLogin ? (
+          ) : pendingOpeningCount ? (() => {
+            const n = parseFloat(openingCountDraft);
+            const valid = openingCountDraft.trim() !== "" && Number.isFinite(n) && n >= 0;
+            const last = [...shiftLog].filter((e) => typeof e.countedCash === "number").sort((a, b) => b.clockOut.localeCompare(a.clockOut))[0];
+            return (
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{t("openingCountTitle")}</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 14, lineHeight: 1.5 }}>{pendingOpeningCount.name} &middot; {t("openingCountSubtitle")}</div>
+                {last && <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginBottom: 12 }}>{t("openingCountPrevious", { name: last.employeeName, amount: money(last.countedCash) })}</div>}
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="any"
+                  autoFocus
+                  value={openingCountDraft}
+                  onChange={(e) => setOpeningCountDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") confirmOpeningCount(); }}
+                  placeholder={t("openingCountPlaceholder")}
+                  style={{ width: "100%", boxSizing: "border-box", textAlign: "center", fontSize: 22, fontFamily: "IBM Plex Mono, monospace", padding: "12px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "#FFFFFF", color: "#111111", marginBottom: 14 }}
+                />
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <button disabled={!valid} onClick={confirmOpeningCount} style={{ padding: "13px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>{t("openingCountStart")}</button>
+                  <button onClick={() => setPendingOpeningCount(null)} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("loginBackToNames")}</button>
+                </div>
+              </div>
+            );
+          })() : pendingManagerLogin ? (
             <div style={{ textAlign: "center" }}>
               <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{t("loginModeChoiceTitle", { name: pendingManagerLogin.name })}</div>
               <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 22, lineHeight: 1.5 }}>{t("loginModeChoiceSubtitle")}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <button onClick={() => doClockIn(pendingManagerLogin)} style={{ padding: "13px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("loginClockInOption")}</button>
+                <button onClick={() => startOpeningCount(pendingManagerLogin)} style={{ padding: "13px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("loginClockInOption")}</button>
                 <button onClick={() => viewWithoutClockIn(pendingManagerLogin)} style={{ padding: "13px 0", borderRadius: 8, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("loginViewOnlyOption")}</button>
                 <button onClick={() => setPendingManagerLogin(null)} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("loginBackToNames")}</button>
               </div>
@@ -7225,21 +7387,25 @@ function POSPrototype({ tenantId }) {
                     <button onClick={() => setDiscountOpen(true)} style={{ fontSize: 11.5, color: theme.primary, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>{t("addDiscount")}</button>
                   )}
                   {discountOpen && (
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", fontFamily: "Inter, sans-serif" }}>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", fontFamily: "Inter, sans-serif" }}>
                       <select value={discountDraft.type} onChange={(e) => setDiscountDraft((d) => ({ ...d, type: e.target.value }))} style={{ fontSize: 11.5, border: `1px solid ${COLORS.line}`, borderRadius: 5, padding: "4px 4px", background: "transparent" }}>
                         <option value="percent">%</option>
                         <option value="fixed">$</option>
                       </select>
                       <input type="number" value={discountDraft.value} onChange={(e) => setDiscountDraft((d) => ({ ...d, value: e.target.value }))} placeholder="0" style={{ width: 54, fontSize: 11.5, border: `1px solid ${COLORS.line}`, borderRadius: 5, padding: "4px 6px", background: "transparent" }} />
+                      <input type="text" value={discountDraft.reason || ""} onChange={(e) => setDiscountDraft((d) => ({ ...d, reason: e.target.value }))} placeholder={t("discountReasonPlaceholder")} maxLength={120} style={{ flexBasis: "100%", fontSize: 11.5, border: `1px solid ${COLORS.line}`, borderRadius: 5, padding: "5px 7px", background: "transparent" }} />
                       <button onClick={applyDiscount} style={{ fontSize: 11, background: theme.primary, color: "#FBF8F2", border: "none", borderRadius: 5, padding: "5px 9px", cursor: "pointer" }}>{t("apply")}</button>
                       <button onClick={() => setDiscountOpen(false)} style={{ fontSize: 11, background: "none", color: COLORS.charcoalSoft, border: "none", cursor: "pointer" }}>{t("cancel")}</button>
                     </div>
                   )}
                   {discount && !discountOpen && (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Inter, sans-serif" }}>
-                      <span style={{ fontSize: 12 }}>{t("discountLabel", { value: discount.type === "percent" ? `${discount.value}%` : money(Number(discount.value)) })}</span>
+                      <span style={{ fontSize: 12 }}>
+                        {t("discountLabel", { value: discount.type === "percent" ? `${discount.value}%` : money(Number(discount.value)) })}
+                        {discount.reason && <span style={{ display: "block", fontSize: 10.5, color: COLORS.charcoalSoft, marginTop: 2 }}>{t("discountReasonLabel", { reason: discount.reason })}</span>}
+                      </span>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => setDiscountOpen(true)} style={{ fontSize: 11, color: COLORS.charcoalSoft, background: "none", border: "none", cursor: "pointer" }}>{t("edit")}</button>
+                        <button onClick={() => { setDiscountDraft({ type: discount.type, value: String(discount.value), reason: discount.reason || "" }); setDiscountOpen(true); }} style={{ fontSize: 11, color: COLORS.charcoalSoft, background: "none", border: "none", cursor: "pointer" }}>{t("edit")}</button>
                         <button onClick={removeDiscount} style={{ fontSize: 11, color: COLORS.red, background: "none", border: "none", cursor: "pointer" }}>{t("remove")}</button>
                       </div>
                     </div>
@@ -8015,6 +8181,12 @@ function POSPrototype({ tenantId }) {
                         {r.splitCount > 1 && (
                           <div style={{ fontSize: 11, color: theme.secondaryLight, marginBottom: 6 }}>{t("splitLabel", { n: r.splitCount })} &middot; {t("eachPays", { amount: money(r.total / r.splitCount) })}</div>
                         )}
+                        {r.discount?.reason && (
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("discountReasonLabel", { reason: r.discount.reason })}</div>
+                        )}
+                        {voided && Array.isArray(r.returnedAmounts) && r.returnedAmounts.length > 0 && (
+                          <div style={{ fontSize: 11, color: "#E3C98A", marginBottom: 6 }}>{t("returnedViaLabel", { methods: r.returnedAmounts.map((a) => `${t(`payment_${a.method}`)} ${money(a.amount)}`).join(" + ") })}</div>
+                        )}
                         {r.paymentMethod === "split" && Array.isArray(r.splitPayments) && (
                           <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>
                             {r.splitPayments.map((sp, i) => (
@@ -8756,6 +8928,8 @@ function POSPrototype({ tenantId }) {
                       type="number"
                       value={openingFloat}
                       onChange={(e) => updateOpeningFloat(e.target.value)}
+                      disabled={openingCountedThisShift}
+                      title={openingCountedThisShift ? t("openingFloatHint") : undefined}
                       className="field"
                       style={{ width: 100, textAlign: "right", fontFamily: "IBM Plex Mono, monospace" }}
                     />
@@ -9643,6 +9817,16 @@ function POSPrototype({ tenantId }) {
                   <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: isRtl ? "left" : "right" }}>
                     <div>{t("shiftHistoryLine", { orders: shownOrders, revenue: money(shownRevenue), hours: formatDuration(new Date(s.clockOut) - new Date(s.clockIn)) })}</div>
                     {split && <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 2 }}>{split}</div>}
+                    {typeof s.countedCash === "number" && (
+                      <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 2 }}>
+                        {t("shiftCashLine", { opening: money(s.openingCash || 0), counted: money(s.countedCash), expected: money(s.expectedCash || 0) })}
+                        {" · "}
+                        <span style={{ color: s.cashVariance === 0 ? "#9FCB8E" : "#E3A79C", fontWeight: 600 }}>{s.cashVariance === 0 ? t("varianceMatch") : `${s.cashVariance > 0 ? "+" : ""}${money(s.cashVariance)}`}</span>
+                      </div>
+                    )}
+                    {typeof s.previousCount === "number" && s.previousCount !== s.openingCash && (
+                      <div style={{ fontSize: 10.5, color: "#E3C98A", marginTop: 2 }}>{t("handoverMismatch", { opening: money(s.openingCash || 0), previous: money(s.previousCount) })}</div>
+                    )}
                   </div>
                 </button>
                 );
@@ -9771,6 +9955,21 @@ function POSPrototype({ tenantId }) {
                 <div style={{ fontSize: 22, fontFamily: "IBM Plex Mono, monospace" }}>{money(shiftRecap.revenue)}</div>
               </div>
             </div>
+            {shiftRecap.cash && (
+              <div style={{ textAlign: "left", fontSize: 12.5, padding: "10px 2px", borderTop: "1px dashed #D8D0BE", marginBottom: 6 }}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("recapCashTitle")}</div>
+                {[["openingFloatLabel", shiftRecap.cash.opening], ["expectedCashLabel", shiftRecap.cash.expected], ["countedCashLabel", shiftRecap.cash.counted]].map(([k, v]) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}><span style={{ color: COLORS.charcoalSoft }}>{t(k)}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(v)}</span></div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: shiftRecap.cash.variance === 0 ? "#4E7A47" : "#A6534A" }}>
+                  <span>{t("varianceLabel")}</span>
+                  <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{shiftRecap.cash.variance === 0 ? t("varianceMatch") : `${shiftRecap.cash.variance > 0 ? "+" : ""}${money(shiftRecap.cash.variance)} (${shiftRecap.cash.variance > 0 ? t("varianceOver") : t("varianceShort")})`}</span>
+                </div>
+                {shiftRecap.cash.previousCount !== null && shiftRecap.cash.previousCount !== shiftRecap.cash.opening && (
+                  <div style={{ marginTop: 6, fontSize: 11.5, color: "#A6534A" }}>{t("handoverMismatch", { opening: money(shiftRecap.cash.opening), previous: money(shiftRecap.cash.previousCount) })}</div>
+                )}
+              </div>
+            )}
             {shiftRecap.orders > 0 ? (
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "8px 2px", borderTop: "1px dashed #D8D0BE" }}>
@@ -9802,6 +10001,76 @@ function POSPrototype({ tenantId }) {
           </div>
         </div>
       )}
+
+      {returnDialog && (() => {
+        const r = returnDialog.receipt;
+        const wasPaid = r.paid !== false;
+        const isSplit = r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0;
+        const options = [
+          ...(isSplit ? [{ id: "same", label: `${t("returnMethodSplit")}: ${r.splitPayments.map((sp) => `${t(`payment_${sp.method}`)} ${money(sp.amount)}`).join(" + ")}` }] : []),
+          ...PAYMENT_METHODS.map((m) => ({ id: m.id, label: t(`payment_${m.id}`) })),
+        ];
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setReturnDialog(null)}>
+            <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 24, width: "100%", maxWidth: 360 }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontSize: 14, lineHeight: 1.5, marginBottom: 14, textAlign: "center" }}>
+                {t(returnDialog.action === "cancel" ? "confirm_cancelOrder" : "confirm_refundOrder", { n: r.ticketNo })}
+              </div>
+              {wasPaid ? (
+                <>
+                  <div style={{ fontSize: 11.5, color: COLORS.charcoalSoft, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("returnMethodTitle")} &middot; {money(r.total)}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
+                    {options.map((o) => (
+                      <button
+                        key={o.id}
+                        onClick={() => setReturnDialog((d) => ({ ...d, method: o.id }))}
+                        style={{ padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${returnDialog.method === o.id ? theme.primary : "#C9C2B2"}`, background: returnDialog.method === o.id ? "rgba(176,141,87,0.18)" : "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: returnDialog.method === o.id ? 600 : 400, cursor: "pointer", textAlign: isRtl ? "right" : "left" }}
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 18, textAlign: "center" }}>{t("returnNothingToReturn")}</div>
+              )}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setReturnDialog(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("cancel")}</button>
+                <button onClick={confirmReturnDialog} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("confirmAction")}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {closingCountOpen && (() => {
+        const n = parseFloat(closingCountDraft);
+        const valid = closingCountDraft.trim() !== "" && Number.isFinite(n) && n >= 0;
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }}>
+            <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 24, width: "100%", maxWidth: 360, textAlign: "center" }}>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 600, marginBottom: 6 }}>{t("closingCountTitle")}</div>
+              <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 16, lineHeight: 1.5 }}>{t("closingCountSubtitle")}</div>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="any"
+                autoFocus
+                value={closingCountDraft}
+                onChange={(e) => setClosingCountDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && valid) performClockOut(Math.round(n * 100) / 100); }}
+                placeholder={t("openingCountPlaceholder")}
+                style={{ width: "100%", boxSizing: "border-box", textAlign: "center", fontSize: 20, fontFamily: "IBM Plex Mono, monospace", padding: "12px 10px", borderRadius: 8, border: "1px solid #C9C2B2", background: "#FFFFFF", color: "#111111", marginBottom: 16 }}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setClosingCountOpen(false)} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, cursor: "pointer" }}>{t("cancel")}</button>
+                <button disabled={!valid} onClick={() => performClockOut(Math.round(n * 100) / 100)} style={{ flex: 2, padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: valid ? "pointer" : "not-allowed", opacity: valid ? 1 : 0.5 }}>{t("closingCountConfirm")}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {confirmDialog && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setConfirmDialog(null)}>
