@@ -22,10 +22,10 @@ const FONTS = `
   --bg: #20242B;
   --surface: #2B303A;
   --text-primary: #FBF8F2;
-  --text-muted: var(--text-muted);
-  --text-faint: var(--text-faint);
-  --border: var(--border);
-  --track: var(--track);
+  --text-muted: #9CA1AC;
+  --text-faint: #8A8F99;
+  --border: #3A404C;
+  --track: #2E3440;
   --success-text: #9FCB8E;
   --warning-text: #E3C98A;
   --danger-text: #E3A79C;
