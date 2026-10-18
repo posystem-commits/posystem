@@ -6,6 +6,10 @@ import { requireActiveTenant } from "@/lib/requireActiveTenant";
 // default fetch caching — reads must always reflect the latest write.
 export const dynamic = "force-dynamic";
 
+// The restaurant's short web address must stay unique across restaurants, so it can only be set
+// through the site-slug route, which checks for clashes.
+const PROTECTED_KEYS = new Set(["site-slug"]);
+
 // Mirrors window.storage.get(key) — see lib/tenantStorage.js for the client shim that calls this.
 export async function GET(req, { params }) {
   const gate = await requireActiveTenant(params.tenantId);
@@ -24,6 +28,7 @@ export async function GET(req, { params }) {
 
 // Mirrors window.storage.set(key, value) — upserts the row for this tenant+key.
 export async function PUT(req, { params }) {
+  if (PROTECTED_KEYS.has(params.key)) return NextResponse.json({ error: "Use the dedicated route" }, { status: 403 });
   const gate = await requireActiveTenant(params.tenantId);
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: 403 });
 
@@ -42,6 +47,7 @@ export async function PUT(req, { params }) {
 
 // Mirrors window.storage.delete(key).
 export async function DELETE(req, { params }) {
+  if (PROTECTED_KEYS.has(params.key)) return NextResponse.json({ error: "Use the dedicated route" }, { status: 403 });
   const gate = await requireActiveTenant(params.tenantId);
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: 403 });
 

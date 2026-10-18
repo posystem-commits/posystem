@@ -2,6 +2,10 @@
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createTenantStorage } from "@/lib/tenantStorage";
+import SiteView from "@/src/site/SiteView";
+import WebsiteSettingsPanel from "@/src/site/WebsiteSettings";
+import { mergeSiteSettings, ITEM_BADGES } from "@/src/site/presets";
+import { makeSiteT } from "@/src/site/siteStrings";
 
 const FONTS = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
@@ -202,6 +206,7 @@ const STRINGS = {
     searchIngredient: "Search ingredient…",
     noIngredientMatches: "No ingredient matches that search.",
     tab_closeday: "Close the day",
+    tab_website: "Website",
     closeDayTitle: "Close the day",
     closeDayHint: "Everything about one business day in one place: how it went, the cash drawer shift by shift, and why any gap happened. Open to everyone.",
     closeDaySalesTitle: "How the day went",
@@ -1020,6 +1025,7 @@ const STRINGS = {
     searchIngredient: "ابحث عن مكوّن…",
     noIngredientMatches: "لا يوجد مكوّن مطابق للبحث.",
     tab_closeday: "إغلاق اليوم",
+    tab_website: "الموقع",
     closeDayTitle: "إغلاق اليوم",
     closeDayHint: "كل شيء عن يوم عمل واحد في مكان واحد: كيف سار اليوم، ودرج النقدية وردية بوردية، وسبب أي فرق. متاح للجميع.",
     closeDaySalesTitle: "كيف سار اليوم",
@@ -1844,7 +1850,7 @@ const buildHelpSystemPrompt = (restaurantName, lang) => {
   // that might use slightly different (if reasonable) Arabic wording than the real interface.
   const glossaryKeys = [
     "tab_order", "tab_menu", "tab_stock", "tab_tables", "tab_delivery", "tab_receipts", "tab_expenses", "tab_dashboard",
-    "tab_customers", "tab_shift", "tab_closeday", "tab_staff", "tab_settings",
+    "tab_customers", "tab_shift", "tab_closeday", "tab_website", "tab_staff", "tab_settings",
     "addDiscount", "splitBill", "saveOrder", "printReceipt", "download", "clockOut", "clockIn",
     "qrCode", "addCategory", "addItem", "addEmployee", "editPin", "restockBulk", "paymentMethodEditLabel",
     "confirmOrder", "rejectOrder", "openTicket", "cancelOrder", "refundOrder",
@@ -1876,6 +1882,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
+- **Website** (manager-only; comes with the Online ordering link feature): turns the online-ordering link into a branded website for the restaurant. A manager picks one of five looks (Classic, Modern, Dark, Bold, Minimal — each sets fonts, shapes and layout together), can override the button and highlight colors (otherwise the brand colors from Settings are used), uploads a cover photo and up to 6 gallery photos, writes a tagline and an "About us" text in English and Arabic, adds an announcement banner, address and social links (Instagram, Facebook, TikTok, WhatsApp, website), chooses which sections show (About, Popular items row, Gallery, Opening hours — the hours and the "Open now / Closed" badge come from Settings → Shift hours) and chooses the language the page opens in. A live phone preview sits next to the controls (a "Preview" button on phones). Everything saves automatically, but customers keep seeing the original ordering page until the "Published" switch is turned on, and it can be switched off again at any time. The tab also lets the manager claim a short web address (for example /r/my-restaurant) to share on social media or print on menus; the original long link keeps working. Orders can't be sent from the preview. In the Menu editor, each dish has an "On your website" section: labels (Popular, New, Spicy, Vegetarian, Chef's pick) and a "Show in the Popular row" checkbox. Dish photos and the short description are what the website shows on each menu card. The website look also applies to table QR menus once published.
 - **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match) and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
 - **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
@@ -3397,6 +3404,7 @@ function POSPrototype({ tenantId }) {
   // action a manager takes from the Staff tab, not a side effect of upgrading the app.
   const currentEmployeeRecord = employees.find((e) => e.id === currentEmployee?.id);
   const isManager = (currentEmployeeRecord?.role || "manager") !== "staff";
+  const siteT = makeSiteT(lang);
 
   // Which package-gated tabs/features this tenant can use (see lib/packageFeatures.js and
   // /admin/packages) — "order" and "settings" are always available regardless of package, every
@@ -3406,8 +3414,8 @@ function POSPrototype({ tenantId }) {
 
   // Defense in depth: if package-gated tabs are open when the admin downgrades this restaurant's
   // package mid-session, don't leave a now-disallowed screen up — bounce back to Order.
-  const PACKAGE_GATED_VIEWS = ["menu", "stock", "tables", "delivery", "receipts", "expenses", "dashboard", "customers", "shift", "closeday", "staff"];
-  const tabStillAllowed = (key) => (key === "delivery" ? hasFeature("onlineOrderingLink") || hasFeature("deliveryZones") : key === "closeday" ? hasFeature("shift") : hasFeature(key));
+  const PACKAGE_GATED_VIEWS = ["menu", "stock", "tables", "delivery", "website", "receipts", "expenses", "dashboard", "customers", "shift", "closeday", "staff"];
+  const tabStillAllowed = (key) => (key === "delivery" ? hasFeature("onlineOrderingLink") || hasFeature("deliveryZones") : key === "website" ? hasFeature("onlineOrderingLink") : key === "closeday" ? hasFeature("shift") : hasFeature(key));
   useEffect(() => {
     if (PACKAGE_GATED_VIEWS.includes(view) && tenantStatus?.features && !tabStillAllowed(view)) setView("order");
   }, [view, tenantStatus?.features]);
@@ -6998,14 +7006,14 @@ function POSPrototype({ tenantId }) {
   };
 
   const openNewItem = (category, profileId = null) => {
-    setItemEditor({ mode: "new", category, id: null, name: "", tag: "", price: "", recipe: [], image: null, profileId });
+    setItemEditor({ mode: "new", category, id: null, name: "", tag: "", price: "", recipe: [], image: null, badges: [], featured: false, profileId });
     setRecipeDraftIng("");
     setRecipeDraftQty("");
     setRecipeSearch("");
     setRecipeQtyDrafts({});
   };
   const openEditItem = (category, item, profileId = null) => {
-    setItemEditor({ mode: "edit", category, id: item.id, name: item.name, tag: item.tag, price: String(item.price), recipe: item.recipe.map((r) => ({ ...r })), image: item.image || null, profileId });
+    setItemEditor({ mode: "edit", category, id: item.id, name: item.name, tag: item.tag, price: String(item.price), recipe: item.recipe.map((r) => ({ ...r })), image: item.image || null, badges: Array.isArray(item.badges) ? item.badges : [], featured: !!item.featured, profileId });
     setRecipeDraftIng("");
     setRecipeDraftQty("");
     setRecipeSearch("");
@@ -7111,12 +7119,12 @@ function POSPrototype({ tenantId }) {
   };
 
   const saveItemEditor = () => {
-    const { mode, category, id, name, tag, price, recipe, image, profileId } = itemEditor;
+    const { mode, category, id, name, tag, price, recipe, image, badges, featured, profileId } = itemEditor;
     if (!name.trim() || !price || Number(price) <= 0) {
       flashNotice("Give the item a name and a valid price");
       return;
     }
-    const itemData = { id: mode === "new" ? newId("item") : id, name: name.trim(), tag: tag.trim(), price: Number(price), recipe, image: image || null };
+    const itemData = { id: mode === "new" ? newId("item") : id, name: name.trim(), tag: tag.trim(), price: Number(price), recipe, image: image || null, badges: badges || [], featured: !!featured };
     if (profileId) {
       setMenuProfiles((prev) =>
         prev.map((p) => {
@@ -7654,7 +7662,7 @@ function POSPrototype({ tenantId }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 20, flexWrap: "wrap", width: isMobile ? "100%" : undefined }}>
           <div style={{ display: "flex", background: "var(--surface)", borderRadius: 999, padding: 3, border: "1px solid var(--border)", flexWrap: isCompact ? "nowrap" : "wrap", overflowX: isCompact ? "auto" : undefined, maxWidth: isCompact ? "100%" : undefined, WebkitOverflowScrolling: "touch" }}>
-            {["order", "menu", "stock", "tables", "delivery", "receipts", "expenses", "dashboard", "customers", "shift", "closeday", "staff", "settings"]
+            {["order", "menu", "stock", "tables", "delivery", "website", "receipts", "expenses", "dashboard", "customers", "shift", "closeday", "staff", "settings"]
               .filter((key) => {
                 if (key === "order" || key === "settings") return true;
                 // "delivery" isn't itself a package feature key — the tab shows if either of its
@@ -7663,6 +7671,8 @@ function POSPrototype({ tenantId }) {
                 if (key === "delivery") return hasFeature("onlineOrderingLink") || hasFeature("deliveryZones");
                 // Close the day isn't its own package feature — it comes with Shift tracking.
                 if (key === "closeday") return hasFeature("shift");
+                // The website designer is a manager's tool and comes with the online-ordering link.
+                if (key === "website") return hasFeature("onlineOrderingLink") && isManager;
                 return hasFeature(key);
               })
               .map((key) => {
@@ -8418,6 +8428,31 @@ function POSPrototype({ tenantId }) {
                   <input type="text" value={itemEditor.name} onChange={(e) => setItemEditor((p) => ({ ...p, name: e.target.value }))} placeholder={t("dishNamePlaceholder")} className="field" />
                   <input type="text" value={itemEditor.tag} onChange={(e) => setItemEditor((p) => ({ ...p, tag: e.target.value }))} placeholder={t("shortDescriptionPlaceholder")} className="field" />
                   <input type="number" value={itemEditor.price} onChange={(e) => setItemEditor((p) => ({ ...p, price: e.target.value }))} placeholder={t("pricePlaceholder")} className="field" />
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{siteT("itemWebTitle")}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginBottom: 6 }}>{siteT("itemBadges")}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                    {ITEM_BADGES.map((b) => {
+                      const on = (itemEditor.badges || []).includes(b);
+                      return (
+                        <button
+                          key={b}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => setItemEditor((p) => ({ ...p, badges: on ? (p.badges || []).filter((x) => x !== b) : [...(p.badges || []), b] }))}
+                          style={{ fontSize: 12, padding: "5px 12px", borderRadius: 999, border: `1px solid ${on ? theme.secondary : "var(--border)"}`, background: on ? "rgba(176,141,87,0.18)" : "transparent", color: on ? theme.secondaryLight : "var(--text-muted)", cursor: "pointer" }}
+                        >
+                          {siteT(`badge_${b}`)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, cursor: "pointer" }}>
+                    <input type="checkbox" checked={!!itemEditor.featured} onChange={(e) => setItemEditor((p) => ({ ...p, featured: e.target.checked }))} />
+                    {siteT("itemFeatured")}
+                  </label>
                 </div>
 
                 <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("recipeLabel")}</div>
@@ -10961,6 +10996,30 @@ function POSPrototype({ tenantId }) {
         </div>
       )}
 
+      {view === "website" && (
+        <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 1100 }}>
+          <WebsiteSettingsPanel
+            tenantId={tenantId}
+            isRtl={isRtl}
+            isMobile={isMobile}
+            theme={theme}
+            brand={{ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: secondaryColor }}
+            loadKey={async (key) => {
+              try {
+                const r = await getSharedWithRetry(storage, key);
+                return r?.value ? JSON.parse(r.value) : null;
+              } catch (e) {
+                return null;
+              }
+            }}
+            saveKey={(key, obj) => syncSet(key, JSON.stringify(obj), true, t("syncLabelSettings"))}
+            resizeImage={resizeImageToDataUrl}
+            flashNotice={flashNotice}
+            copyText={copyTextToClipboard}
+          />
+        </div>
+      )}
+
       {view === "settings" && (
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 620 }}>
           <div style={{ marginBottom: 20 }}>
@@ -11204,19 +11263,35 @@ function POSPrototype({ tenantId }) {
 // branding + the live menu with stock badges, no cart, no ordering (per the "view only" scope
 // chosen for v1) — reads shared storage so it reflects whatever the operator has actually set up,
 // not the hardcoded starter menu.
-function CustomerMenuView({ tableId, tenantId, callCenter = false }) {
+function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = false, bootstrap = null }) {
   // A null/undefined tableId means this is the general online-ordering link (shared on social
   // media), not a specific table's QR code — the customer chooses Pickup or Delivery instead of
   // it being assumed dine-in.
   const isGeneralLink = tableId === null || tableId === undefined;
   const storage = useMemo(() => createTenantStorage(tenantId), [tenantId]);
-  const [lang, setLang] = useState("ar");
-  const [restaurantName, setRestaurantName] = useState("Ember & Vine");
-  const [logoUrl, setLogoUrl] = useState(null);
-  const [primaryColor, setPrimaryColor] = useState(COLORS.burgundy);
-  const [secondaryColor, setSecondaryColor] = useState(COLORS.brass);
-  const [mapsLink, setMapsLink] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  // When the restaurant has published the website look, the server hands the first paint its
+  // settings and branding (see app/t/[tenantId]/page.jsx) so the page never flashes the original
+  // layout first. Restaurants that haven't published it get null here and nothing below changes.
+  const siteBoot = bootstrap && bootstrap.settings ? bootstrap : null;
+  const [lang, setLangState] = useState(siteBoot ? (siteBoot.settings.defaultLang === "en" ? "en" : "ar") : "ar");
+  const langChosenRef = useRef(false);
+  const setLang = (code) => {
+    langChosenRef.current = true;
+    setLangState(code);
+  };
+  const [restaurantName, setRestaurantName] = useState(siteBoot?.brand?.name || "Ember & Vine");
+  const [logoUrl, setLogoUrl] = useState(siteBoot?.brand?.logo || null);
+  const [primaryColor, setPrimaryColor] = useState(siteBoot?.brand?.primary || COLORS.burgundy);
+  const [secondaryColor, setSecondaryColor] = useState(siteBoot?.brand?.secondary || COLORS.brass);
+  const [mapsLink, setMapsLink] = useState(siteBoot?.brand?.mapsLink || "");
+  const [phoneNumber, setPhoneNumber] = useState(siteBoot?.brand?.phone || "");
+  const [siteSettings, setSiteSettings] = useState(siteBoot ? mergeSiteSettings(siteBoot.settings) : null);
+  const [siteMedia, setSiteMedia] = useState(siteBoot?.media || null);
+  const [siteShiftHours, setSiteShiftHours] = useState(null);
+  const siteActive = !callCenter && !!siteSettings && (preview || !!siteSettings.enabled);
+  const siteOnRef = useRef(siteActive);
+  siteOnRef.current = siteActive;
+  const lastMenuFetchRef = useRef(0);
   const [categories, setCategories] = useState([]);
   const [menu, setMenu] = useState({});
   const [availability, setAvailability] = useState({}); // { [itemId]: true|false } — boolean only, never raw stock
@@ -11408,9 +11483,12 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false }) {
     let cancelled = false;
     const load = async () => {
       try {
+        // The website look carries photos, so its menu is re-read every minute instead of every 15s.
+        const skipMenu = siteOnRef.current && Date.now() - lastMenuFetchRef.current < 60000;
+        if (!skipMenu) lastMenuFetchRef.current = Date.now();
         const [brandRes, menuRes, availRes, zonesRes, taxRes] = await Promise.all([
           getSharedWithRetry(storage, "restaurant-branding").catch(() => null),
-          getSharedWithRetry(storage, "menu-config").catch(() => null),
+          skipMenu ? Promise.resolve(null) : getSharedWithRetry(storage, "menu-config").catch(() => null),
           getSharedWithRetry(storage, "menu-availability").catch(() => null),
           isGeneralLink ? getSharedWithRetry(storage, "delivery-zones-config").catch(() => null) : Promise.resolve(null),
           getSharedWithRetry(storage, "tax-config").catch(() => null),
@@ -11433,7 +11511,11 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false }) {
           // staff app's use, but this view has no reason to hold onto it.
           const publicMenu = {};
           Object.keys(m.menu || {}).forEach((cat) => {
-            publicMenu[cat] = (m.menu[cat] || []).map((item) => ({ id: item.id, name: item.name, tag: item.tag, price: item.price }));
+            publicMenu[cat] = (m.menu[cat] || []).map((item) =>
+              siteOnRef.current
+                ? { id: item.id, name: item.name, tag: item.tag, price: item.price, image: item.image || null, badges: Array.isArray(item.badges) ? item.badges : [], featured: !!item.featured }
+                : { id: item.id, name: item.name, tag: item.tag, price: item.price }
+            );
           });
           setMenu(publicMenu);
         }
@@ -11459,6 +11541,46 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false }) {
       clearInterval(interval);
     };
   }, []);
+
+  // The website look's own records: its settings (small, re-read every minute so a publish or edit
+  // shows up), and — only when it's on — its photos and the opening hours. Photos live in their own
+  // record so the frequent settings poll stays tiny.
+  useEffect(() => {
+    if (callCenter) return;
+    let cancelled = false;
+    let lastHeavy = 0;
+    const loadSite = async () => {
+      try {
+        const res = await getSharedWithRetry(storage, "website-settings", 2, 400).catch(() => null);
+        if (cancelled || !res) return;
+        const merged = mergeSiteSettings(res.value ? JSON.parse(res.value) : null);
+        setSiteSettings(merged);
+        if (!(merged.enabled || preview)) return;
+        if (!langChosenRef.current) setLangState(merged.defaultLang === "en" ? "en" : "ar");
+        if (Date.now() - lastHeavy < 240000) return;
+        lastHeavy = Date.now();
+        const [mediaRes, hoursRes] = await Promise.all([
+          getSharedWithRetry(storage, "website-media", 2, 400).catch(() => null),
+          getSharedWithRetry(storage, "shift-hours-config", 2, 400).catch(() => null),
+        ]);
+        if (cancelled) return;
+        if (mediaRes) setSiteMedia(mediaRes.value ? JSON.parse(mediaRes.value) : {});
+        if (hoursRes?.value) setSiteShiftHours(JSON.parse(hoursRes.value));
+      } catch (e) {
+        // keep whatever the page already has
+      }
+    };
+    loadSite();
+    const interval = setInterval(loadSite, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+  // Settings that turn the website look on after the first menu read need the richer menu next time.
+  useEffect(() => {
+    if (siteActive) lastMenuFetchRef.current = 0;
+  }, [siteActive]);
 
   // Once an order's been sent, poll the same shared pending-orders list staff reviews from, to
   // pick up the moment staff confirms it (see markPendingOrderConfirmed in POSPrototype) — that's
@@ -11702,6 +11824,150 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false }) {
           )}
         </div>
       </div>
+    );
+  }
+
+  const billModal = (
+    <>
+      {checkoutOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setCheckoutOpen(false)}>
+          <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 26, width: "100%", maxWidth: 380, maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+            {checkoutRequested ? (
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 600, marginBottom: 8 }}>{t("checkoutRequestedTitle")}</div>
+                <div style={{ fontSize: 13, color: COLORS.charcoalSoft, marginBottom: 6, lineHeight: 1.5 }}>{t("checkoutRequestedBody")}</div>
+                <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 22, margin: "14px 0" }}>{money(checkoutTotal)}</div>
+                <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 20 }}>{t(`payment_${checkoutMethod}`)}</div>
+                <button onClick={() => setCheckoutOpen(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("orderSentOk")}</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 600, marginBottom: 4 }}>{t("checkoutModalTitle")}</div>
+                <div style={{ fontSize: 11.5, color: COLORS.charcoalSoft, marginBottom: 16, lineHeight: 1.4 }}>{t("checkoutModalNote")}</div>
+                {checkoutLoading ? (
+                  <div style={{ fontSize: 13, color: COLORS.charcoalSoft, padding: "12px 0" }}>{t("loading")}</div>
+                ) : !checkoutHasAnything ? (
+                  <div style={{ fontSize: 13, color: COLORS.charcoalSoft, padding: "12px 0" }}>{t("checkoutEmptyItems")}</div>
+                ) : (
+                  <>
+                    {checkoutUnpaidReceipts.map((r) => (
+                      <div key={r.id} style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 10.5, color: COLORS.charcoalSoft, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>{t("ticketNumber", { n: r.ticketNo })}</div>
+                        {r.items.map((it, idx) => (
+                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                            <span>{it.qty}&times; {it.name}</span>
+                            <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(it.price * it.qty)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                    {checkoutItems.map((it, idx) => (
+                      <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                        <span>{it.qty}&times; {it.name}</span>
+                        <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(it.price * it.qty)}</span>
+                      </div>
+                    ))}
+                    <div style={{ borderTop: "1px dashed #D8D0BE", marginTop: 10, paddingTop: 10 }}>
+                      {checkoutItems.length > 0 && (
+                        <>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("subtotal")}</span><span>{money(checkoutSubtotal)}</span></div>
+                          {servicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("serviceCharge")} ({servicePercent}%)</span><span>{money(checkoutService)}</span></div>}
+                          {vatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("vat")} ({vatPercent}%)</span><span>{money(checkoutVat)}</span></div>}
+                        </>
+                      )}
+                      {checkoutUnpaidReceipts.length > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("checkoutPreviousOrders")}</span><span>{money(checkoutUnpaidTotal)}</span></div>
+                      )}
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 17, fontWeight: 700, marginTop: 4 }}>
+                        <span>{t("total")}</span><span>{money(checkoutTotal)}</span>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {PAYMENT_METHODS.map((m) => (
+                          <button
+                            key={m.id}
+                            onClick={() => setCheckoutMethod(m.id)}
+                            style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${checkoutMethod === m.id ? theme.secondary : "#DCD5C4"}`, background: checkoutMethod === m.id ? "rgba(176,141,87,0.18)" : "transparent", color: checkoutMethod === m.id ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                          >
+                            {t(`payment_${m.id}`)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {checkoutError && <div style={{ fontSize: 11.5, color: "#A6534A", marginTop: 12 }}>{t("checkoutRequestFailed")}</div>}
+                    <button
+                      onClick={submitCheckoutRequest}
+                      disabled={checkoutSubmitting}
+                      style={{ width: "100%", marginTop: 16, padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: checkoutSubmitting ? "default" : "pointer", opacity: checkoutSubmitting ? 0.7 : 1 }}
+                    >
+                      {t("checkoutRequestButton")}
+                    </button>
+                  </>
+                )}
+                <button onClick={() => setCheckoutOpen(false)} style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "none", background: "transparent", color: COLORS.charcoalSoft, fontSize: 12.5, cursor: "pointer", marginTop: 8 }}>{t("close")}</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  // The published website look. Everything it shows and does comes from the state above, so ordering
+  // behaves exactly like the original page — only the presentation is different.
+  if (siteActive) {
+    return (
+      <SiteView
+        lang={lang}
+        setLang={setLang}
+        isRtl={isRtl}
+        t={t}
+        money={money}
+        site={siteSettings}
+        media={siteMedia}
+        brand={{ name: restaurantName, logo: logoUrl, primary: primaryColor, secondary: secondaryColor, phone: phoneNumber }}
+        mapsHref={buildMapsHref(mapsLink) || ""}
+        shiftHours={siteShiftHours}
+        categories={categories}
+        menu={menu}
+        availability={availability}
+        loaded={loaded}
+        cart={cart}
+        changeQty={changeQty}
+        updateCartItemNote={updateCartItemNote}
+        cartLines={cartLines}
+        cartCount={cartCount}
+        cartTotal={cartTotal}
+        serviceAmt={serviceAmt}
+        vatAmt={vatAmt}
+        deliveryFeeAmount={deliveryFeeAmount}
+        orderTotal={orderTotal}
+        servicePercent={servicePercent}
+        vatPercent={vatPercent}
+        isGeneralLink={isGeneralLink}
+        tableId={tableId}
+        deliveryZones={deliveryZones}
+        deliveryMethodChoice={deliveryMethodChoice}
+        setDeliveryMethodChoice={setDeliveryMethodChoice}
+        selectedZoneId={selectedZoneId}
+        setSelectedZoneId={setSelectedZoneId}
+        customer={{ name: onlineCustomerName, phone: onlineCustomerPhone, address: onlineCustomerAddress, setName: setOnlineCustomerName, setPhone: setOnlineCustomerPhone, setAddress: setOnlineCustomerAddress }}
+        zoneChoiceError={zoneChoiceError}
+        customerInfoError={customerInfoError}
+        submitOrder={preview ? () => {} : submitOrder}
+        sending={sending}
+        sendError={sendError}
+        isOnline={isOnline}
+        justSent={justSent}
+        setJustSent={setJustSent}
+        orderConfirmed={orderConfirmed}
+        dismissConfirmed={() => { setOrderConfirmed(false); setSubmittedOrderId(null); }}
+        openBill={openCheckout}
+        billModal={billModal}
+        previewMode={preview}
+      />
     );
   }
 
@@ -12019,89 +12285,7 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false }) {
         </div>
       )}
 
-      {checkoutOpen && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setCheckoutOpen(false)}>
-          <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 26, width: "100%", maxWidth: 380, maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
-            {checkoutRequested ? (
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 600, marginBottom: 8 }}>{t("checkoutRequestedTitle")}</div>
-                <div style={{ fontSize: 13, color: COLORS.charcoalSoft, marginBottom: 6, lineHeight: 1.5 }}>{t("checkoutRequestedBody")}</div>
-                <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 22, margin: "14px 0" }}>{money(checkoutTotal)}</div>
-                <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 20 }}>{t(`payment_${checkoutMethod}`)}</div>
-                <button onClick={() => setCheckoutOpen(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("orderSentOk")}</button>
-              </div>
-            ) : (
-              <>
-                <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 600, marginBottom: 4 }}>{t("checkoutModalTitle")}</div>
-                <div style={{ fontSize: 11.5, color: COLORS.charcoalSoft, marginBottom: 16, lineHeight: 1.4 }}>{t("checkoutModalNote")}</div>
-                {checkoutLoading ? (
-                  <div style={{ fontSize: 13, color: COLORS.charcoalSoft, padding: "12px 0" }}>{t("loading")}</div>
-                ) : !checkoutHasAnything ? (
-                  <div style={{ fontSize: 13, color: COLORS.charcoalSoft, padding: "12px 0" }}>{t("checkoutEmptyItems")}</div>
-                ) : (
-                  <>
-                    {checkoutUnpaidReceipts.map((r) => (
-                      <div key={r.id} style={{ marginBottom: 8 }}>
-                        <div style={{ fontSize: 10.5, color: COLORS.charcoalSoft, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>{t("ticketNumber", { n: r.ticketNo })}</div>
-                        {r.items.map((it, idx) => (
-                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-                            <span>{it.qty}&times; {it.name}</span>
-                            <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(it.price * it.qty)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                    {checkoutItems.map((it, idx) => (
-                      <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-                        <span>{it.qty}&times; {it.name}</span>
-                        <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(it.price * it.qty)}</span>
-                      </div>
-                    ))}
-                    <div style={{ borderTop: "1px dashed #D8D0BE", marginTop: 10, paddingTop: 10 }}>
-                      {checkoutItems.length > 0 && (
-                        <>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("subtotal")}</span><span>{money(checkoutSubtotal)}</span></div>
-                          {servicePercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("serviceCharge")} ({servicePercent}%)</span><span>{money(checkoutService)}</span></div>}
-                          {vatPercent > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("vat")} ({vatPercent}%)</span><span>{money(checkoutVat)}</span></div>}
-                        </>
-                      )}
-                      {checkoutUnpaidReceipts.length > 0 && (
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 3 }}><span>{t("checkoutPreviousOrders")}</span><span>{money(checkoutUnpaidTotal)}</span></div>
-                      )}
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 17, fontWeight: 700, marginTop: 4 }}>
-                        <span>{t("total")}</span><span>{money(checkoutTotal)}</span>
-                      </div>
-                    </div>
-                    <div style={{ marginTop: 16 }}>
-                      <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {PAYMENT_METHODS.map((m) => (
-                          <button
-                            key={m.id}
-                            onClick={() => setCheckoutMethod(m.id)}
-                            style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${checkoutMethod === m.id ? theme.secondary : "#DCD5C4"}`, background: checkoutMethod === m.id ? "rgba(176,141,87,0.18)" : "transparent", color: checkoutMethod === m.id ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
-                          >
-                            {t(`payment_${m.id}`)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {checkoutError && <div style={{ fontSize: 11.5, color: "#A6534A", marginTop: 12 }}>{t("checkoutRequestFailed")}</div>}
-                    <button
-                      onClick={submitCheckoutRequest}
-                      disabled={checkoutSubmitting}
-                      style={{ width: "100%", marginTop: 16, padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: checkoutSubmitting ? "default" : "pointer", opacity: checkoutSubmitting ? 0.7 : 1 }}
-                    >
-                      {t("checkoutRequestButton")}
-                    </button>
-                  </>
-                )}
-                <button onClick={() => setCheckoutOpen(false)} style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "none", background: "transparent", color: COLORS.charcoalSoft, fontSize: 12.5, cursor: "pointer", marginTop: 8 }}>{t("close")}</button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {billModal}
     </div>
   );
 }
@@ -12113,22 +12297,26 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false }) {
 // This check runs once per mount (not inside a hook), so it never changes mid-session and never
 // violates the rules of hooks — POSPrototype and CustomerMenuView are two independent components,
 // not a conditional branch inside one.
-export default function App({ tenantId }) {
+export default function App({ tenantId, storeLink = false, siteBootstrap = null }) {
   let tableParam = null;
   let isStoreLink = false;
   let isCallCenter = false;
+  let isPreview = false;
   try {
     const params = new URLSearchParams(window.location.search);
     tableParam = params.get("table");
     isStoreLink = params.get("order") === "1";
     isCallCenter = params.get("callcenter") === "1";
+    isPreview = params.get("preview") === "1";
   } catch (e) {
     tableParam = null;
     isStoreLink = false;
     isCallCenter = false;
   }
+  // /r/<name> (the restaurant's short web address) is always the online-ordering page.
+  if (storeLink) isStoreLink = true;
   if (isCallCenter) return <CustomerMenuView tableId={null} tenantId={tenantId} callCenter />;
-  if (tableParam) return <CustomerMenuView tableId={tableParam} tenantId={tenantId} />;
-  if (isStoreLink) return <CustomerMenuView tableId={null} tenantId={tenantId} />;
+  if (tableParam) return <CustomerMenuView tableId={tableParam} tenantId={tenantId} bootstrap={siteBootstrap} />;
+  if (isStoreLink) return <CustomerMenuView tableId={null} tenantId={tenantId} preview={isPreview} bootstrap={siteBootstrap} />;
   return <POSPrototype tenantId={tenantId} />;
 }
