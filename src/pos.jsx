@@ -227,6 +227,7 @@ const STRINGS = {
     cdDayGapExplain: "The whole-day gap is the sum of the shift gaps ({{shiftGaps}}) and the unexplained differences between shifts ({{residuals}}).",
     cdGapsTitle: "Why there is a gap",
     cdNoGaps: "Every counted drawer matches what the system expected, and every handover matches.",
+    cdNothingCounted: "No drawer was counted on this day (the shifts started before cash counts were required), so there is nothing to compare — only the cash received and paid out can be totalled.",
     cdGapShort: "{{name}}'s drawer is {{amount}} short of what the system expected.",
     cdGapOver: "{{name}}'s drawer has {{amount}} more than the system expected.",
     cdLikely: "Most likely:",
@@ -1044,6 +1045,7 @@ const STRINGS = {
     cdDayGapExplain: "فرق اليوم كله هو مجموع فروق الورديات ({{shiftGaps}}) والفروق غير المفسَّرة بين الورديات ({{residuals}}).",
     cdGapsTitle: "سبب وجود الفرق",
     cdNoGaps: "كل درج تم عدّه يطابق ما توقعه النظام، وكل تسليم بين الورديات مطابق.",
+    cdNothingCounted: "لم يتم عدّ أي درج في هذا اليوم (بدأت الورديات قبل أن يصبح عدّ النقدية إلزاميًا)، فلا يوجد ما يمكن مقارنته — يمكن فقط جمع النقدية المستلمة والمصروفة.",
     cdGapShort: "درج {{name}} ينقص {{amount}} عمّا توقعه النظام.",
     cdGapOver: "درج {{name}} فيه {{amount}} زيادة عمّا توقعه النظام.",
     cdLikely: "الأرجح:",
@@ -6237,13 +6239,13 @@ function POSPrototype({ tenantId }) {
             ${row(t("cdCounted"), d.counted !== null ? money(d.counted) : t("cdNotCounted"))}
             ${row(t("cdGap"), d.gap === null ? "—" : Math.abs(d.gap) < 0.01 ? t("varianceMatch") : cdSigned(d.gap), "font-weight:700;")}
           </div>`).join("")}
-        ${cd.dayTotals.opening !== null ? `
+        ${cd.drawers.length > 0 ? `
           <div style="border-top:1px solid #000;padding-top:6px;">
             <div style="font-weight:700;">${e(t("cdWholeDay"))}</div>
-            ${row(t("cdOpened"), money(cd.dayTotals.opening))}
+            ${row(t("cdOpened"), cd.dayTotals.opening !== null ? money(cd.dayTotals.opening) : "—")}
             ${row(t("cdReceived"), money(cd.dayTotals.cashIn))}
             ${row(t("cdPaidOut"), money(cd.dayTotals.paidOut))}
-            ${row(t("cdShouldBe"), money(cd.dayTotals.expectedEnd))}
+            ${row(t("cdShouldBe"), cd.dayTotals.expectedEnd !== null ? money(cd.dayTotals.expectedEnd) : "—")}
             ${row(t("cdCounted"), cd.dayTotals.finalCounted !== null ? money(cd.dayTotals.finalCounted) : "—")}
             ${row(t("cdGap"), cd.dayTotals.gap === null ? "—" : Math.abs(cd.dayTotals.gap) < 0.01 ? t("varianceMatch") : cdSigned(cd.dayTotals.gap), "font-weight:700;")}
           </div>` : ""}
@@ -9535,13 +9537,13 @@ function POSPrototype({ tenantId }) {
                             )}
                           </React.Fragment>
                         ))}
-                        {cd.dayTotals.opening !== null && (
+                        {cd.drawers.length > 0 && !cd.drawers.some((d) => d.loading) && (
                           <>
                             <div style={{ fontSize: 13, fontWeight: 700, ...cellTop }}>{t("cdWholeDay")}</div>
-                            <div style={{ ...num, fontWeight: 700, ...cellTop }}>{money(cd.dayTotals.opening)}</div>
+                            <div style={{ ...num, fontWeight: 700, ...cellTop }}>{cd.dayTotals.opening !== null ? money(cd.dayTotals.opening) : "—"}</div>
                             <div style={{ ...num, fontWeight: 700, ...cellTop }}>{money(cd.dayTotals.cashIn)}</div>
                             <div style={{ ...num, fontWeight: 700, ...cellTop }}>{money(cd.dayTotals.paidOut)}</div>
-                            <div style={{ ...num, fontWeight: 700, ...cellTop }}>{money(cd.dayTotals.expectedEnd)}</div>
+                            <div style={{ ...num, fontWeight: 700, ...cellTop }}>{cd.dayTotals.expectedEnd !== null ? money(cd.dayTotals.expectedEnd) : "—"}</div>
                             <div style={{ ...num, fontWeight: 700, ...cellTop }}>{cd.dayTotals.finalCounted !== null ? money(cd.dayTotals.finalCounted) : "—"}</div>
                             <div style={{ ...num, fontWeight: 700, ...cellTop, color: gapColor(cd.dayTotals.gap) }}>{gapText(cd.dayTotals.gap)}</div>
                           </>
@@ -9559,7 +9561,9 @@ function POSPrototype({ tenantId }) {
                 <div style={card}>
                   <div style={h}>{t("cdGapsTitle")}</div>
                   {gapShifts.length === 0 && !handoverShifts.some((d) => cdHandoverLines(d).length > 0) ? (
-                    <div style={{ fontSize: 13, color: "#9FCB8E" }}>{t("cdNoGaps")}</div>
+                    cd.drawers.length > 0 && cd.drawers.every((d) => d.counted === null)
+                      ? <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("cdNothingCounted")}</div>
+                      : <div style={{ fontSize: 13, color: "#9FCB8E" }}>{t("cdNoGaps")}</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                       {gapShifts.map((d) => <Lines key={d.key} lines={cdGapLines(d)} />)}
