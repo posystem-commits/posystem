@@ -6011,7 +6011,11 @@ function POSPrototype({ tenantId }) {
       .filter((e) => !logged.some((l) => l.employeeId === e.employeeId && l.clockIn === e.clockIn))
       .map((e) => ({ key: `open_${e.employeeId}`, employeeId: e.employeeId, name: e.employeeName, clockIn: e.clockIn, clockOut: null, auto: false, opening: typeof e.openingCash === "number" ? e.openingCash : null, counted: null, savedExpected: null }));
     const allShifts = [...logged, ...open].sort((a, b) => a.clockIn.localeCompare(b.clockIn));
-    const dayShifts = allShifts.filter((sh) => businessDateForTimestamp(sh.clockIn, shiftHoursConfig) === day);
+    // A shift belongs to the business day that most of it falls in — the day of its MIDPOINT. Using the
+    // clock-in time put someone who started before the day officially begins (08:38 when the day starts at
+    // 10:00) on the previous day, even though all of their orders were on this one.
+    const shiftDay = (sh) => businessDateForTimestamp(new Date((new Date(sh.clockIn).getTime() + new Date(sh.clockOut || nowIso).getTime()) / 2).toISOString(), shiftHoursConfig);
+    const dayShifts = allShifts.filter((sh) => shiftDay(sh) === day);
     const coverShift = (r) => allShifts.find((x) => x.employeeId === r.servedBy?.id && r.timestamp >= x.clockIn && (!x.clockOut || r.timestamp <= x.clockOut));
     const insideAnyShift = (iso) => allShifts.some((x) => iso >= x.clockIn && iso <= (x.clockOut || nowIso));
 
