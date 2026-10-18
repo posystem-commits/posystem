@@ -2092,8 +2092,7 @@ function DayPickerButton({ value, maxDate, isRtl, theme, onChange }) {
       </button>
       {open && (
         <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 59 }} onClick={() => setOpen(false)} />
-          <div style={{ position: "absolute", top: "calc(100% + 6px)", [isRtl ? "right" : "left"]: 0, zIndex: 60 }}>
+          <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setOpen(false)}>
             <DateRangeCalendar
               startDate={value}
               endDate={value}
@@ -2192,7 +2191,7 @@ function DateRangeCalendar({ startDate, endDate, maxDate, isRtl, theme, onPickDa
     setViewMonth(new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 7));
   };
   return (
-    <div onClick={(e) => e.stopPropagation()} style={{ background: "#FFFFFF", border: "1px solid #D8D0BE", borderRadius: 10, padding: 14, width: 264, boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}>
+    <div onClick={(e) => e.stopPropagation()} style={{ background: "#FFFFFF", border: "1px solid #D8D0BE", borderRadius: 10, padding: 14, width: "min(300px, 100%)", boxSizing: "border-box", boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <button type="button" onClick={() => shiftMonth(-1)} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 15, padding: 4 }}>{isRtl ? "›" : "‹"}</button>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: "#111" }}>{monthLabel}</div>
@@ -8704,8 +8703,7 @@ function POSPrototype({ tenantId }) {
                     </button>
                     {receiptsRangePickerOpen && (
                       <>
-                        <div style={{ position: "fixed", inset: 0, zIndex: 59 }} onClick={() => setReceiptsRangePickerOpen(false)} />
-                        <div style={{ position: "absolute", top: "calc(100% + 6px)", [isRtl ? "right" : "left"]: 0, zIndex: 60 }}>
+                        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setReceiptsRangePickerOpen(false)}>
                           <DateRangeCalendar
                             startDate={effectiveReceiptsRangeStart}
                             endDate={effectiveReceiptsRangeEnd}
@@ -9218,8 +9216,7 @@ function POSPrototype({ tenantId }) {
                 </button>
                 {dashboardRangePickerOpen && (
                   <>
-                    <div style={{ position: "fixed", inset: 0, zIndex: 59 }} onClick={() => setDashboardRangePickerOpen(false)} />
-                    <div style={{ position: "absolute", top: "calc(100% + 6px)", [isRtl ? "right" : "left"]: 0, zIndex: 60 }}>
+                    <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setDashboardRangePickerOpen(false)}>
                       <DateRangeCalendar
                         startDate={effectiveDashboardRangeStart}
                         endDate={effectiveDashboardRangeEnd}
