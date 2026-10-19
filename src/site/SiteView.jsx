@@ -48,6 +48,92 @@ const CloseIcon = (p) => <Icon {...p} d="M6 6l12 12M18 6L6 18" />;
 const PlusIcon = (p) => <Icon {...p} d="M12 5v14M5 12h14" />;
 const MinusIcon = (p) => <Icon {...p} d="M5 12h14" />;
 
+const ChevronIcon = (p) => <Icon {...p} d="M9 5l7 7-7 7" />;
+
+// One photo at a time, centred, with the neighbours peeking in at the sides. Swipe or scroll on a
+// phone, use the arrows or dots anywhere, and it drifts to the next photo on its own while it is on
+// screen (stopping for good once the visitor takes over, and never at all if they prefer reduced
+// motion). Tapping a photo opens it full screen.
+function GalleryCarousel({ images, isRtl, onOpen, label }) {
+  const trackRef = useRef(null);
+  const [active, setActive] = useState(0);
+  const [auto, setAuto] = useState(true);
+  const [inView, setInView] = useState(false);
+  const count = images.length;
+
+  const snapTimer = useRef(null);
+  // Smooth programmatic scrolling is unreliable while scroll-snap is enforcing positions, so snapping is
+  // paused for the length of the animation and restored right after.
+  const goTo = (i) => {
+    const track = trackRef.current;
+    const slide = track && track.children[i];
+    if (!slide) return;
+    setActive(i);
+    track.style.scrollSnapType = "none";
+    slide.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    clearTimeout(snapTimer.current);
+    snapTimer.current = setTimeout(() => { track.style.scrollSnapType = ""; }, 800);
+  };
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      (entries) => entries.forEach((e) => { if (e.intersectionRatio >= 0.6) setActive(Number(e.target.dataset.i)); }),
+      { root: track, threshold: 0.6 }
+    );
+    Array.from(track.children).forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [count]);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(([e]) => setInView(e.intersectionRatio >= 0.95), { threshold: [0, 0.95, 1] });
+    obs.observe(track);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!auto || !inView || count < 2) return;
+    if (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = setInterval(() => goTo((active + 1) % count), 4500);
+    return () => clearInterval(id);
+  }, [auto, inView, active, count]);
+
+  const step = (d) => {
+    setAuto(false);
+    goTo((active + d + count) % count);
+  };
+
+  return (
+    <div className="sv-car" onPointerDown={() => setAuto(false)}>
+      <div className="sv-car-track" ref={trackRef}>
+        {images.map((src, i) => (
+          <button key={i} type="button" className="sv-car-slide" data-i={i} data-active={active === i} onClick={() => onOpen(i)} aria-label={`${label} ${i + 1} / ${count}`}>
+            <img src={src} alt="" loading="lazy" draggable="false" />
+          </button>
+        ))}
+      </div>
+      {count > 1 && (
+        <>
+          <button type="button" className="sv-car-arrow" data-side="start" onClick={() => step(-1)} aria-label="‹" style={{ transform: isRtl ? "none" : "scaleX(-1)" }}>
+            <ChevronIcon size={20} />
+          </button>
+          <button type="button" className="sv-car-arrow" data-side="end" onClick={() => step(1)} aria-label="›" style={{ transform: isRtl ? "scaleX(-1)" : "none" }}>
+            <ChevronIcon size={20} />
+          </button>
+          <div className="sv-car-dots">
+            {images.map((_, i) => (
+              <button key={i} type="button" aria-label={`${i + 1}`} aria-current={active === i} onClick={() => { setAuto(false); goTo(i); }} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 const BADGE_COLORS = { popular: "#C2410C", new: "#1D4ED8", spicy: "#B91C1C", vegetarian: "#15803D", chef: null };
 
 export default function SiteView(p) {
@@ -199,10 +285,20 @@ export default function SiteView(p) {
     .sv-step { display:inline-flex; align-items:center; gap:2px; background:var(--accent-soft); border-radius:999px; padding:2px; }
     .sv-step button { width:32px; height:32px; border:none; border-radius:50%; background:var(--accent); color:var(--on-accent); display:inline-flex; align-items:center; justify-content:center; }
     .sv-step span { min-width:26px; text-align:center; font-weight:700; font-variant-numeric:tabular-nums; }
-    .sv-gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
-    .sv-gal button { padding:0; border:none; background:var(--accent-soft); border-radius:var(--radius); overflow:hidden; aspect-ratio:1; }
-    .sv-gal img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .25s ease; }
-    .sv-gal button:hover img { transform:scale(1.04); }
+    .sv-car { position:relative; margin-inline:-18px; }
+    .sv-car-track { --sw:min(84%, 640px); display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory; padding-inline:calc((100% - var(--sw)) / 2); scrollbar-width:none; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
+    .sv-car-track::-webkit-scrollbar { display:none; }
+    .sv-car-slide { flex:0 0 var(--sw); scroll-snap-align:center; aspect-ratio:4 / 3; padding:0; border:none; background:var(--accent-soft); border-radius:var(--radius); overflow:hidden; opacity:.5; transform:scale(.94); transition:opacity .35s ease, transform .35s ease; }
+    .sv-car-slide[data-active="true"] { opacity:1; transform:scale(1); }
+    @media (min-width:700px) { .sv-car-slide { aspect-ratio:16 / 10; } }
+    .sv-car-slide img { width:100%; height:100%; object-fit:cover; display:block; user-select:none; -webkit-user-drag:none; }
+    .sv-car-arrow { position:absolute; top:calc(50% - 22px); width:42px; height:42px; border-radius:50%; border:none; background:rgba(255,255,255,.92); color:#222; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,.25); }
+    .sv-car-arrow[data-side="start"] { inset-inline-start:calc(8% - 8px); }
+    .sv-car-arrow[data-side="end"] { inset-inline-end:calc(8% - 8px); }
+    .sv-car-dots { display:flex; justify-content:center; gap:7px; margin-top:16px; }
+    .sv-car-dots button { width:8px; height:8px; padding:0; border:none; border-radius:999px; background:var(--line); transition:width .25s ease, background .25s ease; }
+    .sv-car-dots button[aria-current="true"] { width:24px; background:var(--accent); }
+    .sv-lb-nav { position:absolute; top:50%; margin-top:-22px; width:44px; height:44px; border-radius:50%; border:none; background:rgba(255,255,255,.9); color:#222; display:flex; align-items:center; justify-content:center; }
     .sv-foot { margin-top:54px; background:${T.id === "bold" ? "#0B0B0C" : T.dark ? "#0A0C0F" : T.id === "minimal" ? "var(--bg)" : "var(--surface)"}; color:${T.id === "bold" ? "#FFF" : "var(--text)"}; border-top:1px solid var(--line); padding:38px 0 120px; }
     .sv-foot-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:30px; }
     .sv-foot h4 { margin:0 0 12px; font-size:15px; }
@@ -614,13 +710,7 @@ export default function SiteView(p) {
       {p.isGeneralLink && site.sections.gallery && gallery.length > 0 && (
         <section className="sv-wrap sv-section">
           <h2 className="sv-h2" style={headingStyle}>{st("galleryTitle")}</h2>
-          <div className="sv-gal">
-            {gallery.map((src, i) => (
-              <button key={i} onClick={() => setLightbox(i)} aria-label={`${st("galleryTitle")} ${i + 1}`}>
-                <img src={src} alt="" loading="lazy" />
-              </button>
-            ))}
-          </div>
+          <GalleryCarousel images={gallery} isRtl={isRtl} onOpen={setLightbox} label={st("galleryTitle")} />
         </section>
       )}
 
@@ -683,7 +773,14 @@ export default function SiteView(p) {
 
       {lightbox !== null && (
         <div className="sv-lightbox" onClick={() => setLightbox(null)}>
-          <img src={gallery[lightbox]} alt="" />
+          <img src={gallery[lightbox]} alt="" onClick={(e) => e.stopPropagation()} />
+          <button type="button" aria-label={st("close")} onClick={() => setLightbox(null)} style={{ position: "absolute", top: 14, insetInlineEnd: 14, width: 40, height: 40, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.9)", color: "#222", display: "flex", alignItems: "center", justifyContent: "center" }}><CloseIcon size={20} /></button>
+          {gallery.length > 1 && (
+            <>
+              <button type="button" className="sv-lb-nav" aria-label="‹" style={{ insetInlineStart: 14, transform: isRtl ? "none" : "scaleX(-1)" }} onClick={(e) => { e.stopPropagation(); setLightbox((lightbox - 1 + gallery.length) % gallery.length); }}><ChevronIcon size={20} /></button>
+              <button type="button" className="sv-lb-nav" aria-label="›" style={{ insetInlineEnd: 14, transform: isRtl ? "scaleX(-1)" : "none" }} onClick={(e) => { e.stopPropagation(); setLightbox((lightbox + 1) % gallery.length); }}><ChevronIcon size={20} /></button>
+            </>
+          )}
         </div>
       )}
     </div>
