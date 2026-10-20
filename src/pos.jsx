@@ -718,7 +718,7 @@ const STRINGS = {
 
     offlineBadge: "Offline",
     menuLoadFailedBadge: "Menu didn't load",
-    menuLoadFailedHint: "Couldn't load the real menu from the server — showing placeholder data instead. Don't take orders on this device until this clears; it retries automatically. Nothing has been overwritten yet.",
+    menuLoadFailedHint: "Couldn't load the menu from the server, so it is empty for now. Don't take orders on this device until this clears; it retries automatically. Nothing has been overwritten.",
     configLoadFailedBadge: "Some settings didn't load",
     configLoadFailedHint: "Couldn't load one of this restaurant's settings (tables, price lists, tax rates, or delivery split) from the server. It's retrying automatically — nothing has been overwritten. Avoid changing that setting on this device until this clears.",
     syncPendingPill: "{{n}} change waiting to sync",
@@ -1537,7 +1537,7 @@ const STRINGS = {
 
     offlineBadge: "غير متصل",
     menuLoadFailedBadge: "لم تُحمّل القائمة",
-    menuLoadFailedHint: "تعذّر تحميل القائمة الحقيقية من الخادم — يُعرض حاليًا محتوى بديل مؤقت. لا تأخذ طلبات من هذا الجهاز حتى يختفي هذا التنبيه؛ إعادة المحاولة تلقائية. لم يُستبدل أي شيء بعد.",
+    menuLoadFailedHint: "تعذّر تحميل القائمة من الخادم، لذلك تظهر فارغة مؤقتًا. لا تأخذ طلبات من هذا الجهاز حتى يختفي هذا التنبيه؛ إعادة المحاولة تلقائية. لم يُستبدل أي شيء.",
     configLoadFailedBadge: "بعض الإعدادات لم تُحمّل",
     configLoadFailedHint: "تعذّر تحميل أحد إعدادات هذا المطعم (الطاولات، قوائم الأسعار، الضرائب، أو تقسيم رسوم التوصيل) من الخادم. تتم إعادة المحاولة تلقائيًا — لم يُستبدل أي شيء بعد. تجنّب تغيير هذا الإعداد من هذا الجهاز حتى يختفي هذا التنبيه.",
     syncPendingPill: "تغيير واحد بانتظار المزامنة",
@@ -2365,9 +2365,11 @@ function POSPrototype({ tenantId }) {
   const [renewalNoticeDismissed, setRenewalNoticeDismissed] = useState(false);
   const [view, setView] = useState("order"); // "order" | "menu" | "stock" | "receipts" | "customers" | "shift"
   const [active, setActive] = useState("Mains");
-  const [categories, setCategories] = useState(Object.keys(INITIAL_MENU));
-  const [menu, setMenu] = useState(INITIAL_MENU);
-  const [ingredients, setIngredients] = useState(INITIAL_INGREDIENTS);
+  // Empty until the real menu is read. The starter menu below is only used for a restaurant the
+  // server confirms has never saved one, so no restaurant ever sees placeholder dishes while loading.
+  const [categories, setCategories] = useState([]);
+  const [menu, setMenu] = useState({});
+  const [ingredients, setIngredients] = useState({});
   const [menuLoaded, setMenuLoaded] = useState(false);
   // Couldn't reach the real menu/ingredients on this device (e.g. offline at startup) — distinct
   // from "genuinely never set up yet". Critical: menuLoaded still flips true either way so the UI
@@ -2929,6 +2931,10 @@ function POSPrototype({ tenantId }) {
         if (parsed) {
           if (parsed.categories) setCategories(parsed.categories);
           if (parsed.menu) setMenu(parsed.menu);
+        } else {
+          // The server answered and there is no saved menu: a brand-new restaurant. Offer the starter set.
+          setCategories(Object.keys(INITIAL_MENU));
+          setMenu(INITIAL_MENU);
         }
       } catch (e) {
         failed = true;
@@ -2936,6 +2942,7 @@ function POSPrototype({ tenantId }) {
       try {
         const ingResult = await getSharedWithRetry(storage, "ingredients-config");
         if (ingResult?.value) setIngredients(JSON.parse(ingResult.value));
+        else setIngredients(INITIAL_INGREDIENTS);
       } catch (e) {
         failed = true;
       } finally {
@@ -4077,8 +4084,12 @@ function POSPrototype({ tenantId }) {
       if (parsed) {
         if (parsed.categories) setCategories(parsed.categories);
         if (parsed.menu) setMenu(parsed.menu);
+      } else {
+        setCategories(Object.keys(INITIAL_MENU));
+        setMenu(INITIAL_MENU);
       }
       if (ingResult?.value) setIngredients(JSON.parse(ingResult.value));
+      else setIngredients(INITIAL_INGREDIENTS);
       setMenuLoadFailed(false);
     } catch (e) {
       // still offline/unreachable — stays in the failed state, will try again on the next signal
@@ -7842,6 +7853,7 @@ function POSPrototype({ tenantId }) {
               ))}
             </div>
 
+            {!menuLoaded && <div style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 14 }}>{t("loading")}</div>}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
               {(effectiveMenu[active] || []).map((item) => {
                 const badge = servingsBadge(item);
