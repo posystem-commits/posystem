@@ -6,6 +6,28 @@ import SiteView from "@/src/site/SiteView";
 import WebsiteSettingsPanel from "@/src/site/WebsiteSettings";
 import { mergeSiteSettings, ITEM_BADGES } from "@/src/site/presets";
 import { makeSiteT } from "@/src/site/siteStrings";
+import {
+  PAYMENT_METHODS,
+  receiptMethodAmounts,
+  returnTimeOf,
+  returnAmountsOf,
+  notHeldByRider,
+  cashTimeOf,
+  cashFlows,
+  summarize,
+  round2,
+  createLedger,
+  addDaysStr,
+  monthKeysInRange,
+  prevMonthKey,
+  nextMonthKey,
+  lastDayOfMonth,
+  storageMonthOf,
+  WEEKDAY_KEYS,
+  DEFAULT_SHIFT_HOURS,
+  localDateStr,
+  businessDateForTimestamp,
+} from "@/src/ledger";
 
 const FONTS = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
@@ -1708,21 +1730,6 @@ const STRINGS = {
   },
 };
 
-const PAYMENT_METHODS = [
-  { id: "cash", label: "Cash" },
-  { id: "visa", label: "Visa" },
-  { id: "instapay", label: "InstaPay" },
-  { id: "wallet", label: "Wallet" },
-];
-// A receipt paid across more than one method stores paymentMethod: "split" plus a splitPayments
-// breakdown; every other receipt effectively has one "split" of just its own total. Reporting
-// code should always read amounts through this helper rather than assuming paymentMethod alone
-// tells you the full story, so a split payment counts correctly toward each method it touched.
-const receiptMethodAmounts = (r) =>
-  r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0
-    ? r.splitPayments
-    : [{ method: r.paymentMethod, amount: r.total }];
-
 const EXPENSE_CATEGORIES = ["ingredients", "utilities", "equipment", "marketing", "packaging", "other"];
 
 // Kitchen/delivery status shown to the operator and used to trigger WhatsApp updates.
@@ -1843,6 +1850,16 @@ const getSharedWithRetry = async (storage, key, attempts = 3, baseDelayMs = 600)
 // name and current UI language so answers stay grounded in what this specific app actually does
 // — including known quirks discovered while building it (print/QR only working once deployed,
 // offline behavior, PINs being identification-only, etc.) rather than generic POS advice.
+// How an order's edit history names the "payment method" field and the methods themselves, in either
+// language — the ledger uses this to spot payment-method changes made after an order was paid.
+const LEDGER_LABELS = {
+  methodByLabel: (() => {
+    const map = {};
+    ["en", "ar"].forEach((l) => PAYMENT_METHODS.forEach((m) => { map[STRINGS[l][`payment_${m.id}`]] = m.id; }));
+    return map;
+  })(),
+  isPayLabel: (name) => ["en", "ar"].some((l) => STRINGS[l].paymentMethodEditLabel === name),
+};
 const buildHelpSystemPrompt = (restaurantName, lang) => {
   const responseLang = lang === "ar" ? "Arabic" : "English";
   const S = STRINGS[lang] || STRINGS.en;
@@ -1894,6 +1911,8 @@ that you don't see it and it may not be included in their current plan — don't
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Shift numbers in this list are always worked out from the current orders (so an order edited or a pay-later bill that grew after clock-out is reflected) and show the payment-method split; a shift nobody clocked out of is closed automatically the next time that person signs in, and marked "auto-closed". Managers also get a "Day check" card: pick a business day and see every completed order grouped by the shift it was rung up in — plus a "Not in any logged shift" row for orders taken while the person had no shift in the log — adding up to exactly the Dashboard's revenue for that day. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
 - **Settings**: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
+## How the money numbers fit together
+Every money figure — Dashboard, Receipts, Shift, Staff, Close the day, Expenses — is worked out by the same single calculation from the saved orders, expenses and shifts, so tabs only differ when they answer different questions. The rules: an order counts as a sale when it is completed (an unpaid pay-later bill still counts, and is listed separately; cancelled and refunded orders are not sales). A sale belongs to the business day it was created in (the Shift hours in Settings decide where a day starts). Cash enters the drawer when it is paid (delivery cash when the rider settles) and leaves it when an order is returned or a cash expense is recorded — a cash expense reduces the drawer of the shift it was recorded in. A shift belongs to the business day most of it falls in. Orders created while nobody was clocked in are shown as "not inside any shift". Totals saved at clock-out are only a record; screens always recompute from the orders. All screens re-check the server about every 15 seconds, so after a short moment every terminal shows the same figures; if two screens differ for more than a minute, reloading the page forces a fresh read. The Staff tab leaderboard adds up every order each person created in the last 30 days, the same orders the Dashboard counts.
 ## How staff log in
 The app requires signing in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
 
@@ -2017,58 +2036,16 @@ function MenuThumb({ item, size = 34 }) {
 const money = (n) => `${n.toFixed(2)} EGP`;
 const fmtQty = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
-// Pure date-string helpers for the dashboard's custom day-range filter — operate on "YYYY-MM-DD"
-// strings via UTC arithmetic so they're immune to local-timezone/DST off-by-one bugs, unlike doing
-// this with local Date getters.
-const addDaysStr = (dateStr, n) => {
-  const d = new Date(`${dateStr}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-};
-const monthKeysInRange = (startStr, endStr) => {
-  const [sy, sm] = startStr.split("-").map(Number);
-  const [ey, em] = endStr.split("-").map(Number);
-  const keys = [];
-  let y = sy, m = sm;
-  while (y < ey || (y === ey && m <= em)) {
-    keys.push(`${y}-${String(m).padStart(2, "0")}`);
-    m++;
-    if (m > 12) { m = 1; y++; }
-  }
-  return keys;
-};
-const prevMonthKey = (monthKey) => {
-  const [y, m] = monthKey.split("-").map(Number);
-  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
-};
-const nextMonthKey = (monthKey) => {
-  const [y, m] = monthKey.split("-").map(Number);
-  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
-};
 // Business-day shift hours (Settings > Shift hours) — lets a restaurant say "our shift runs
 // 6pm-2am" so a 1am order still counts toward the day the shift started, instead of rolling onto
 // the calendar date that began at real midnight. Every weekday defaults to a 00:00 start, under
 // which the business date always equals the real calendar date — restaurants that never touch this
 // setting see no change in their numbers at all.
-const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-const DEFAULT_SHIFT_HOURS = Object.fromEntries(WEEKDAY_KEYS.map((k) => [k, { start: "00:00", end: "23:59" }]));
-const localDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 // "Today" and "this month" as the person at the terminal sees them. Using the UTC date here (as the
 // pickers used to) is a day behind for the first hours after local midnight (UTC+2/+3), which made
 // today's date unselectable right when late-night shifts were being reviewed.
 const todayLocalStr = () => localDateStr(new Date());
 const monthLocalKey = () => todayLocalStr().slice(0, 7);
-// The "business date" an order counts toward for reporting — its own calendar day, unless it
-// landed before that day's configured shift start, in which case it still belongs to the day
-// before (the shift that's still running). Local wall-clock time throughout, since that's what a
-// manager typing "18:00" actually means.
-const businessDateForTimestamp = (isoTimestamp, shiftHours) => {
-  const d = new Date(isoTimestamp);
-  const startTime = shiftHours?.[WEEKDAY_KEYS[d.getDay()]]?.start || "00:00";
-  const timeOfDay = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  if (timeOfDay >= startTime) return localDateStr(d);
-  return localDateStr(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1));
-};
 const formatShortDate = (dateStr, isRtl) =>
   new Date(`${dateStr}T00:00:00Z`).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 // A full 6-week (42-day) grid for the given "YYYY-MM" month, starting on the Sunday on/before the
@@ -2466,6 +2443,12 @@ function POSPrototype({ tenantId }) {
   const [customersLoaded, setCustomersLoaded] = useState(false);
 
   const [receiptsByMonth, setReceiptsByMonth] = useState({});
+  // Live sync (see liveSyncTick): the version each stored copy was read at, when this device last wrote,
+  // and the latest of the cached months so the timer always sees current keys.
+  const dataVersionsRef = useRef({});
+  const lastLocalWriteRef = useRef(0);
+  const receiptsByMonthRef = useRef({});
+  receiptsByMonthRef.current = receiptsByMonth;
   const [monthKeys, setMonthKeys] = useState([]);
   const [monthsLoaded, setMonthsLoaded] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -2521,6 +2504,8 @@ function POSPrototype({ tenantId }) {
   const [editingZoneFee, setEditingZoneFee] = useState("");
 
   const [expensesByMonth, setExpensesByMonth] = useState({}); // shared, monthly-keyed like receipts
+  const expensesByMonthRef = useRef({});
+  expensesByMonthRef.current = expensesByMonth;
   const [expenseMonthKeys, setExpenseMonthKeys] = useState([]);
   const [selectedExpenseMonth, setSelectedExpenseMonth] = useState(null);
   const [loadingExpenseMonth, setLoadingExpenseMonth] = useState(false);
@@ -2555,6 +2540,8 @@ function POSPrototype({ tenantId }) {
   const [viewingShiftDetail, setViewingShiftDetail] = useState(null); // a past shift-log entry a manager tapped, to show its orders/breakdown
   const [shiftLog, setShiftLog] = useState([]); // shared history of completed shifts
   const [shiftLogLoaded, setShiftLogLoaded] = useState(false);
+  const shiftLogLoadedRef = useRef(false);
+  shiftLogLoadedRef.current = shiftLogLoaded;
   const [loginSelectedId, setLoginSelectedId] = useState(null);
   const [loginPin, setLoginPin] = useState("");
   const [loginError, setLoginError] = useState(false);
@@ -3895,6 +3882,7 @@ function POSPrototype({ tenantId }) {
     try {
       const result = await storage.get(`receipts:${monthKey}`, false);
       if (result && result.value) list = JSON.parse(result.value);
+      if (result && result.updated_at) dataVersionsRef.current[`receipts:${monthKey}`] = result.updated_at;
     } catch (e) {
       list = [];
     }
@@ -3905,16 +3893,45 @@ function POSPrototype({ tenantId }) {
 
   // Re-fetches a month's receipts regardless of what's already cached — used to keep the open-shift
   // detail modal live while it's watching a shift that's still in progress on (possibly) another device.
-  const refreshMonthLoaded = async (monthKey) => {
-    let list = [];
+  // Re-reads one stored record only if it changed since this device last read it, then hands the new value
+  // to `apply`. Returns quietly on any failure (offline, a hiccup) and keeps what is already on screen.
+  const syncStoredKey = async (key, apply) => {
+    const since = dataVersionsRef.current[key];
     try {
-      const result = await storage.get(`receipts:${monthKey}`, false);
-      if (result && result.value) list = JSON.parse(result.value);
+      const res = since ? await storage.getIfChanged(key, since) : await storage.get(key, true);
+      if (res.unchanged) return;
+      if (res.updated_at) dataVersionsRef.current[key] = res.updated_at;
+      apply(res.value);
     } catch (e) {
-      return;
+      // keep what we have
     }
-    setReceiptsByMonth((prev) => ({ ...prev, [monthKey]: list }));
   };
+  const refreshMonthLoaded = (monthKey) =>
+    syncStoredKey(`receipts:${monthKey}`, (value) => setReceiptsByMonth((prev) => ({ ...prev, [monthKey]: value ? JSON.parse(value) : [] })));
+  const refreshExpenseMonthLoaded = (monthKey) =>
+    syncStoredKey(`expenses:${monthKey}`, (value) => setExpensesByMonth((prev) => ({ ...prev, [monthKey]: value ? JSON.parse(value) : [] })));
+  // The one timer that keeps every money screen on the same, current data: the receipts and expenses of
+  // every month this device has loaded, and the shift log. Skipped while the page is hidden and for a few
+  // seconds after this device itself wrote something (so a half-finished local save is never overwritten
+  // by an older copy).
+  const liveSyncTick = () => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    if (Date.now() - lastLocalWriteRef.current < 6000) return;
+    Object.keys(receiptsByMonthRef.current).forEach((mk) => refreshMonthLoaded(mk));
+    Object.keys(expensesByMonthRef.current).forEach((mk) => refreshExpenseMonthLoaded(mk));
+    if (shiftLogLoadedRef.current) syncStoredKey("shift-log", (value) => setShiftLog(value ? JSON.parse(value) : []));
+  };
+  useEffect(() => {
+    const id = setInterval(liveSyncTick, 15000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") liveSyncTick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
 
   // Receipts tab: which month(s) to fetch depends on its own Month/Day/Range toggle, widened one
   // month either side the same way the Dashboard's loading effects are (see businessDateForTimestamp
@@ -3937,6 +3954,9 @@ function POSPrototype({ tenantId }) {
   useEffect(() => {
     ensureMonthLoaded(thisMonthKey());
   }, []);
+  useEffect(() => {
+    if (shiftStart) monthKeysInRange(storageMonthOf(shiftStart), thisMonthKey()).forEach((mk) => ensureMonthLoaded(mk));
+  }, [shiftStart]);
   useEffect(() => {
     if (selectedExpenseMonth) ensureExpenseMonthLoaded(selectedExpenseMonth);
   }, [selectedExpenseMonth]);
@@ -4055,6 +4075,8 @@ function POSPrototype({ tenantId }) {
   // source of truth for the isOnline indicator — a successful write proves connectivity more
   // reliably than navigator.onLine does, and a failure is a real signal something's actually wrong.
   const syncSet = async (key, value, shared, label) => {
+    lastLocalWriteRef.current = Date.now();
+    delete dataVersionsRef.current[key];
     try {
       const result = await storage.set(key, value, shared);
       if (!result) throw new Error("no result");
@@ -4254,6 +4276,7 @@ function POSPrototype({ tenantId }) {
     try {
       const result = await getSharedWithRetry(storage, `expenses:${monthKey}`);
       if (result && result.value) list = JSON.parse(result.value);
+      if (result && result.updated_at) dataVersionsRef.current[`expenses:${monthKey}`] = result.updated_at;
     } catch (e) {
       list = [];
     }
@@ -5104,6 +5127,12 @@ function POSPrototype({ tenantId }) {
     printViaHiddenFrame(t("ticketNumber", { n: r.ticketNo }), buildSavedReceiptBodyHtml(r), isRtl);
   };
 
+  // One ledger over the receipts, expenses and shifts this device has loaded. Every money figure on every tab
+  // comes from it (see src/ledger.js), so tabs cannot disagree about how things add up.
+  const ledger = useMemo(
+    () => createLedger({ receiptsByMonth, expensesByMonth, shiftLog, openShifts, shiftHours: shiftHoursConfig, menu, labels: LEDGER_LABELS }),
+    [receiptsByMonth, expensesByMonth, shiftLog, openShifts, shiftHoursConfig, menu]
+  );
   const monthLabel = (key) => {
     const [y, m] = key.split("-");
     return new Date(Number(y), Number(m) - 1, 1).toLocaleString("en-US", { month: "long", year: "numeric" });
@@ -5140,7 +5169,7 @@ function POSPrototype({ tenantId }) {
   const receiptsDataLoaded = receiptsStorageMonthKeys.every((mk) => receiptsByMonth[mk] !== undefined);
   // Every status, unlike the Dashboard (which only counts completed sales) — Receipts is a full
   // history, cancellations and refunds included.
-  const receiptsPoolAll = receiptsForReportingMonths(receiptsReportingMonthKeys);
+  const receiptsPoolAll = ledger.ordersInDays(`${receiptsReportingMonthKeys[0]}-01`, lastDayOfMonth(receiptsReportingMonthKeys[receiptsReportingMonthKeys.length - 1])) || [];
   const filteredReceipts = (
     receiptsFilterMode === "day"
       ? receiptsPoolAll.filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === effectiveReceiptsDay)
@@ -5148,9 +5177,10 @@ function POSPrototype({ tenantId }) {
       ? receiptsPoolAll.filter((r) => { const bd = businessDateForTimestamp(r.timestamp, shiftHoursConfig); return bd >= effectiveReceiptsRangeStart && bd <= effectiveReceiptsRangeEnd; })
       : receiptsPoolAll
   ).sort((a, b) => (a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0)); // newest first — the widened, multi-month pool above isn't naturally in this order
-  const receiptsListRevenue = filteredReceipts.filter((r) => r.status === "completed").reduce((s, r) => s + r.total, 0);
-  const receiptsListUnpaid = filteredReceipts.filter((r) => r.status === "completed" && r.paid === false);
-  const receiptsListUnpaidTotal = receiptsListUnpaid.reduce((s, r) => s + r.total, 0);
+  const receiptsListSummary = summarize(filteredReceipts.filter((r) => r.status === "completed"));
+  const receiptsListRevenue = receiptsListSummary.revenue;
+  const receiptsListUnpaid = receiptsListSummary.unpaid.orders;
+  const receiptsListUnpaidTotal = receiptsListSummary.unpaid.total;
 
   const availableExpenseMonths = useMemo(() => Array.from(new Set([thisMonthKey(), ...expenseMonthKeys])).sort().reverse(), [expenseMonthKeys]);
   const currentExpenseMonth = selectedExpenseMonth || thisMonthKey();
@@ -5199,25 +5229,25 @@ function POSPrototype({ tenantId }) {
   const dashboardStorageMonthKeys = storageMonthKeysFor(dashboardReportingMonthKeys);
   const dashboardMonthDataLoaded = dashboardStorageMonthKeys.every((mk) => receiptsByMonth[mk] !== undefined);
 
-  const dashboardMonthReceiptsAll = receiptsForReportingMonths(dashboardReportingMonthKeys, (r) => r.status === "completed");
-  const dashboardReceipts = dashboardMode === "day"
-    ? dashboardMonthReceiptsAll.filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === effectiveDashboardDay)
-    : dashboardMode === "range"
-    ? dashboardMonthReceiptsAll.filter((r) => { const bd = businessDateForTimestamp(r.timestamp, shiftHoursConfig); return bd >= effectiveDashboardRangeStart && bd <= effectiveDashboardRangeEnd; })
-    : dashboardMonthReceiptsAll;
+  // Everything the Dashboard shows is the ledger's figure for the chosen period — the same one the Receipts
+  // footer, Close the day and the Staff tab use.
+  const dashboardMonthFirstDay = `${dashboardReportingMonthKeys[0]}-01`;
+  const dashboardMonthLastDay = lastDayOfMonth(dashboardReportingMonthKeys[dashboardReportingMonthKeys.length - 1]);
+  const dashboardMonthReceiptsAll = (ledger.ordersInDays(dashboardMonthFirstDay, dashboardMonthLastDay) || []).filter((r) => r.status === "completed");
+  const [dashboardFirstDay, dashboardLastDay] =
+    dashboardMode === "day" ? [effectiveDashboardDay, effectiveDashboardDay]
+    : dashboardMode === "range" ? [effectiveDashboardRangeStart, effectiveDashboardRangeEnd]
+    : [dashboardMonthFirstDay, dashboardMonthLastDay];
+  const dashboardPeriod = ledger.period(dashboardFirstDay, dashboardLastDay);
+  const dashboardReceipts = dashboardPeriod ? dashboardPeriod.completed : [];
+  const dashboardSummary = summarize(dashboardReceipts);
+  const dashboardExpenseTotal = ledger.expensesInDays(dashboardFirstDay, dashboardLastDay).reduce((s, e) => s + e.amount, 0);
 
-  const dashboardExpensesAll = dashboardReportingMonthKeys.flatMap((mk) => expensesByMonth[mk] || []);
-  const dashboardExpenseTotal = (
-    dashboardMode === "day" ? dashboardExpensesAll.filter((e) => e.date === effectiveDashboardDay)
-    : dashboardMode === "range" ? dashboardExpensesAll.filter((e) => e.date >= effectiveDashboardRangeStart && e.date <= effectiveDashboardRangeEnd)
-    : dashboardExpensesAll
-  ).reduce((s, e) => s + e.amount, 0);
-
-  const dashboardPeriodRevenue = dashboardReceipts.reduce((s, r) => s + r.total, 0);
-  const dashboardPeriodOrders = dashboardReceipts.length;
+  const dashboardPeriodRevenue = dashboardSummary.revenue;
+  const dashboardPeriodOrders = dashboardSummary.orders;
   const avgOrderValue = dashboardPeriodOrders > 0 ? dashboardPeriodRevenue / dashboardPeriodOrders : 0;
   const netProfit = dashboardPeriodRevenue - dashboardExpenseTotal;
-  const dashboardDiscountTotal = dashboardReceipts.reduce((s, r) => s + (r.discountAmount || 0), 0);
+  const dashboardDiscountTotal = dashboardSummary.discounts.total;
 
   // Trend chart: a bar per day when viewing a whole month or a custom range, a bar per hour when
   // viewing a single day (a single day has no "days" of its own to chart, so hour-of-day is the
@@ -5254,7 +5284,8 @@ function POSPrototype({ tenantId }) {
   const previousDayRevenue = (() => {
     if (dashboardMode !== "day") return null;
     const prevDayStr = addDaysStr(effectiveDashboardDay, -1);
-    return dashboardMonthReceiptsAll.filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === prevDayStr).reduce((s, r) => s + r.total, 0);
+    const prev = ledger.period(prevDayStr, prevDayStr);
+    return prev ? prev.revenue : 0;
   })();
   const periodVsPreviousPct = previousDayRevenue > 0 ? Math.round(((dashboardPeriodRevenue - previousDayRevenue) / previousDayRevenue) * 100) : null;
 
@@ -5263,8 +5294,7 @@ function POSPrototype({ tenantId }) {
   const topSellers = Object.entries(dashboardItemTotals).sort((a, b) => b[1] - a[1]).map(([name, qty]) => ({ name, qty }));
   const maxTopSellerQty = Math.max(1, ...topSellers.map((s) => s.qty));
 
-  const dashboardMethodAmounts = dashboardReceipts.flatMap(receiptMethodAmounts);
-  const dashboardByMethod = PAYMENT_METHODS.map((m) => ({ ...m, total: dashboardMethodAmounts.filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0) }));
+  const dashboardByMethod = PAYMENT_METHODS.map((m) => ({ ...m, total: dashboardSummary.byMethod[m.id] }));
   const maxMethodTotal = Math.max(1, ...dashboardByMethod.map((m) => m.total));
 
   // Categorized using data already on each receipt: deliveryMethod is only ever set for orders
@@ -5747,31 +5777,9 @@ function POSPrototype({ tenantId }) {
   // pay-later bill can grow, or an order can be edited, after the person has gone home. Counts
   // exactly what the Dashboard counts: completed orders at their current total. Returns null until
   // every month the shift touches has been loaded.
-  const shiftLiveStats = (sh) => {
-    const ongoing = !sh.clockOut;
-    const end = sh.clockOut || new Date(nowTick).toISOString();
-    const keys = monthKeysInRange(new Date(sh.clockIn).toISOString().slice(0, 7), new Date(end).toISOString().slice(0, 7));
-    if (!keys.every((mk) => receiptsByMonth[mk] !== undefined)) return null;
-    const all = keys
-      .flatMap((mk) => receiptsByMonth[mk] || [])
-      .filter((r) => r.servedBy?.id === sh.employeeId && r.timestamp >= sh.clockIn && (ongoing || r.timestamp <= sh.clockOut));
-    const completed = all.filter((r) => r.status === "completed");
-    const methodAmounts = completed.flatMap(receiptMethodAmounts);
-    const byMethod = {};
-    PAYMENT_METHODS.forEach((m) => {
-      byMethod[m.id] = methodAmounts.filter((a) => a.method === m.id).reduce((sum, a) => sum + a.amount, 0);
-    });
-    return {
-      all,
-      completed,
-      cancelled: all.filter((r) => r.status === "cancelled"),
-      refunded: all.filter((r) => r.status === "refunded"),
-      orders: completed.length,
-      revenue: completed.reduce((sum, r) => sum + r.total, 0),
-      byMethod,
-    };
-  };
-  const monthReceiptsForShift = receiptsByMonth[thisMonthKey()] || [];
+  const shiftLiveStats = (sh) => ledger.shiftTotals(sh, nowTick);
+  // Every month this shift touches (a shift that crosses the end of a month keeps its orders in two stores).
+  const monthReceiptsForShift = (shiftStart ? monthKeysInRange(storageMonthOf(shiftStart), thisMonthKey()) : [thisMonthKey()]).flatMap((mk) => receiptsByMonth[mk] || []);
   // Every shift currently open on any device, with orders/revenue computed live from shared
   // receipts — same idea as this device's own shiftCompleted/shiftGross below, generalized to
   // whichever employee+clockIn pair the open-shifts registry lists. Anything left behind by a
@@ -5833,22 +5841,18 @@ function POSPrototype({ tenantId }) {
   // returned now takes cash out of THIS drawer; and an InstaPay order handed back in cash empties
   // the drawer even though it never filled it. Cancelled/refunded orders from before return times
   // were recorded carry none of this and, as before, count as if they never happened.
-  const returnTimeOf = (r) => (r.status === "cancelled" ? r.cancelledAt : r.status === "refunded" ? r.refundedAt : null);
-  const returnAmountsOf = (r) => r.returnedAmounts || (r.paid === false ? [] : receiptMethodAmounts(r));
-  const notHeldByRider = (r) => !(r.tableId === "delivery" && !r.deliverySettled);
-  // When an order's cash actually reached the drawer: when it was paid — except delivery cash, which a
-  // rider holds until they settle up, so it arrives at the settlement.
-  const cashTimeOf = (r) => (r.tableId === "delivery" && r.deliverySettledAt ? r.deliverySettledAt : r.paidAt || r.timestamp);
   const reconCollected = shiftStart
     ? monthReceiptsForShift.filter((r) => r.paid !== false && (r.status === "completed" || returnTimeOf(r)) && (r.paidAt || r.timestamp) >= shiftStart)
     : [];
   const returnsThisShift = shiftStart
     ? monthReceiptsForShift.filter((r) => returnTimeOf(r) && returnTimeOf(r) >= shiftStart && r.paid !== false)
     : [];
-  const shiftCashSalesTotal = (shiftStart ? monthReceiptsForShift.filter((r) => r.paid !== false && (r.status === "completed" || returnTimeOf(r)) && notHeldByRider(r) && cashTimeOf(r) >= shiftStart) : [])
-    .flatMap(receiptMethodAmounts)
-    .filter((a) => a.method === "cash")
-    .reduce((s, a) => s + a.amount, 0);
+  // The drawer's movements since this shift started — the same calculation Close the day makes for a
+  // finished shift (src/ledger.js cashFlows), just with the window still open.
+  const shiftFlows = shiftStart
+    ? cashFlows(monthReceiptsForShift, Object.values(expensesByMonth).flat(), (iso) => iso >= shiftStart)
+    : { cashIn: 0, cashReturned: 0, cashExpenses: 0, paidOut: 0 };
+  const shiftCashSalesTotal = shiftFlows.cashIn;
   // Shown as its own line in the drawer reconciliation so the gap against "by payment method"
   // above is explained, instead of just looking like the numbers don't add up.
   const shiftUnsettledDeliveryCash = paymentsCollectedThisShift
@@ -5865,11 +5869,7 @@ function POSPrototype({ tenantId }) {
   // shiftCashSalesTotal above) — the rider is still holding it, so refunding it doesn't remove
   // anything from the drawer either. Without this exclusion, refunding one of these swung the
   // drawer negative by subtracting cash that was never added.
-  const shiftCashRefundsTotal = returnsThisShift
-    .filter(notHeldByRider)
-    .flatMap(returnAmountsOf)
-    .filter((a) => a.method === "cash")
-    .reduce((s, a) => s + a.amount, 0);
+  const shiftCashRefundsTotal = shiftFlows.cashReturned;
   const shiftDiscountedOrders = shiftCompleted.filter((r) => (r.discountAmount || 0) > 0);
   const shiftDiscountTotal = shiftDiscountedOrders.reduce((s, r) => s + (r.discountAmount || 0), 0);
   // Cash paid out of the drawer belongs to the shift in which it was recorded. This used to be matched by
@@ -5881,7 +5881,7 @@ function POSPrototype({ tenantId }) {
   const shiftCashExpenses = shiftStart
     ? Object.values(expensesByMonth).flat().filter((e) => e.status === "paid" && e.paymentMethod === "cash" && (e.recordedAt || `${e.date}T00:00:00.000Z`) >= shiftStart)
     : [];
-  const shiftCashExpensesTotal = shiftCashExpenses.reduce((s, e) => s + e.amount, 0);
+  const shiftCashExpensesTotal = shiftFlows.cashExpenses;
   const myOpenShiftEntry = currentEmployee ? openShifts[currentEmployee.id] : null;
   const openingCountedThisShift = !!(myOpenShiftEntry && myOpenShiftEntry.clockIn === shiftStart && myOpenShiftEntry.openingCash !== undefined);
   // For a shift that started with the mandatory count, the counted figure IS the opening cash.
@@ -5906,225 +5906,8 @@ function POSPrototype({ tenantId }) {
 
   // ---- Close the day: everything about one business day, worked out from the saved orders, shifts,
   // counts and expenses — never from a number typed in on the day. ----
-  const CD_METHOD_BY_LABEL = (() => {
-    const map = {};
-    ["en", "ar"].forEach((l) => PAYMENT_METHODS.forEach((m) => { map[STRINGS[l][`payment_${m.id}`]] = m.id; }));
-    return map;
-  })();
-  const cdIsPayLabel = (name) => ["en", "ar"].some((l) => STRINGS[l].paymentMethodEditLabel === name);
-  const cdRound = (n) => Math.round(n * 100) / 100;
-  const cdSortedEdits = (r, notBefore) => [...(r.editHistory || [])].filter((h) => h.timestamp >= notBefore).sort((a, b) => (a.timestamp < b.timestamp ? -1 : 1));
-  // The payment method an order had when it was paid vs the one it ends up with, ignoring edits that
-  // cancel each other out (cash -> InstaPay -> cash -> InstaPay is one change, not three). Only edits
-  // made AFTER the money was collected matter to a drawer.
-  const cdNetPaymentChange = (r, notBefore) => {
-    let first = null;
-    let last = null;
-    let by = null;
-    let at = null;
-    cdSortedEdits(r, notBefore).forEach((h) => {
-      (h.changes || []).forEach((c) => {
-        if (!cdIsPayLabel(c.name)) return;
-        const f = CD_METHOD_BY_LABEL[c.from];
-        const to = CD_METHOD_BY_LABEL[c.to];
-        if (!f || !to) return;
-        if (!first) first = f;
-        last = to;
-        by = h.editedBy?.name || null;
-        at = h.timestamp;
-      });
-    });
-    return first && last && first !== last ? { from: first, to: last, by, at } : null;
-  };
-  // Dishes added or removed from an order after it was paid, and what that did to the bill. Edits made
-  // from now on carry the order's exact total before and after; older edits only recorded quantities,
-  // so their money value is estimated from the dish price (unit price x quantity, scaled by the order's
-  // own discount / service / VAT) and flagged as an estimate.
-  const cdItemEdits = (r, notBefore, priceOf) => {
-    const nets = {};
-    let value = 0;
-    let exact = true;
-    let by = null;
-    let at = null;
-    let any = false;
-    const factor = r.subtotal > 0 ? (r.total - (r.deliveryFee || 0)) / r.subtotal : 1;
-    cdSortedEdits(r, notBefore).forEach((h) => {
-      const item = (h.changes || []).filter((c) => !cdIsPayLabel(c.name) && Number.isFinite(Number(c.from)) && Number.isFinite(Number(c.to)) && Number(c.from) !== Number(c.to));
-      if (item.length === 0) return;
-      any = true;
-      by = h.editedBy?.name || by;
-      at = h.timestamp;
-      item.forEach((c) => { nets[c.name] = (nets[c.name] || 0) + (Number(c.to) - Number(c.from)); });
-      if (typeof h.totalBefore === "number" && typeof h.totalAfter === "number") {
-        value += h.totalAfter - h.totalBefore;
-      } else {
-        exact = false;
-        value += item.reduce((sum, c) => sum + (Number(c.to) - Number(c.from)) * (priceOf(c.name, r) || 0), 0) * factor;
-      }
-    });
-    if (!any) return null;
-    const parts = Object.entries(nets).filter(([, d]) => d !== 0);
-    if (parts.length === 0) return null;
-    const down = parts.filter(([, d]) => d < 0).map(([name, d]) => `${name} ×${-d}`).join(", ");
-    const up = parts.filter(([, d]) => d > 0).map(([name, d]) => `${name} ×${d}`).join(", ");
-    return { by, at, value: cdRound(value), down, up, exact };
-  };
-  const cdFlows = (pool, expensePool, inWin) => {
-    const cashOrders = pool.filter((r) => r.paid !== false && (r.status === "completed" || returnTimeOf(r)) && notHeldByRider(r) && inWin(cashTimeOf(r)));
-    const cashIn = cashOrders.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
-    const cashReturned = pool.filter((r) => returnTimeOf(r) && inWin(returnTimeOf(r)) && r.paid !== false && notHeldByRider(r)).flatMap(returnAmountsOf).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
-    const cashExpenses = expensePool.filter((e) => e.status === "paid" && e.paymentMethod === "cash" && inWin(e.recordedAt || `${e.date}T00:00:00.000Z`)).reduce((s, e) => s + e.amount, 0);
-    const who = {};
-    cashOrders.forEach((r) => {
-      const cash = receiptMethodAmounts(r).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
-      if (cash > 0) who[r.servedBy?.name || "—"] = (who[r.servedBy?.name || "—"] || 0) + cash;
-    });
-    return { cashIn, cashReturned, cashExpenses, paidOut: cashReturned + cashExpenses, who };
-  };
-  // Finds the set of recorded events whose combined effect best accounts for a gap.
-  const cdSolve = (gap, items) => {
-    const list = items.filter((i) => Math.abs(i.amount) >= 0.01).slice(0, 14);
-    let best = null;
-    for (let mask = 1; mask < 1 << list.length; mask++) {
-      let sum = 0;
-      let count = 0;
-      let approx = false;
-      for (let i = 0; i < list.length; i++) {
-        if (mask & (1 << i)) { sum += list[i].amount; count++; if (list[i].approx) approx = true; }
-      }
-      const diff = Math.abs(gap - sum);
-      const tol = approx ? 0.03 * Math.abs(gap) + 0.05 : 0.015;
-      const score = diff + count * 0.001;
-      if (!best || score < best.score) best = { mask, sum, diff, exact: diff <= tol, score };
-    }
-    if (!best) return { type: "none", items: [], explained: 0, rest: gap };
-    const chosen = list.filter((_, i) => best.mask & (1 << i));
-    const sameDirection = Math.sign(best.sum) === Math.sign(gap);
-    if (best.exact) return { type: "exact", items: chosen, explained: cdRound(best.sum), rest: 0 };
-    if (sameDirection && Math.abs(best.sum) >= 0.4 * Math.abs(gap)) return { type: "partial", items: chosen, explained: cdRound(best.sum), rest: cdRound(gap - best.sum) };
-    return { type: "none", items: [], explained: 0, rest: gap };
-  };
-  const buildCloseDay = (day) => {
-    const mk = day.slice(0, 7);
-    if (!storageMonthKeysFor([mk]).every((k) => receiptsByMonth[k] !== undefined)) return null;
-    const nowIso = new Date(nowTick).toISOString();
-    const dayAll = receiptsForReportingMonths([mk]).filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === day);
-    const completed = dayAll.filter((r) => r.status === "completed");
-    const voided = dayAll.filter((r) => r.status === "cancelled" || r.status === "refunded");
-    const revenue = completed.reduce((s, r) => s + r.total, 0);
-    const amounts = completed.flatMap(receiptMethodAmounts);
-    const byMethod = PAYMENT_METHODS.map((m) => ({ id: m.id, total: amounts.filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0) })).filter((m) => m.total > 0);
-    const discounted = completed.filter((r) => (r.discountAmount || 0) > 0);
-    const dayExpenses = (expensesByMonth[mk] || []).filter((e) => e.date === day);
-    const expenseTotal = dayExpenses.reduce((s, e) => s + e.amount, 0);
-
-    const priceByName = new Map();
-    Object.values(menu).flat().forEach((i) => priceByName.set(i.name, i.price));
-    Object.values(receiptsByMonth).flat().forEach((r) => (r.items || []).forEach((i) => priceByName.set(i.name, i.price)));
-    const priceOf = (name, r) => ((r.items || []).find((i) => i.name === name) || {}).price || priceByName.get(name) || 0;
-    const monthsOf = (a, b) => monthKeysInRange(new Date(a).toISOString().slice(0, 7), new Date(b).toISOString().slice(0, 7));
-    const poolFor = (a, b) => {
-      const keys = monthsOf(a, b);
-      if (!keys.every((k) => receiptsByMonth[k] !== undefined)) return null;
-      return { pool: keys.flatMap((k) => receiptsByMonth[k] || []), expenses: keys.flatMap((k) => expensesByMonth[k] || []) };
-    };
-
-    // Every shift we know about, oldest first: the log plus anything still open.
-    const logged = shiftLog.map((e) => ({ key: e.id, employeeId: e.employeeId, name: e.employeeName, clockIn: e.clockIn, clockOut: e.clockOut, auto: !!e.autoClosed, opening: typeof e.openingCash === "number" && e.openingCounted !== false ? e.openingCash : null, counted: typeof e.countedCash === "number" ? e.countedCash : null, savedExpected: typeof e.expectedCash === "number" ? e.expectedCash : null }));
-    const open = Object.values(openShifts)
-      .filter((e) => !logged.some((l) => l.employeeId === e.employeeId && l.clockIn === e.clockIn))
-      .map((e) => ({ key: `open_${e.employeeId}`, employeeId: e.employeeId, name: e.employeeName, clockIn: e.clockIn, clockOut: null, auto: false, opening: typeof e.openingCash === "number" ? e.openingCash : null, counted: null, savedExpected: null }));
-    const allShifts = [...logged, ...open].sort((a, b) => a.clockIn.localeCompare(b.clockIn));
-    // A shift belongs to the business day that most of it falls in — the day of its MIDPOINT. Using the
-    // clock-in time put someone who started before the day officially begins (08:38 when the day starts at
-    // 10:00) on the previous day, even though all of their orders were on this one.
-    const shiftDay = (sh) => businessDateForTimestamp(new Date((new Date(sh.clockIn).getTime() + new Date(sh.clockOut || nowIso).getTime()) / 2).toISOString(), shiftHoursConfig);
-    const dayShifts = allShifts.filter((sh) => shiftDay(sh) === day);
-    const coverShift = (r) => allShifts.find((x) => x.employeeId === r.servedBy?.id && r.timestamp >= x.clockIn && (!x.clockOut || r.timestamp <= x.clockOut));
-    const insideAnyShift = (iso) => allShifts.some((x) => iso >= x.clockIn && iso <= (x.clockOut || nowIso));
-
-    const drawers = dayShifts.map((sh) => {
-      const end = sh.clockOut || nowIso;
-      const inWin = (iso) => iso >= sh.clockIn && iso <= end;
-      const src = poolFor(sh.clockIn, end);
-      if (!src) return { ...sh, loading: true };
-      const { pool, expenses } = src;
-      const flows = cdFlows(pool, expenses, inWin);
-      const expected = sh.opening !== null ? cdRound(sh.opening + flows.cashIn - flows.paidOut) : null;
-      const gap = expected !== null && sh.counted !== null ? cdRound(sh.counted - expected) : null;
-      const gapAtClosing = sh.savedExpected !== null && sh.counted !== null ? cdRound(sh.counted - sh.savedExpected) : null;
-
-      // Recorded events that could explain a difference between the drawer and the books.
-      const events = [];
-      const collected = pool.filter((r) => r.paid !== false && r.status === "completed" && inWin(r.paidAt || r.timestamp));
-      collected.forEach((r) => {
-        const since = r.paidAt || r.timestamp;
-        const pay = cdNetPaymentChange(r, since);
-        if (pay && (pay.from === "cash" || pay.to === "cash")) {
-          events.push({ kind: "pay", n: r.ticketNo, amount: pay.from === "cash" ? r.total : -r.total, orderTotal: r.total, from: pay.from, to: pay.to, by: pay.by, at: pay.at, paidAt: since, afterClose: !!sh.clockOut && pay.at > sh.clockOut });
-        }
-        if (r.paymentMethod === "cash") {
-          const ed = cdItemEdits(r, since, priceOf);
-          if (ed && Math.abs(ed.value) >= 0.01) events.push({ kind: ed.value < 0 ? "qtyDown" : "qtyUp", n: r.ticketNo, amount: cdRound(-ed.value), approx: !ed.exact, by: ed.by, at: ed.at, list: ed.value < 0 ? ed.down : ed.up, afterClose: !!sh.clockOut && ed.at > sh.clockOut });
-        }
-      });
-      pool.filter((r) => (r.status === "cancelled" || r.status === "refunded") && !returnTimeOf(r) && r.paid !== false && inWin(r.paidAt || r.timestamp)).forEach((r) => {
-        const cash = receiptMethodAmounts(r).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
-        if (cash > 0) events.push({ kind: "legacyVoid", n: r.ticketNo, amount: cash, status: r.status });
-      });
-      expenses.filter((e) => e.status === "paid" && e.paymentMethod === "cash" && e.date === day && !insideAnyShift(e.recordedAt || `${e.date}T00:00:00.000Z`)).forEach((e) => {
-        events.push({ kind: "looseExpense", what: e.category, amount: -e.amount });
-      });
-      const solve = gap !== null && Math.abs(gap) >= 0.01 ? cdSolve(gap, events) : null;
-      return { ...sh, ...flows, expected, gap, gapAtClosing, events, solve };
-    });
-
-    // The cash that moved between one shift's closing count and the next one's opening count.
-    drawers.forEach((d) => {
-      const prev = [...allShifts].reverse().find((x) => x.clockOut && x.clockOut <= d.clockIn && x.counted !== null);
-      d.prevName = prev ? prev.name : null;
-      d.prevCounted = prev ? prev.counted : null;
-      d.prevOut = prev ? prev.clockOut : null;
-      d.handover = prev && d.opening !== null ? cdRound(d.opening - prev.counted) : null;
-      d.between = null;
-      if (prev && d.opening !== null && !d.loading) {
-        const src = poolFor(prev.clockOut, d.clockIn);
-        if (src) {
-          const f = cdFlows(src.pool, src.expenses, (iso) => iso > prev.clockOut && iso < d.clockIn);
-          const expectedOpening = cdRound(prev.counted + f.cashIn - f.paidOut);
-          d.between = { ...f, expectedOpening, residual: cdRound(d.opening - expectedOpening) };
-        }
-      }
-    });
-
-    // Whole-day cash chain: the first shift's opening, every cash movement from then until the last
-    // shift closed (inside shifts AND in the gaps between them), against the final count.
-    const first = drawers[0];
-    const last = drawers[drawers.length - 1];
-    let dayTotals = { opening: null, cashIn: 0, paidOut: 0, finalCounted: null, expectedEnd: null, gap: null, shiftGaps: 0, residuals: 0 };
-    if (first && last && !first.loading) {
-      const lastEnd = last.clockOut || nowIso;
-      const src = poolFor(first.clockIn, lastEnd);
-      if (src) {
-        const f = cdFlows(src.pool, src.expenses, (iso) => iso >= first.clockIn && iso <= lastEnd);
-        dayTotals = {
-          opening: first.opening,
-          cashIn: f.cashIn,
-          paidOut: f.paidOut,
-          finalCounted: last.counted,
-          expectedEnd: first.opening !== null ? cdRound(first.opening + f.cashIn - f.paidOut) : null,
-          gap: null,
-          shiftGaps: cdRound(drawers.reduce((s, d) => s + (d.gap || 0), 0)),
-          residuals: cdRound(drawers.slice(1).reduce((s, d) => s + (d.between ? d.between.residual : d.handover || 0), 0)),
-        };
-        dayTotals.gap = dayTotals.expectedEnd !== null && dayTotals.finalCounted !== null ? cdRound(dayTotals.finalCounted - dayTotals.expectedEnd) : null;
-      }
-    }
-
-    const outside = completed.filter((r) => !coverShift(r));
-    const unpaid = completed.filter((r) => r.paid === false);
-    return { day, revenue, orders: completed.length, byMethod, discounts: { n: discounted.length, total: discounted.reduce((s, r) => s + (r.discountAmount || 0), 0) }, voided: { n: voided.length, total: voided.reduce((s, r) => s + r.total, 0) }, expenseTotal, drawers, dayTotals, outside, unpaid };
-  };
+  const cdRound = round2;
+  const buildCloseDay = (day) => ledger.closeDay(day, nowTick);
   // Plain-language explanation of one shift's gap, as a list of lines (used on screen and in the report).
   const cdFmtTime = (iso) => new Date(iso).toLocaleString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" });
   const cdEventText = (e) => {
@@ -6801,6 +6584,13 @@ function POSPrototype({ tenantId }) {
     keys.forEach((mk) => ensureMonthLoaded(mk));
   }, [view, shiftLog]);
   useEffect(() => {
+    if (view !== "staff") return;
+    // The leaderboard adds up the last 30 days of orders.
+    const since = businessDateForTimestamp(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), shiftHoursConfig);
+    const today = businessDateForTimestamp(new Date().toISOString(), shiftHoursConfig);
+    storageMonthKeysFor(monthKeysInRange(since.slice(0, 7), today.slice(0, 7))).forEach((k) => ensureMonthLoaded(k));
+  }, [view]);
+  useEffect(() => {
     if (view !== "staff" || !isManager) return;
     const mk = (dayCheckDate || businessDateForTimestamp(new Date().toISOString(), shiftHoursConfig)).slice(0, 7);
     [prevMonthKey(mk), mk, nextMonthKey(mk)].forEach((k) => ensureMonthLoaded(k));
@@ -6913,7 +6703,11 @@ function POSPrototype({ tenantId }) {
     setEditingPinValue("");
   };
   const leaderboard = useMemo(() => {
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const nowMs = Date.now();
+    const live = ledger.employeeTotals(new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString(), nowMs);
+    if (live) return live.sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+    // The months are still loading: show what was saved at clock-out until they arrive.
+    const cutoff = nowMs - 30 * 24 * 60 * 60 * 1000;
     const totals = {};
     shiftLog.forEach((s) => {
       if (new Date(s.clockOut).getTime() < cutoff) return;
@@ -6922,7 +6716,7 @@ function POSPrototype({ tenantId }) {
       totals[s.employeeId].orders += s.orders;
     });
     return Object.values(totals).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
-  }, [shiftLog]);
+  }, [ledger, shiftLog]);
   const recentShiftLog = useMemo(
     () => [...shiftLog].sort((a, b) => new Date(b.clockOut) - new Date(a.clockOut)).slice(0, 20),
     [shiftLog]
@@ -6964,7 +6758,9 @@ function POSPrototype({ tenantId }) {
     return Math.round((fee - restaurantCut) * 100) / 100;
   };
   const deliveryReconciliation = useMemo(() => {
-    const outstanding = dashboardReceipts.filter((r) => r.tableId === "delivery" && r.paid !== false && !r.deliverySettled);
+    // Every unsettled delivery order on record — not only the ones inside whatever period the Dashboard
+    // happens to be showing, which used to change this panel when the Dashboard filter changed.
+    const outstanding = Object.values(receiptsByMonth).flat().filter((r) => r.status === "completed" && r.tableId === "delivery" && r.paid !== false && !r.deliverySettled);
     return dutyRoster
       .filter((p) => p.role === "delivery")
       .map((p) => {
@@ -6973,7 +6769,7 @@ function POSPrototype({ tenantId }) {
         const feesTotal = orders.reduce((s, r) => s + agentFeeShare(r.deliveryFee || 0), 0);
         return { ...p, orderList: orders, orders: orders.length, cashTotal, feesTotal, net: Math.round((cashTotal - feesTotal) * 100) / 100 };
       });
-  }, [dutyRoster, dashboardReceipts, deliveryFeeRetentionMode, deliveryFeeRetentionPercent, deliveryFeeRetentionFixed]);
+  }, [dutyRoster, receiptsByMonth, deliveryFeeRetentionMode, deliveryFeeRetentionPercent, deliveryFeeRetentionFixed]);
 
   // Marks every currently-outstanding delivery order for this rider (exactly the ones counted
   // into their card above) as settled, once the manager has actually collected/paid out the net
@@ -10569,13 +10365,10 @@ function POSPrototype({ tenantId }) {
 
           {isManager && (() => {
             const day = dayCheckDate || businessDateForTimestamp(new Date().toISOString(), shiftHoursConfig);
-            const dayMonth = day.slice(0, 7);
-            const loadedAll = storageMonthKeysFor([dayMonth]).every((mk) => receiptsByMonth[mk] !== undefined);
-            const dayReceipts = receiptsForReportingMonths([dayMonth], (r) => r.status === "completed").filter((r) => businessDateForTimestamp(r.timestamp, shiftHoursConfig) === day);
-            const shiftsForCheck = [
-              ...shiftLog.map((e) => ({ key: e.id, employeeId: e.employeeId, name: e.employeeName, clockIn: e.clockIn, clockOut: e.clockOut, auto: !!e.autoClosed })),
-              ...Object.values(openShifts).map((e) => ({ key: `open_${e.employeeId}`, employeeId: e.employeeId, name: e.employeeName, clockIn: e.clockIn, clockOut: null, auto: false })),
-            ];
+            const dayPeriod = ledger.period(day, day);
+            const loadedAll = !!dayPeriod;
+            const dayReceipts = dayPeriod ? dayPeriod.completed : [];
+            const shiftsForCheck = ledger.allShifts();
             const rowsByKey = new Map();
             const orphan = { key: "none", name: null, clockIn: "9999", orders: 0, cash: 0, other: 0, total: 0, names: new Set() };
             dayReceipts.forEach((r) => {

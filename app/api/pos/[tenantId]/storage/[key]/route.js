@@ -17,13 +17,18 @@ export async function GET(req, { params }) {
 
   const { data, error } = await supabaseAdmin()
     .from("tenant_pos_kv")
-    .select("value")
+    .select("value, updated_at")
     .eq("tenant_id", params.tenantId)
     .eq("key", params.key)
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ value: data?.value ?? null });
+  // A client that already holds this version (it passes the updated_at it has as ?since=) is told so
+  // instead of being sent the whole value again — how screens stay fresh without re-downloading months
+  // of receipts every few seconds.
+  const since = new URL(req.url).searchParams.get("since");
+  if (since && data?.updated_at && since === data.updated_at) return NextResponse.json({ unchanged: true, updated_at: data.updated_at });
+  return NextResponse.json({ value: data?.value ?? null, updated_at: data?.updated_at ?? null });
 }
 
 // Mirrors window.storage.set(key, value) — upserts the row for this tenant+key.
