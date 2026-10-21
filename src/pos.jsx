@@ -2539,6 +2539,7 @@ function POSPrototype({ tenantId }) {
   const [dayCheckDate, setDayCheckDate] = useState(null); // business date picked in the Staff tab's "Day check"; null = today's business day
   const [viewingShiftDetail, setViewingShiftDetail] = useState(null); // a past shift-log entry a manager tapped, to show its orders/breakdown
   const [shiftLog, setShiftLog] = useState([]); // shared history of completed shifts
+  const lastPublishedAvailabilityRef = useRef(null);
   const [shiftLogLoaded, setShiftLogLoaded] = useState(false);
   const shiftLogLoadedRef = useRef(false);
   shiftLogLoadedRef.current = shiftLogLoaded;
@@ -3037,10 +3038,9 @@ function POSPrototype({ tenantId }) {
       }
     };
     loadPending();
-    const interval = setInterval(loadPending, 8000);
+    // Kept fresh by the shared live-sync timer below (one batched request for everything).
     return () => {
       cancelled = true;
-      clearInterval(interval);
     };
   }, []);
 
@@ -3060,10 +3060,9 @@ function POSPrototype({ tenantId }) {
       }
     };
     loadOpenShifts();
-    const interval = setInterval(loadOpenShifts, 8000);
+    // Kept fresh by the shared live-sync timer below (one batched request for everything).
     return () => {
       cancelled = true;
-      clearInterval(interval);
     };
   }, []);
 
@@ -3085,10 +3084,9 @@ function POSPrototype({ tenantId }) {
       }
     };
     loadManualOut();
-    const interval = setInterval(loadManualOut, 8000);
+    // Kept fresh by the shared live-sync timer below (one batched request for everything).
     return () => {
       cancelled = true;
-      clearInterval(interval);
     };
   }, []);
 
@@ -3217,7 +3215,11 @@ function POSPrototype({ tenantId }) {
             });
       availability[item.id] = available;
     });
-    syncSet("menu-availability", JSON.stringify(availability), true, t("syncLabelStock"));
+    // Every order changes stock, but most orders don't change what is available — only write when it did.
+    const serialized = JSON.stringify(availability);
+    if (serialized === lastPublishedAvailabilityRef.current) return;
+    lastPublishedAvailabilityRef.current = serialized;
+    syncSet("menu-availability", serialized, true, t("syncLabelStock"));
   }, [menu, ingredients, menuLoaded, menuLoadFailed, manualOutOfStock, manualOutLoaded]);
 
   // Ticks once a minute purely to refresh the live "hours worked so far" display while someone's
@@ -3602,10 +3604,9 @@ function POSPrototype({ tenantId }) {
       }
     };
     loadRequests();
-    const interval = setInterval(loadRequests, 8000);
+    // Kept fresh by the shared live-sync timer below (one batched request for everything).
     return () => {
       cancelled = true;
-      clearInterval(interval);
     };
   }, []);
   const checkoutRequestForTable = (id) => checkoutRequests.find((r) => r.tableId === id);
@@ -3910,21 +3911,94 @@ function POSPrototype({ tenantId }) {
     syncStoredKey(`receipts:${monthKey}`, (value) => setReceiptsByMonth((prev) => ({ ...prev, [monthKey]: value ? JSON.parse(value) : [] })));
   const refreshExpenseMonthLoaded = (monthKey) =>
     syncStoredKey(`expenses:${monthKey}`, (value) => setExpensesByMonth((prev) => ({ ...prev, [monthKey]: value ? JSON.parse(value) : [] })));
-  // The one timer that keeps every money screen on the same, current data: the receipts and expenses of
-  // every month this device has loaded, and the shift log. Skipped while the page is hidden and for a few
-  // seconds after this device itself wrote something (so a half-finished local save is never overwritten
-  // by an older copy).
-  const liveSyncTick = () => {
-    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-    if (Date.now() - lastLocalWriteRef.current < 6000) return;
-    Object.keys(receiptsByMonthRef.current).forEach((mk) => refreshMonthLoaded(mk));
-    Object.keys(expensesByMonthRef.current).forEach((mk) => refreshExpenseMonthLoaded(mk));
-    if (shiftLogLoadedRef.current) syncStoredKey("shift-log", (value) => setShiftLog(value ? JSON.parse(value) : []));
-  };
+  // The one timer behind every live screen. Every few seconds it asks the server ONE question — "which of
+  // these records changed?" — and only records that did come back with their value. It replaces what used to
+  // be dozens of separate polls per terminal (pending orders, open shifts, out-of-stock flags, checkout
+  // requests, plus every cached month of receipts and expenses), which is what made the hosting bill grow.
+  //  - customer orders and bill requests: checked every 10 s (staff must notice them quickly)
+  //  - everything else: every 30 s
+  //  - nothing is asked while the page is hidden, and a short pause follows this device's own writes so a
+  //    half-saved local change is never overwritten by an older copy.
   useEffect(() => {
-    const id = setInterval(liveSyncTick, 15000);
+    const parse = (v, fallback) => (v ? JSON.parse(v) : fallback);
+    const subs = {
+      "pending-orders": { every: 10000, apply: (v) => { setPendingOrders(parse(v, [])); pendingFetchedOkRef.current = true; setPendingOrdersLoaded(true); } },
+      "checkout-requests": {
+        every: 10000,
+        apply: (v) => {
+          const next = parse(v, []);
+          if (seenCheckoutRequestIds.current === null) {
+            seenCheckoutRequestIds.current = new Set(next.map((r) => r.id));
+          } else {
+            const isNew = next.some((r) => !seenCheckoutRequestIds.current.has(r.id));
+            if (isNew) playNotificationChime();
+            seenCheckoutRequestIds.current = new Set(next.map((r) => r.id));
+          }
+          setCheckoutRequests(next);
+        },
+      },
+      "open-shifts": { every: 30000, apply: (v) => { setOpenShifts(parse(v, {})); setOpenShiftsLoaded(true); } },
+      "item-out-of-stock": {
+        every: 30000,
+        apply: (v) => {
+          // While one of this device's own writes is in flight, ignore the poll (and try again next time).
+          if (manualOutWritesRef.current > 0) return false;
+          setManualOutOfStock(parse(v, {}));
+          setManualOutLoaded(true);
+        },
+      },
+    };
+    const applyDynamic = (key, v) => {
+      if (key.startsWith("receipts:")) {
+        const mk = key.slice("receipts:".length);
+        setReceiptsByMonth((prev) => ({ ...prev, [mk]: parse(v, []) }));
+      } else if (key.startsWith("expenses:")) {
+        const mk = key.slice("expenses:".length);
+        setExpensesByMonth((prev) => ({ ...prev, [mk]: parse(v, []) }));
+      } else if (key === "shift-log") {
+        setShiftLog(parse(v, []));
+      }
+    };
+    const last = {};
+    let inFlight = false;
+    const tick = async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      if (inFlight) return;
+      const now = Date.now();
+      const keys = [];
+      Object.entries(subs).forEach(([k, s]) => {
+        if (now - (last[k] || 0) >= s.every - 500) keys.push(k);
+      });
+      if (now - lastLocalWriteRef.current >= 6000) {
+        const dynamic = [
+          ...Object.keys(receiptsByMonthRef.current).map((mk) => `receipts:${mk}`),
+          ...Object.keys(expensesByMonthRef.current).map((mk) => `expenses:${mk}`),
+          ...(shiftLogLoadedRef.current ? ["shift-log"] : []),
+        ];
+        dynamic.forEach((k) => {
+          if (now - (last[k] || 0) >= 30000 - 500) keys.push(k);
+        });
+      }
+      if (keys.length === 0) return;
+      inFlight = true;
+      try {
+        const results = await storage.getMany(keys, dataVersionsRef.current);
+        keys.forEach((k) => (last[k] = now));
+        keys.forEach((k) => {
+          const r = results[k];
+          if (!r || r.unchanged) return;
+          const applied = subs[k] ? subs[k].apply(r.value) : applyDynamic(k, r.value);
+          if (applied !== false) dataVersionsRef.current[k] = r.updated_at || "none";
+        });
+      } catch (e) {
+        // offline or a hiccup: keep what is on screen and try again next time
+      } finally {
+        inFlight = false;
+      }
+    };
+    const id = setInterval(tick, 5000);
     const onVisible = () => {
-      if (document.visibilityState === "visible") liveSyncTick();
+      if (document.visibilityState === "visible") tick();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
@@ -6572,7 +6646,7 @@ function POSPrototype({ tenantId }) {
   useEffect(() => {
     if (!viewingShiftDetail || viewingShiftDetail.clockOut) return;
     const monthKey = new Date(viewingShiftDetail.clockIn).toISOString().slice(0, 7);
-    const interval = setInterval(() => refreshMonthLoaded(monthKey), 8000);
+    const interval = setInterval(() => refreshMonthLoaded(monthKey), 15000);
     return () => clearInterval(interval);
   }, [viewingShiftDetail]);
   useEffect(() => {
@@ -6613,9 +6687,8 @@ function POSPrototype({ tenantId }) {
       refreshMonthLoaded(k);
       refreshExpenses(k);
     });
+    // Fresh once when the screen opens; the shared live-sync timer keeps it current after that.
     refreshAll();
-    const interval = setInterval(refreshAll, 20000);
-    return () => clearInterval(interval);
   }, [view, closeDayDate, shiftHoursLoaded]);
   useEffect(() => {
     if (view !== "closeday") return;
@@ -6629,7 +6702,7 @@ function POSPrototype({ tenantId }) {
       }
     };
     loadClosings();
-    const interval = setInterval(loadClosings, 15000);
+    const interval = setInterval(loadClosings, 30000);
     return () => {
       cancelled = true;
       clearInterval(interval);
@@ -11302,106 +11375,89 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
   // ("pending-orders") that only the staff app reads.
   useEffect(() => {
     let cancelled = false;
-    const load = async () => {
-      try {
-        // The website look carries photos, so its menu is re-read every minute instead of every 15s.
-        const skipMenu = siteOnRef.current && Date.now() - lastMenuFetchRef.current < 60000;
-        if (!skipMenu) lastMenuFetchRef.current = Date.now();
-        const [brandRes, menuRes, availRes, zonesRes, taxRes] = await Promise.all([
-          getSharedWithRetry(storage, "restaurant-branding").catch(() => null),
-          skipMenu ? Promise.resolve(null) : getSharedWithRetry(storage, "menu-config").catch(() => null),
-          getSharedWithRetry(storage, "menu-availability").catch(() => null),
-          isGeneralLink ? getSharedWithRetry(storage, "delivery-zones-config").catch(() => null) : Promise.resolve(null),
-          getSharedWithRetry(storage, "tax-config").catch(() => null),
-        ]);
-        if (cancelled) return;
-        if (brandRes?.value) {
-          const b = JSON.parse(brandRes.value);
-          setRestaurantName(b.name || "Ember & Vine");
-          setLogoUrl(b.logo || null);
-          setPrimaryColor(b.primary || COLORS.burgundy);
-          setSecondaryColor(b.secondary || COLORS.brass);
-          setMapsLink(b.mapsLink || "");
-          setPhoneNumber(b.phone || "");
-        }
-        if (menuRes?.value) {
-          const m = JSON.parse(menuRes.value);
-          setCategories(m.categories || []);
-          // Strip anything beyond name/tag/price before it ever reaches component state — recipe
-          // data (ingredient IDs and quantities) rides along in the same shared record for the
-          // staff app's use, but this view has no reason to hold onto it.
-          const publicMenu = {};
-          Object.keys(m.menu || {}).forEach((cat) => {
-            publicMenu[cat] = (m.menu[cat] || []).map((item) =>
-              siteOnRef.current
-                ? { id: item.id, name: item.name, tag: item.tag, price: item.price, image: item.image || null, badges: Array.isArray(item.badges) ? item.badges : [], featured: !!item.featured }
-                : { id: item.id, name: item.name, tag: item.tag, price: item.price }
-            );
+    const versions = {};
+    const applyKey = (key, value) => {
+      if (!value) return;
+      if (key === "restaurant-branding") {
+        const b = JSON.parse(value);
+        setRestaurantName(b.name || "Ember & Vine");
+        setLogoUrl(b.logo || null);
+        setPrimaryColor(b.primary || COLORS.burgundy);
+        setSecondaryColor(b.secondary || COLORS.brass);
+        setMapsLink(b.mapsLink || "");
+        setPhoneNumber(b.phone || "");
+      } else if (key === "menu-config") {
+        const m = JSON.parse(value);
+        setCategories(m.categories || []);
+        // Strip anything beyond name/tag/price before it ever reaches component state — recipe data
+        // (ingredient IDs and quantities) rides along in the same shared record for the staff app's use,
+        // but this view has no reason to hold onto it.
+        const publicMenu = {};
+        Object.keys(m.menu || {}).forEach((cat) => {
+          publicMenu[cat] = (m.menu[cat] || []).map((item) =>
+            siteOnRef.current
+              ? { id: item.id, name: item.name, tag: item.tag, price: item.price, image: item.image || null, badges: Array.isArray(item.badges) ? item.badges : [], featured: !!item.featured }
+              : { id: item.id, name: item.name, tag: item.tag, price: item.price }
+          );
+        });
+        setMenu(publicMenu);
+      } else if (key === "menu-availability") {
+        setAvailability(JSON.parse(value));
+      } else if (key === "delivery-zones-config") {
+        setDeliveryZones(JSON.parse(value));
+      } else if (key === "tax-config") {
+        const parsed = JSON.parse(value);
+        setVatPercent(Number(parsed.vatPercent) || 0);
+        setServicePercent(Number(parsed.servicePercent) || 0);
+      } else if (key === "website-media") {
+        setSiteMedia(JSON.parse(value));
+      } else if (key === "shift-hours-config") {
+        setSiteShiftHours(JSON.parse(value));
+      }
+    };
+    const baseKeys = ["restaurant-branding", "menu-config", "menu-availability", "tax-config", ...(isGeneralLink ? ["delivery-zones-config"] : [])];
+    const keysNow = () => [...baseKeys, ...(callCenter ? [] : ["website-settings"]), ...(!callCenter && siteOnRef.current ? ["website-media", "shift-hours-config"] : [])];
+    // One request carries every record this page needs; later checks come back empty unless something
+    // changed (a price, an item, stock, the website look), so a page left open costs almost nothing.
+    const run = async (attempts) => {
+      for (let i = 0; i < attempts; i++) {
+        try {
+          const keys = keysNow();
+          const results = await storage.getMany(keys, versions);
+          if (cancelled) return true;
+          keys.forEach((k) => {
+            const r = results[k];
+            if (!r || r.unchanged) return;
+            versions[k] = r.updated_at || "none";
+            if (k === "website-settings") {
+              const merged = mergeSiteSettings(r.value ? JSON.parse(r.value) : null);
+              setSiteSettings(merged);
+              if (merged.enabled || preview) {
+                if (!langChosenRef.current) setLangState(merged.defaultLang === "en" ? "en" : "ar");
+              }
+            } else {
+              applyKey(k, r.value);
+            }
           });
-          setMenu(publicMenu);
+          return true;
+        } catch (e) {
+          if (i < attempts - 1) await new Promise((resolve) => setTimeout(resolve, 600 * (i + 1)));
         }
-        if (availRes?.value) setAvailability(JSON.parse(availRes.value));
-        if (zonesRes?.value) setDeliveryZones(JSON.parse(zonesRes.value));
-        if (taxRes?.value) {
-          const parsed = JSON.parse(taxRes.value);
-          setVatPercent(Number(parsed.vatPercent) || 0);
-          setServicePercent(Number(parsed.servicePercent) || 0);
-        }
-      } catch (e) {
-        // fall back to whatever defaults are already set
-      } finally {
-        if (!cancelled) setLoaded(true);
       }
+      return false;
     };
-    load();
-    // Re-poll shared menu/branding/availability while this page stays open, so a price, item, or
-    // stock change shows up without the customer needing to manually refresh.
-    const interval = setInterval(load, 15000);
+    run(3).finally(() => {
+      if (!cancelled) setLoaded(true);
+    });
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      run(1);
+    }, 30000);
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
   }, []);
-
-  // The website look's own records: its settings (small, re-read every minute so a publish or edit
-  // shows up), and — only when it's on — its photos and the opening hours. Photos live in their own
-  // record so the frequent settings poll stays tiny.
-  useEffect(() => {
-    if (callCenter) return;
-    let cancelled = false;
-    let lastHeavy = 0;
-    const loadSite = async () => {
-      try {
-        const res = await getSharedWithRetry(storage, "website-settings", 2, 400).catch(() => null);
-        if (cancelled || !res) return;
-        const merged = mergeSiteSettings(res.value ? JSON.parse(res.value) : null);
-        setSiteSettings(merged);
-        if (!(merged.enabled || preview)) return;
-        if (!langChosenRef.current) setLangState(merged.defaultLang === "en" ? "en" : "ar");
-        if (Date.now() - lastHeavy < 240000) return;
-        lastHeavy = Date.now();
-        const [mediaRes, hoursRes] = await Promise.all([
-          getSharedWithRetry(storage, "website-media", 2, 400).catch(() => null),
-          getSharedWithRetry(storage, "shift-hours-config", 2, 400).catch(() => null),
-        ]);
-        if (cancelled) return;
-        if (mediaRes) setSiteMedia(mediaRes.value ? JSON.parse(mediaRes.value) : {});
-        if (hoursRes?.value) setSiteShiftHours(JSON.parse(hoursRes.value));
-      } catch (e) {
-        // keep whatever the page already has
-      }
-    };
-    loadSite();
-    const interval = setInterval(loadSite, 60000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
-  // Settings that turn the website look on after the first menu read need the richer menu next time.
-  useEffect(() => {
-    if (siteActive) lastMenuFetchRef.current = 0;
-  }, [siteActive]);
 
   // Once an order's been sent, poll the same shared pending-orders list staff reviews from, to
   // pick up the moment staff confirms it (see markPendingOrderConfirmed in POSPrototype) — that's
@@ -11421,7 +11477,7 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
       }
     };
     checkStatus();
-    const interval = setInterval(checkStatus, 8000);
+    const interval = setInterval(checkStatus, 10000);
     return () => {
       cancelled = true;
       clearInterval(interval);
