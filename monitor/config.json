@@ -1,0 +1,44 @@
+{
+  "timezone": "Africa/Cairo",
+  "weeklyReport": {
+    "weekday": 4,
+    "hour": 10
+  },
+  "dailyDigest": false,
+  "remindHours": 24,
+  "cashPickupsExpected": [],
+  "acknowledged": [
+    {
+      "tenant": "089591ae-3a36-4432-8b78-cf2f3ad4cb87",
+      "contains": "Ahmed Gamal 2026-09-08",
+      "reason": "Historic September data: one employee logged two overlapping shifts. Known, harmless."
+    },
+    {
+      "tenant": "1e9da9de-1e02-4376-a6cf-4433a62bedf1",
+      "contains": "Giovanni 2026-08",
+      "reason": "Test restaurant: overlapping test shifts."
+    }
+  ],
+  "testTenants": [
+    "1e9da9de-1e02-4376-a6cf-4433a62bedf1"
+  ],
+  "thresholds": {
+    "shiftGapAmber": 20,
+    "shiftGapRed": 100,
+    "handoverAmber": 20,
+    "handoverRed": 100,
+    "pendingOrderMinutesAmber": 10,
+    "pendingOrderMinutesRed": 20,
+    "openShiftHoursAmber": 14,
+    "openShiftHoursRed": 24,
+    "subscriptionDaysAmber": 7,
+    "subscriptionDaysRed": 2,
+    "dbPercentAmber": 60,
+    "dbPercentRed": 80,
+    "dbLimitMB": 500,
+    "countsRequiredFrom": "2026-10-18T02:00:00Z",
+    "noSalesZeroHours": 2,
+    "revenueDropPercent": 50,
+    "snapshotStaleHours": 36
+  }
+}
