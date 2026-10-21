@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createTenantStorage } from "@/lib/tenantStorage";
 import SiteView from "@/src/site/SiteView";
+import StockImportModal from "@/src/stock/StockImport";
+import { buildPlan as buildStockImportPlan } from "@/src/stock/importLogic";
 import WebsiteSettingsPanel from "@/src/site/WebsiteSettings";
 import { mergeSiteSettings, ITEM_BADGES } from "@/src/site/presets";
 import { makeSiteT } from "@/src/site/siteStrings";
@@ -1898,7 +1900,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
-- **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments.
+- **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
 - **Website** (manager-only; comes with the Online ordering link feature): turns the online-ordering link into a branded website for the restaurant. A manager picks one of five looks (Classic, Modern, Dark, Bold, Minimal — each sets fonts, shapes and layout together), can override the button and highlight colors (otherwise the brand colors from Settings are used), uploads a cover photo and up to 6 gallery photos, writes a tagline and an "About us" text in English and Arabic, adds an announcement banner, address and social links (Instagram, Facebook, TikTok, WhatsApp, website), chooses which sections show (About, Popular items row, Gallery, Opening hours — the hours and the "Open now / Closed" badge come from Settings → Shift hours) and chooses the language the page opens in. A live phone preview sits next to the controls (a "Preview" button on phones). Everything saves automatically, but customers keep seeing the original ordering page until the "Published" switch is turned on, and it can be switched off again at any time. The tab also lets the manager claim a short web address (for example /r/my-restaurant) to share on social media or print on menus; the original long link keeps working. Orders can't be sent from the preview. In the Menu editor, each dish has an "On your website" section: labels (Popular, New, Spicy, Vegetarian, Chef's pick) and a "Show in the Popular row" checkbox. Dish photos and the short description are what the website shows on each menu card. The website look also applies to table QR menus once published.
@@ -2649,6 +2651,7 @@ function POSPrototype({ tenantId }) {
   const seenPendingIdsRef = useRef(null);
   const pendingFetchedOkRef = useRef(false);
   const [callCenterLinkCopied, setCallCenterLinkCopied] = useState(false);
+  const [stockImportOpen, setStockImportOpen] = useState(false);
   const [newIngName, setNewIngName] = useState("");
   const [newIngUnit, setNewIngUnit] = useState("kg");
   const [newIngUnitCustom, setNewIngUnitCustom] = useState("");
@@ -4641,6 +4644,29 @@ function POSPrototype({ tenantId }) {
     setNewIngStock("");
     setNewIngUnitCustom("");
     flashNotice(t("notice_ingredientAdded", { name: entry.name, unit: resolvedUnit }));
+  };
+  // Applies an Excel/CSV stock import. The plan is worked out again against the freshest stored stock (not this
+  // device's copy) and written once, so orders being rung up on other terminals meanwhile are never overwritten.
+  const applyStockImport = async (items, updateExisting) => {
+    const fresh = await fetchFreshIngredients();
+    const plan = buildStockImportPlan(items, fresh, { updateExisting });
+    const next = { ...fresh };
+    let added = 0;
+    let updated = 0;
+    plan.rows.forEach((r) => {
+      if (r.action === "add") {
+        const id = newId("ing");
+        next[id] = { id, name: r.name, unit: r.unit, stock: r.qty };
+        added++;
+      } else if (r.action === "update" && next[r.existingId]) {
+        next[r.existingId] = { ...next[r.existingId], stock: r.qty };
+        updated++;
+      }
+    });
+    if (added + updated === 0) return { added, updated, saved: true };
+    setIngredients(next);
+    const saved = await syncSet("ingredients-config", JSON.stringify(next), true, t("syncLabelStock"));
+    return { added, updated, saved };
   };
   const isIngredientUsed = (id) => Object.values(menu).some((items) => items.some((it) => it.recipe.some((r) => r.ingredientId === id)));
   const deleteIngredient = (id) => {
@@ -8513,10 +8539,18 @@ function POSPrototype({ tenantId }) {
 
       {view === "stock" && (
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 780 }}>
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("stockTitle")}</div>
-            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("stockSubtitle")}</div>
+          <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("stockTitle")}</div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("stockSubtitle")}</div>
+            </div>
+            {isManager && (
+              <button onClick={() => setStockImportOpen(true)} style={{ padding: "9px 16px", borderRadius: 7, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}>
+                {isRtl ? "استيراد من إكسل" : "Import from Excel"}
+              </button>
+            )}
           </div>
+          {stockImportOpen && isManager && <StockImportModal isRtl={isRtl} theme={theme} ingredients={ingredients} onApply={applyStockImport} onClose={() => setStockImportOpen(false)} />}
 
           <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
             <input type="text" value={newIngName} onChange={(e) => setNewIngName(e.target.value)} placeholder={t("newIngredientPlaceholder")} className="field" style={{ flex: 2, minWidth: 160 }} />
