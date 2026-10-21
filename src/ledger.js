@@ -344,9 +344,11 @@ export function createLedger(data) {
       return { ...sh, ...flows, expected, gap, gapAtClosing, events, solve };
     });
 
-    // The cash that moved between one shift's closing count and the next one's opening count.
+    // The cash that moved between one shift's closing count and the next one's opening count — but only within
+    // one business day. Cash is often collected when the day ends, so the first shift of a day is deliberately NOT
+    // compared with the last shift of the day before.
     drawers.forEach((d) => {
-      const prev = [...shifts].reverse().find((x) => x.clockOut && x.clockOut <= d.clockIn && x.counted !== null);
+      const prev = [...shifts].reverse().find((x) => x.clockOut && x.clockOut <= d.clockIn && x.counted !== null && shiftDayOf(x, nowMs) === day);
       d.prevName = prev ? prev.name : null;
       d.prevCounted = prev ? prev.counted : null;
       d.prevOut = prev ? prev.clockOut : null;

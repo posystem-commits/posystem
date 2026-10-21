@@ -1912,7 +1912,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Settings**: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How the money numbers fit together
-Every money figure — Dashboard, Receipts, Shift, Staff, Close the day, Expenses — is worked out by the same single calculation from the saved orders, expenses and shifts, so tabs only differ when they answer different questions. The rules: an order counts as a sale when it is completed (an unpaid pay-later bill still counts, and is listed separately; cancelled and refunded orders are not sales). A sale belongs to the business day it was created in (the Shift hours in Settings decide where a day starts). Cash enters the drawer when it is paid (delivery cash when the rider settles) and leaves it when an order is returned or a cash expense is recorded — a cash expense reduces the drawer of the shift it was recorded in. A shift belongs to the business day most of it falls in. Orders created while nobody was clocked in are shown as "not inside any shift". Totals saved at clock-out are only a record; screens always recompute from the orders. All screens re-check the server about every 15 seconds, so after a short moment every terminal shows the same figures; if two screens differ for more than a minute, reloading the page forces a fresh read. The Staff tab leaderboard adds up every order each person created in the last 30 days, the same orders the Dashboard counts.
+Every money figure — Dashboard, Receipts, Shift, Staff, Close the day, Expenses — is worked out by the same single calculation from the saved orders, expenses and shifts, so tabs only differ when they answer different questions. The rules: an order counts as a sale when it is completed (an unpaid pay-later bill still counts, and is listed separately; cancelled and refunded orders are not sales). A sale belongs to the business day it was created in (the Shift hours in Settings decide where a day starts). Cash enters the drawer when it is paid (delivery cash when the rider settles) and leaves it when an order is returned or a cash expense is recorded — a cash expense reduces the drawer of the shift it was recorded in. A shift belongs to the business day most of it falls in. Orders created while nobody was clocked in are shown as "not inside any shift". Cash handed from one shift to the next is compared only within the same business day: cash is often collected when a day ends, so the first shift of a day is never compared with the last shift of the day before. Totals saved at clock-out are only a record; screens always recompute from the orders. All screens re-check the server about every 15 seconds, so after a short moment every terminal shows the same figures; if two screens differ for more than a minute, reloading the page forces a fresh read. The Staff tab leaderboard adds up every order each person created in the last 30 days, the same orders the Dashboard counts.
 ## How staff log in
 The app requires signing in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
 
@@ -6398,9 +6398,16 @@ function POSPrototype({ tenantId }) {
       autoClosed: true,
     });
   };
+  // The last counted shift of the CURRENT business day, if any. A day's first shift has none: cash is often
+  // collected when a day ends, so it is never compared with the day before's last count.
+  const lastCountedToday = () => {
+    const today = businessDateForTimestamp(new Date().toISOString(), shiftHoursConfig);
+    const dayOf = (e) => businessDateForTimestamp(new Date((new Date(e.clockIn).getTime() + new Date(e.clockOut).getTime()) / 2).toISOString(), shiftHoursConfig);
+    return [...shiftLog].filter((e) => typeof e.countedCash === "number" && e.clockOut && dayOf(e) === today).sort((a, b) => b.clockOut.localeCompare(a.clockOut))[0] || null;
+  };
   const doClockIn = async (emp, openingCash = 0) => {
     const now = new Date().toISOString();
-    const lastCounted = [...shiftLog].filter((e) => typeof e.countedCash === "number").sort((a, b) => b.clockOut.localeCompare(a.clockOut))[0] || null;
+    const lastCounted = lastCountedToday();
     setCurrentEmployee({ id: emp.id, name: emp.name });
     setViewingOnly(false);
     setShiftStart(now);
@@ -7397,7 +7404,7 @@ function POSPrototype({ tenantId }) {
           ) : pendingOpeningCount ? (() => {
             const n = parseFloat(openingCountDraft);
             const valid = openingCountDraft.trim() !== "" && Number.isFinite(n) && n >= 0;
-            const last = [...shiftLog].filter((e) => typeof e.countedCash === "number").sort((a, b) => b.clockOut.localeCompare(a.clockOut))[0];
+            const last = lastCountedToday();
             return (
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{t("openingCountTitle")}</div>
