@@ -11376,7 +11376,8 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
   useEffect(() => {
     let cancelled = false;
     const versions = {};
-    const applyKey = (key, value) => {
+    const imgUrl = (params, version) => `/api/pos/${encodeURIComponent(tenantId)}/site-image?${params}&v=${encodeURIComponent(version || "0")}`;
+    const applyKey = (key, value, version) => {
       if (!value) return;
       if (key === "restaurant-branding") {
         const b = JSON.parse(value);
@@ -11396,7 +11397,7 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
         Object.keys(m.menu || {}).forEach((cat) => {
           publicMenu[cat] = (m.menu[cat] || []).map((item) =>
             siteOnRef.current
-              ? { id: item.id, name: item.name, tag: item.tag, price: item.price, image: item.image || null, badges: Array.isArray(item.badges) ? item.badges : [], featured: !!item.featured }
+              ? { id: item.id, name: item.name, tag: item.tag, price: item.price, image: item.hasImage ? imgUrl(`type=item&id=${encodeURIComponent(item.id)}`, version) : null, badges: Array.isArray(item.badges) ? item.badges : [], featured: !!item.featured }
               : { id: item.id, name: item.name, tag: item.tag, price: item.price }
           );
         });
@@ -11410,7 +11411,11 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
         setVatPercent(Number(parsed.vatPercent) || 0);
         setServicePercent(Number(parsed.servicePercent) || 0);
       } else if (key === "website-media") {
-        setSiteMedia(JSON.parse(value));
+        const meta = JSON.parse(value);
+        setSiteMedia({
+          cover: meta.cover ? imgUrl("type=cover", version) : null,
+          gallery: Array.from({ length: Number(meta.gallery) || 0 }, (_, i) => imgUrl(`type=gallery&i=${i}`, version)),
+        });
       } else if (key === "shift-hours-config") {
         setSiteShiftHours(JSON.parse(value));
       }
@@ -11436,7 +11441,7 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
                 if (!langChosenRef.current) setLangState(merged.defaultLang === "en" ? "en" : "ar");
               }
             } else {
-              applyKey(k, r.value);
+              applyKey(k, r.value, r.updated_at);
             }
           });
           return true;

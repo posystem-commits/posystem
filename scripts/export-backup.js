@@ -1,12 +1,12 @@
 // Saves a complete copy of every restaurant's data to files on THIS computer — an off-Supabase
 // backup, since the free Supabase plan has no automatic backups. One JSON file per restaurant,
 // in backups/<date-time>/. Read-only: it never writes to the database. Run it regularly (e.g.
-// weekly) and keep the backups folder somewhere safe — it contains customers' business data.
+// nightly) and keep the backups folder somewhere safe — it contains customers' business data.
 //
 //   node --env-file=.env.local scripts/export-backup.js
 //   node --env-file=.env.local scripts/export-backup.js "D:\SomewhereElse"     (custom folder)
 //
-// After each run it keeps only the newest 8 dated folders in that location and deletes older ones
+// After each run it keeps only the newest 30 dated folders in that location and deletes older ones
 // (only folders named like 2026-10-02T12-54-24 — it never touches anything else).
 //
 // Restore a restaurant that no longer exists from one of these files:
@@ -15,7 +15,7 @@ const fs = require("fs");
 const path = require("path");
 const { createClient } = require("@supabase/supabase-js");
 
-const KEEP = 8;
+const KEEP = 30; // nightly runs: the newest 30 dated folders
 
 async function main() {
   const url = process.env.SUPABASE_URL;
