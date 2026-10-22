@@ -188,7 +188,7 @@ const STRINGS = {
     scanMenuReviewHint: "Uncheck anything that looks wrong, or fix the name/price directly.",
     scanMenuAddButton: "Add {{n}} items to menu",
     scanMenuTryAgain: "Try another photo",
-    notice_menuScanTooLarge: "That photo is too large — try one under 8MB",
+    notice_menuScanTooLarge: "That photo is too large — try one under 30MB",
     notice_menuScanFailed: "Couldn't read that menu — try a clearer or better-lit photo",
     notice_menuScanAdded: "{{n}} items added to your menu",
     newCategoryPlaceholder: "New category name (e.g. Sides)",
@@ -625,6 +625,7 @@ const STRINGS = {
     dueDate: "Due date",
     markAsPaid: "Mark as paid",
     totalExpensesLabel: "Total this month",
+    totalExpensesPeriodLabel: "Total for this period",
     byCategory: "By category",
     outstandingPayables: "Outstanding (unpaid)",
     noOutstanding: "Nothing outstanding — all paid up.",
@@ -728,6 +729,11 @@ const STRINGS = {
     bestDateLabel: "Best day so far: {{date}} — {{amount}}",
     bestHourLabel: "Best hour: {{time}} — {{amount}}",
     topSellersTitle: "Items sold",
+    dashAllCategories: "All categories",
+    dashCategoryOther: "Not on the menu any more",
+    dashCategoryFilter: "Menu category",
+    noExpensesForPeriod: "No expenses in this period.",
+    notice_imageDecodeFailed: "Couldn't open that picture. Save it as a normal JPG or PNG and try again (iPhone HEIC photos aren't supported).",
     noSalesYetDashboard: "No completed orders in this period.",
     paymentMixTitle: "Payment methods",
     orderSourceTitle: "Where orders came from",
@@ -1008,7 +1014,7 @@ const STRINGS = {
     scanMenuReviewHint: "أزل التحديد عن أي شيء يبدو غير صحيح، أو عدّل الاسم/السعر مباشرة.",
     scanMenuAddButton: "إضافة {{n}} صنف إلى القائمة",
     scanMenuTryAgain: "جرّب صورة أخرى",
-    notice_menuScanTooLarge: "هذه الصورة كبيرة جدًا — جرّب صورة أصغر من 8 ميجابايت",
+    notice_menuScanTooLarge: "هذه الصورة كبيرة جدًا — جرّب صورة أصغر من 30 ميجابايت",
     notice_menuScanFailed: "تعذّرت قراءة القائمة — جرّب صورة أوضح أو بإضاءة أفضل",
     notice_menuScanAdded: "تمت إضافة {{n}} صنف إلى قائمتك",
     newCategoryPlaceholder: "اسم قسم جديد (مثال: أطباق جانبية)",
@@ -1445,6 +1451,7 @@ const STRINGS = {
     dueDate: "تاريخ الاستحقاق",
     markAsPaid: "وضع علامة كمدفوع",
     totalExpensesLabel: "الإجمالي هذا الشهر",
+    totalExpensesPeriodLabel: "إجمالي هذه الفترة",
     byCategory: "حسب الفئة",
     outstandingPayables: "المستحقات غير المدفوعة",
     noOutstanding: "لا توجد مستحقات — كل شيء مدفوع.",
@@ -1548,6 +1555,11 @@ const STRINGS = {
     bestDateLabel: "أفضل يوم حتى الآن: {{date}} — {{amount}}",
     bestHourLabel: "أفضل ساعة: {{time}} — {{amount}}",
     topSellersTitle: "الأصناف المباعة",
+    dashAllCategories: "كل الفئات",
+    dashCategoryOther: "غير موجودة في القائمة حاليًا",
+    dashCategoryFilter: "فئة القائمة",
+    noExpensesForPeriod: "لا توجد مصروفات في هذه الفترة.",
+    notice_imageDecodeFailed: "تعذّر فتح هذه الصورة. احفظها بصيغة JPG أو PNG عادية وأعد المحاولة (صور HEIC من الآيفون غير مدعومة).",
     noSalesYetDashboard: "لا توجد طلبات مكتملة في هذه الفترة.",
     paymentMixTitle: "طرق الدفع",
     orderSourceTitle: "مصدر الطلبات",
@@ -1899,14 +1911,14 @@ don't see mentioned anywhere in this list, or one that's missing for them specif
 that you don't see it and it may not be included in their current plan — don't guess.
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
-- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
+- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
 - **Website** (manager-only; comes with the Online ordering link feature): turns the online-ordering link into a branded website for the restaurant. A manager picks one of five looks (Classic, Modern, Dark, Bold, Minimal — each sets fonts, shapes and layout together), can override the button and highlight colors (otherwise the brand colors from Settings are used), uploads a cover photo and up to 6 gallery photos, writes a tagline and an "About us" text in English and Arabic, adds an announcement banner, address and social links (Instagram, Facebook, TikTok, WhatsApp, website), chooses which sections show (About, Popular items row, Gallery, Opening hours — the hours and the "Open now / Closed" badge come from Settings → Shift hours) and chooses the language the page opens in. A live phone preview sits next to the controls (a "Preview" button on phones). Everything saves automatically, but customers keep seeing the original ordering page until the "Published" switch is turned on, and it can be switched off again at any time. The tab also lets the manager claim a short web address (for example /r/my-restaurant) to share on social media or print on menus; the original long link keeps working. Orders can't be sent from the preview. In the Menu editor, each dish has an "On your website" section: labels (Popular, New, Spicy, Vegetarian, Chef's pick) and a "Show in the Popular row" checkbox. Dish photos and the short description are what the website shows on each menu card. The website look also applies to table QR menus once published.
 - **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match) and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
-- **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see monthly totals, outstanding payables, and a by-category breakdown.
-- **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, top-selling items, payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
+- **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see totals, outstanding payables, and a by-category breakdown. Like the Dashboard and Receipts, it can be filtered by Month (a month dropdown), a single Day (a calendar), or a custom Range (any start and end date) using the toggle at the top; the totals, payables and category breakdown follow the chosen period.
+- **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance; the expected cash only subtracts cash expenses recorded during this shift — ones a previous shift already took out of the drawer are not subtracted again), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count.
@@ -1996,28 +2008,77 @@ function initials(name) {
 // well over a hundred items, so storing full-resolution photos per item would balloon the
 // synced menu payload. A small square thumbnail is all any of the surfaces that show it
 // (order screen cards, the menu editor, the customer-facing menu) actually need.
-const resizeImageToDataUrl = (file, maxDim = 240, quality = 0.72) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("read failed"));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("decode failed"));
-      img.onload = () => {
-        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
+// Some systems hand a PNG over with an empty MIME type, so the file name counts too.
+const looksLikeImage = (file) => !!file && ((file.type || "").startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|avif|heic|heif)$/i.test(file.name || ""));
+
+// Opens any picture the browser can decode (PNG, JPG, WEBP, GIF…), upright as the camera intended, and
+// hands back something drawable plus a close() to release it. A big PNG screenshot is decoded straight from
+// the file rather than first being turned into a multi-megabyte text string.
+const openImageFile = async (file) => {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+      return { source: bmp, width: bmp.width, height: bmp.height, close: () => bmp.close && bmp.close() };
+    } catch (e) {
+      // fall through to the <img> route below
+    }
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("decode failed"));
+      el.src = url;
+    });
+    return { source: img, width: img.naturalWidth || img.width, height: img.naturalHeight || img.height, close: () => URL.revokeObjectURL(url) };
+  } catch (e) {
+    URL.revokeObjectURL(url);
+    throw e;
+  }
+};
+// Scales to fit maxDim and encodes as JPEG on a white ground, so a transparent PNG doesn't turn black.
+const drawAsJpegDataUrl = (opened, maxDim, quality) => {
+  const scale = Math.min(1, maxDim / Math.max(opened.width, opened.height));
+  const w = Math.max(1, Math.round(opened.width * scale));
+  const h = Math.max(1, Math.round(opened.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(opened.source, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", quality);
+};
+const resizeImageToDataUrl = async (file, maxDim = 240, quality = 0.72) => {
+  const opened = await openImageFile(file);
+  try {
+    return drawAsJpegDataUrl(opened, maxDim, quality);
+  } finally {
+    opened.close();
+  }
+};
+// A menu photo has to stay readable (small print), but must also fit the host's request-size limit (4.5 MB):
+// a full-size PNG screenshot is far bigger than that, so it is shrunk to a sharp JPEG that is.
+const MENU_SCAN_MAX_CHARS = 3_400_000;
+const prepareMenuScanImage = async (file) => {
+  const opened = await openImageFile(file);
+  try {
+    let dim = 2200;
+    let quality = 0.88;
+    let out = "";
+    for (let i = 0; i < 6; i++) {
+      out = drawAsJpegDataUrl(opened, dim, quality);
+      if (out.length <= MENU_SCAN_MAX_CHARS) break;
+      dim = Math.round(dim * 0.8);
+      quality = Math.max(0.7, quality - 0.04);
+    }
+    return out;
+  } finally {
+    opened.close();
+  }
+};
 
 // Shown wherever a menu item appears — a real uploaded photo if there is one, otherwise the
 // item's initials as a placeholder. No access to per-tenant brand colors here (this renders in
@@ -2472,6 +2533,7 @@ function POSPrototype({ tenantId }) {
   const [dashboardRangeStart, setDashboardRangeStart] = useState(null); // "YYYY-MM-DD", defaults to 7 days before the end
   const [dashboardRangeEnd, setDashboardRangeEnd] = useState(null); // "YYYY-MM-DD", defaults to today once known
   const [dashboardRangePickerOpen, setDashboardRangePickerOpen] = useState(false);
+  const [dashboardCategory, setDashboardCategory] = useState(""); // menu category the "Items sold" card is narrowed to ("" = all)
   const [dashboardRangePickingEnd, setDashboardRangePickingEnd] = useState(false); // whether the next calendar click sets the end day (vs. starting a fresh range)
   const [shiftHoursConfig, setShiftHoursConfig] = useState(DEFAULT_SHIFT_HOURS);
   const [shiftHoursLoaded, setShiftHoursLoaded] = useState(false);
@@ -2510,6 +2572,12 @@ function POSPrototype({ tenantId }) {
   expensesByMonthRef.current = expensesByMonth;
   const [expenseMonthKeys, setExpenseMonthKeys] = useState([]);
   const [selectedExpenseMonth, setSelectedExpenseMonth] = useState(null);
+  const [expenseFilterMode, setExpenseFilterMode] = useState("month"); // "month" | "day" | "range" — same toggle the Dashboard and Receipts have
+  const [expenseFilterDay, setExpenseFilterDay] = useState(null);
+  const [expenseFilterRangeStart, setExpenseFilterRangeStart] = useState(null);
+  const [expenseFilterRangeEnd, setExpenseFilterRangeEnd] = useState(null);
+  const [expenseRangePickerOpen, setExpenseRangePickerOpen] = useState(false);
+  const [expenseRangePickingEnd, setExpenseRangePickingEnd] = useState(false);
   const [loadingExpenseMonth, setLoadingExpenseMonth] = useState(false);
   const [expenseEditor, setExpenseEditor] = useState(null); // draft object while adding/editing, or null when closed
 
@@ -3349,7 +3417,7 @@ function POSPrototype({ tenantId }) {
   const MAX_LOGO_BYTES = 700 * 1024; // keep the header/receipts snappy and well under the storage cap
   const handleLogoFile = (file) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
+    if (!looksLikeImage(file)) {
       flashNotice(t("notice_logoInvalidType"));
       return;
     }
@@ -4040,6 +4108,17 @@ function POSPrototype({ tenantId }) {
   useEffect(() => {
     ensureExpenseMonthLoaded(thisMonthKey());
   }, []);
+  // Expenses tab, Day / Range mode: fetch every month the chosen period touches.
+  useEffect(() => {
+    if (expenseFilterMode === "day") {
+      ensureExpenseMonthLoaded((expenseFilterDay || todayLocalStr()).slice(0, 7));
+    } else if (expenseFilterMode === "range") {
+      const end = expenseFilterRangeEnd || todayLocalStr();
+      const start = expenseFilterRangeStart || addDaysStr(end, -6);
+      const [a, b] = start <= end ? [start, end] : [end, start];
+      monthKeysInRange(a, b).forEach((mk) => ensureExpenseMonthLoaded(mk));
+    }
+  }, [expenseFilterMode, expenseFilterDay, expenseFilterRangeStart, expenseFilterRangeEnd]);
   useEffect(() => {
     const monthKey = dashboardMode === "day" ? (dashboardDay || todayLocalStr()).slice(0, 7) : dashboardMonth || monthLocalKey();
     // Widened one month either side — a receipt's business date (see businessDateForTimestamp)
@@ -5284,7 +5363,32 @@ function POSPrototype({ tenantId }) {
 
   const availableExpenseMonths = useMemo(() => Array.from(new Set([thisMonthKey(), ...expenseMonthKeys])).sort().reverse(), [expenseMonthKeys]);
   const currentExpenseMonth = selectedExpenseMonth || thisMonthKey();
-  const monthExpenses = expensesByMonth[currentExpenseMonth] || [];
+  const effectiveExpenseDay = expenseFilterDay || todayLocalStr();
+  const rawExpenseRangeEnd = expenseFilterRangeEnd || todayLocalStr();
+  const rawExpenseRangeStart = expenseFilterRangeStart || addDaysStr(rawExpenseRangeEnd, -6);
+  const effectiveExpenseRangeStart = rawExpenseRangeStart <= rawExpenseRangeEnd ? rawExpenseRangeStart : rawExpenseRangeEnd;
+  const effectiveExpenseRangeEnd = rawExpenseRangeStart <= rawExpenseRangeEnd ? rawExpenseRangeEnd : rawExpenseRangeStart;
+  const handleExpenseRangeDayClick = (dateStr) => {
+    if (!expenseRangePickingEnd || dateStr < effectiveExpenseRangeStart) {
+      setExpenseFilterRangeStart(dateStr);
+      setExpenseFilterRangeEnd(dateStr);
+      setExpenseRangePickingEnd(true);
+    } else {
+      setExpenseFilterRangeEnd(dateStr);
+      setExpenseRangePickingEnd(false);
+      setExpenseRangePickerOpen(false);
+    }
+  };
+  const [expenseFirstDay, expenseLastDay] =
+    expenseFilterMode === "day" ? [effectiveExpenseDay, effectiveExpenseDay]
+    : expenseFilterMode === "range" ? [effectiveExpenseRangeStart, effectiveExpenseRangeEnd]
+    : [`${currentExpenseMonth}-01`, lastDayOfMonth(currentExpenseMonth)];
+  const expensePeriodLoaded = monthKeysInRange(expenseFirstDay.slice(0, 7), expenseLastDay.slice(0, 7)).every((mk) => expensesByMonth[mk] !== undefined);
+  // The ledger's own expense list for the period — the same one the Dashboard's Expenses figure adds up — so
+  // the two tabs agree for the same dates. A whole month keeps the order it is stored in (newest logged first).
+  const monthExpenses = expenseFilterMode === "month"
+    ? expensesByMonth[currentExpenseMonth] || []
+    : [...ledger.expensesInDays(expenseFirstDay, expenseLastDay)].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.recordedAt || "") < (a.recordedAt || "") ? -1 : 1));
   const expenseTotalThisMonth = monthExpenses.reduce((s, e) => s + e.amount, 0);
   const expenseByCategory = EXPENSE_CATEGORIES.map((cat) => ({
     id: cat,
@@ -5391,7 +5495,32 @@ function POSPrototype({ tenantId }) {
 
   const dashboardItemTotals = {};
   dashboardReceipts.forEach((r) => r.items.forEach((it) => { dashboardItemTotals[it.name] = (dashboardItemTotals[it.name] || 0) + it.qty; }));
-  const topSellers = Object.entries(dashboardItemTotals).sort((a, b) => b[1] - a[1]).map(([name, qty]) => ({ name, qty }));
+  // Which menu category each sold dish belongs to today (by id, then by name for dishes whose id changed).
+  // A dish that has since been deleted from the menu has no category and is grouped under "other".
+  const OTHER_CATEGORY = "__other__";
+  const dashboardCategoryOf = (() => {
+    const byId = {};
+    const byName = {};
+    const add = (cat, items) => (items || []).forEach((i) => { byId[i.id] = cat; if (byName[i.name] === undefined) byName[i.name] = cat; });
+    Object.entries(menu).forEach(([cat, items]) => add(cat, items));
+    menuProfiles.forEach((p) => Object.entries(p.extraItems || {}).forEach(([cat, items]) => add(cat, items)));
+    return (it) => byId[it.id] ?? byName[it.name] ?? OTHER_CATEGORY;
+  })();
+  const dashboardItemCategory = {};
+  dashboardReceipts.forEach((r) => r.items.forEach((it) => { if (dashboardItemCategory[it.name] === undefined) dashboardItemCategory[it.name] = dashboardCategoryOf(it); }));
+  const dashboardCategoryOptions = [
+    ...Object.keys(menu),
+    ...(Object.values(dashboardItemCategory).includes(OTHER_CATEGORY) ? [OTHER_CATEGORY] : []),
+  ];
+  const activeDashboardCategory = dashboardCategoryOptions.includes(dashboardCategory) ? dashboardCategory : "";
+  const topSellers = (() => {
+    if (!activeDashboardCategory) return Object.entries(dashboardItemTotals).sort((a, b) => b[1] - a[1]).map(([name, qty]) => ({ name, qty }));
+    // A chosen category lists every dish on it, including the ones that sold nothing in this period.
+    const names = new Set(activeDashboardCategory === OTHER_CATEGORY ? [] : (menu[activeDashboardCategory] || []).map((i) => i.name));
+    Object.keys(dashboardItemTotals).forEach((name) => { if (dashboardItemCategory[name] === activeDashboardCategory) names.add(name); });
+    return [...names].map((name) => ({ name, qty: dashboardItemTotals[name] || 0 })).sort((a, b) => b.qty - a.qty);
+  })();
+  const topSellersTotalQty = topSellers.reduce((sum, s) => sum + s.qty, 0);
   const maxTopSellerQty = Math.max(1, ...topSellers.map((s) => s.qty));
 
   const dashboardByMethod = PAYMENT_METHODS.map((m) => ({ ...m, total: dashboardSummary.byMethod[m.id] }));
@@ -6947,7 +7076,7 @@ function POSPrototype({ tenantId }) {
   const MAX_ITEM_PHOTO_SOURCE_BYTES = 8 * 1024 * 1024; // source file cap, before it gets downscaled for storage
   const handleItemPhotoFile = async (file) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
+    if (!looksLikeImage(file)) {
       flashNotice(t("notice_logoInvalidType"));
       return;
     }
@@ -6959,7 +7088,7 @@ function POSPrototype({ tenantId }) {
       const dataUrl = await resizeImageToDataUrl(file);
       setItemEditor((p) => (p ? { ...p, image: dataUrl } : p));
     } catch (e) {
-      flashNotice(t("notice_logoInvalidType"));
+      flashNotice(t("notice_imageDecodeFailed"));
     }
   };
 
@@ -7121,10 +7250,10 @@ function POSPrototype({ tenantId }) {
     );
   };
 
-  const MAX_MENU_SCAN_BYTES = 8 * 1024 * 1024;
-  const handleMenuScanFile = (file) => {
+  const MAX_MENU_SCAN_BYTES = 30 * 1024 * 1024; // source file cap — the picture is shrunk before it is sent
+  const handleMenuScanFile = async (file) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
+    if (!looksLikeImage(file)) {
       flashNotice(t("notice_logoInvalidType"));
       return;
     }
@@ -7132,31 +7261,34 @@ function POSPrototype({ tenantId }) {
       flashNotice(t("notice_menuScanTooLarge"));
       return;
     }
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result;
-      setMenuScanImage(dataUrl);
-      setMenuScanResults(null);
-      setMenuScanError("");
-      setMenuScanning(true);
-      try {
-        const res = await fetch(`/api/pos/${encodeURIComponent(tenantId)}/scan-menu`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: dataUrl }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || t("notice_menuScanFailed"));
-        setMenuScanResults(data.items.map((it) => ({ ...it, include: true })));
-        logActivity("menu_scanned", `${data.items.length} item(s) read`);
-      } catch (e) {
-        setMenuScanError(e.message || t("notice_menuScanFailed"));
-      } finally {
-        setMenuScanning(false);
-      }
-    };
-    reader.onerror = () => flashNotice(t("notice_logoInvalidType"));
-    reader.readAsDataURL(file);
+    let dataUrl;
+    try {
+      dataUrl = await prepareMenuScanImage(file);
+    } catch (e) {
+      flashNotice(t("notice_imageDecodeFailed"));
+      return;
+    }
+    setMenuScanImage(dataUrl);
+    setMenuScanResults(null);
+    setMenuScanError("");
+    setMenuScanning(true);
+    try {
+      const res = await fetch(`/api/pos/${encodeURIComponent(tenantId)}/scan-menu`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+      // A reply that isn't JSON (the host's own "request too large" page, a timeout) must not surface as a parse error.
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || (res.status === 413 ? t("notice_menuScanTooLarge") : t("notice_menuScanFailed")));
+      if (!data || !Array.isArray(data.items)) throw new Error(t("notice_menuScanFailed"));
+      setMenuScanResults(data.items.map((it) => ({ ...it, include: true })));
+      logActivity("menu_scanned", `${data.items.length} item(s) read`);
+    } catch (e) {
+      setMenuScanError(e instanceof TypeError ? t("notice_menuScanFailed") : e.message || t("notice_menuScanFailed"));
+    } finally {
+      setMenuScanning(false);
+    }
   };
   const updateMenuScanResult = (index, patch) => {
     setMenuScanResults((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
@@ -8966,15 +9098,55 @@ function POSPrototype({ tenantId }) {
           </div>
 
           <>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
-                <select value={currentExpenseMonth} onChange={(e) => setSelectedExpenseMonth(e.target.value)} className="field">
-                  {availableExpenseMonths.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
-                </select>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {[["month", "dashboardModeMonth"], ["day", "dashboardModeDay"], ["range", "dashboardModeRange"]].map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      onClick={() => setExpenseFilterMode(mode)}
+                      style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${expenseFilterMode === mode ? theme.secondary : "var(--border)"}`, background: expenseFilterMode === mode ? "rgba(176,141,87,0.18)" : "transparent", color: expenseFilterMode === mode ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                    >
+                      {t(label)}
+                    </button>
+                  ))}
+                </div>
+                {expenseFilterMode === "month" ? (
+                  <select value={currentExpenseMonth} onChange={(e) => setSelectedExpenseMonth(e.target.value)} className="field">
+                    {availableExpenseMonths.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
+                  </select>
+                ) : expenseFilterMode === "day" ? (
+                  <DayPickerButton value={effectiveExpenseDay} maxDate={todayLocalStr()} isRtl={isRtl} theme={theme} onChange={setExpenseFilterDay} />
+                ) : (
+                  <div style={{ position: "relative" }}>
+                    <button
+                      onClick={() => {
+                        setExpenseRangePickingEnd(false);
+                        setExpenseRangePickerOpen((v) => !v);
+                      }}
+                      className="field"
+                      style={{ colorScheme: "dark", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}
+                    >
+                      📅 {formatShortDate(effectiveExpenseRangeStart, isRtl)} – {formatShortDate(effectiveExpenseRangeEnd, isRtl)}
+                    </button>
+                    {expenseRangePickerOpen && (
+                      <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setExpenseRangePickerOpen(false)}>
+                        <DateRangeCalendar
+                          startDate={effectiveExpenseRangeStart}
+                          endDate={effectiveExpenseRangeEnd}
+                          maxDate={todayLocalStr()}
+                          isRtl={isRtl}
+                          theme={theme}
+                          onPickDay={handleExpenseRangeDayClick}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: isCompact ? "1fr" : "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
                 <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("totalExpensesLabel")}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t(expenseFilterMode === "month" ? "totalExpensesLabel" : "totalExpensesPeriodLabel")}</div>
                   <div style={{ fontSize: 22, fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(expenseTotalThisMonth)}</div>
                 </div>
                 <div style={{ background: "var(--surface)", border: `1px solid ${outstandingTotal > 0 ? "#C9A24A" : "var(--border)"}`, borderRadius: 10, padding: 16 }}>
@@ -8996,10 +9168,10 @@ function POSPrototype({ tenantId }) {
                 </div>
               </div>
 
-              {loadingExpenseMonth ? (
+              {loadingExpenseMonth || !expensePeriodLoaded ? (
                 <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loadingExpenses")}</div>
               ) : monthExpenses.length === 0 ? (
-                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noExpensesForMonth", { month: monthLabel(currentExpenseMonth) })}</div>
+                <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{expenseFilterMode === "month" ? t("noExpensesForMonth", { month: monthLabel(currentExpenseMonth) }) : t("noExpensesForPeriod")}</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {monthExpenses.map((e) => (
@@ -9022,10 +9194,10 @@ function POSPrototype({ tenantId }) {
                       </div>
                       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                         {e.status === "unpaid" && (
-                          <button onClick={() => markExpensePaid(currentExpenseMonth, e)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("markAsPaid")}</button>
+                          <button onClick={() => markExpensePaid(e.date.slice(0, 7), e)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("markAsPaid")}</button>
                         )}
-                        <button onClick={() => openEditExpense(currentExpenseMonth, e)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
-                        <button onClick={() => deleteExpense(currentExpenseMonth, e)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("deleteExpense")}</button>
+                        <button onClick={() => openEditExpense(e.date.slice(0, 7), e)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
+                        <button onClick={() => deleteExpense(e.date.slice(0, 7), e)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("deleteExpense")}</button>
                       </div>
                     </div>
                   ))}
@@ -9276,13 +9448,26 @@ function POSPrototype({ tenantId }) {
 
           <div style={{ display: "grid", gridTemplateColumns: isCompact ? "1fr" : "1fr 1fr", gap: 20, marginBottom: 20 }}>
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 18 }}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("topSellersTitle")}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{t("topSellersTitle")}</div>
+                {dashboardCategoryOptions.length > 0 && (
+                  <select value={activeDashboardCategory} onChange={(e) => setDashboardCategory(e.target.value)} aria-label={t("dashCategoryFilter")} className="field" style={{ fontSize: 12.5, padding: "6px 10px", maxWidth: "100%" }}>
+                    <option value="">{t("dashAllCategories")}</option>
+                    {dashboardCategoryOptions.map((c) => <option key={c} value={c}>{c === OTHER_CATEGORY ? t("dashCategoryOther") : c}</option>)}
+                  </select>
+                )}
+              </div>
+              {activeDashboardCategory && (
+                <div style={{ fontSize: 12.5, color: theme.secondaryLight, marginBottom: 10 }}>
+                  {activeDashboardCategory === OTHER_CATEGORY ? t("dashCategoryOther") : activeDashboardCategory} · {t("unitsSold", { n: topSellersTotalQty })}
+                </div>
+              )}
               {topSellers.length === 0 ? (
                 <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noSalesYetDashboard")}</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 280, overflowY: "auto", paddingRight: 6 }}>
                   {topSellers.map((s, i) => (
-                    <div key={s.name}>
+                    <div key={s.name} style={{ opacity: s.qty === 0 ? 0.55 : 1 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
                         <span>{i + 1}. {s.name}</span>
                         <span style={{ color: "var(--text-faint)" }}>{t("unitsSold", { n: s.qty })}</span>
