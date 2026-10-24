@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createTenantStorage } from "@/lib/tenantStorage";
 import SiteView from "@/src/site/SiteView";
 import StockImportModal from "@/src/stock/StockImport";
+import { buildTicket as buildKitchenTicket, ticketBodyHtml as kitchenTicketBodyHtml, addToQueue as addToKitchenQueue, parseQueue as parseKitchenQueue, ticketsToPrint as kitchenTicketsToPrint, KITCHEN_MODES } from "@/src/kitchen/kitchenTicket";
 import { buildPlan as buildStockImportPlan } from "@/src/stock/importLogic";
 import WebsiteSettingsPanel from "@/src/site/WebsiteSettings";
 import { mergeSiteSettings, ITEM_BADGES } from "@/src/site/presets";
@@ -350,6 +351,30 @@ const STRINGS = {
     callCenterLinkSubtitle: "For your call center team. Same menu and ordering as the online link, plus searching your customer database by phone or name. Agents sign in with their staff name and PIN.",
     callCenterLinkNote: "Keep this link private — it opens your customer list. Share it only with call center staff.",
     soundSettingTitle: "New order sound",
+    kitchenTicketTitle: "KITCHEN ORDER",
+    kitchenAddedLabel: "ADDED TO THE ORDER",
+    kitchenItemsTotal: "Total items: {{n}}",
+    kitchenServedBy: "By {{name}}",
+    kitchenEta: "Ready: {{text}}",
+    kitchenTicketButton: "Kitchen ticket",
+    kitchenTicketTooltip: "Prints the order for the kitchen — dishes, quantities and notes, no prices",
+    kitchenSettingTitle: "Kitchen printing",
+    kitchenModeOff: "Off",
+    kitchenModeHere: "Print on this device",
+    kitchenModeSend: "Send to the kitchen printer",
+    kitchenModeStation: "This device is the kitchen printer",
+    kitchenHint_off: "Orders are not printed for the kitchen automatically. You can still print a kitchen ticket by hand from the order screen or the Receipts tab.",
+    kitchenHint_here: "When an order is saved on this device, a kitchen ticket (dishes, quantities and notes — no prices) prints here.",
+    kitchenHint_send: "When an order is saved on this device, its kitchen ticket is sent to the device that is set as the kitchen printer, which prints it. Use this on phones, tablets and tills that have no printer.",
+    kitchenHint_station: "Connect the kitchen printer to this device and keep the app open. Every kitchen ticket saved on any device prints here within about 10 seconds.",
+    kitchenSilentTip: "To print without a print window every time, open Chrome or Edge on this computer with the option --kiosk-printing and make the kitchen printer the default printer. Phones and tablets always show their own print window.",
+    kitchenTestPrint: "Print a test ticket",
+    kitchenTestLabel: "TEST TICKET",
+    kitchenTestDish: "Test dish",
+    kitchenStationWaiting: "Waiting for orders. Keep this screen open and awake.",
+    kitchenRecentTitle: "Recent kitchen tickets",
+    kitchenPrintAgain: "Print again",
+    notice_kitchenSendFailed: "Couldn't reach the kitchen printer — the ticket was printed here instead.",
     soundSettingHint: "Play a sound on this device whenever a customer or the call center sends a new order (QR menu, online link, or call center). Applies to this device only.",
     soundOn: "Sound on",
     soundOff: "Sound off",
@@ -1176,6 +1201,30 @@ const STRINGS = {
     callCenterLinkSubtitle: "لفريق الكول سنتر. نفس القائمة وطريقة الطلب في رابط الطلب أونلاين، مع البحث في قاعدة بيانات العملاء بالهاتف أو الاسم. يسجّل الموظف دخوله باسمه ورمزه السري.",
     callCenterLinkNote: "أبقِ هذا الرابط خاصًا — فهو يفتح قائمة عملائك. شاركه مع موظفي الكول سنتر فقط.",
     soundSettingTitle: "صوت الطلب الجديد",
+    kitchenTicketTitle: "طلب المطبخ",
+    kitchenAddedLabel: "إضافة على الطلب",
+    kitchenItemsTotal: "إجمالي الأصناف: {{n}}",
+    kitchenServedBy: "بواسطة {{name}}",
+    kitchenEta: "جاهز: {{text}}",
+    kitchenTicketButton: "تذكرة المطبخ",
+    kitchenTicketTooltip: "يطبع الطلب للمطبخ — الأصناف والكميات والملاحظات بدون أسعار",
+    kitchenSettingTitle: "طباعة المطبخ",
+    kitchenModeOff: "إيقاف",
+    kitchenModeHere: "اطبع على هذا الجهاز",
+    kitchenModeSend: "أرسل إلى طابعة المطبخ",
+    kitchenModeStation: "هذا الجهاز هو طابعة المطبخ",
+    kitchenHint_off: "لا تُطبع الطلبات للمطبخ تلقائيًا. ما زال بإمكانك طباعة تذكرة المطبخ يدويًا من شاشة الطلب أو من تبويب الإيصالات.",
+    kitchenHint_here: "عند حفظ طلب على هذا الجهاز، تُطبع هنا تذكرة للمطبخ (الأصناف والكميات والملاحظات — بدون أسعار).",
+    kitchenHint_send: "عند حفظ طلب على هذا الجهاز، تُرسل تذكرة المطبخ إلى الجهاز المحدد كطابعة المطبخ ليطبعها. استخدمه على الهواتف والأجهزة اللوحية وأجهزة الكاشير التي ليس لها طابعة.",
+    kitchenHint_station: "وصّل طابعة المطبخ بهذا الجهاز وأبقِ التطبيق مفتوحًا. كل تذكرة تُحفظ على أي جهاز تُطبع هنا خلال نحو 10 ثوانٍ.",
+    kitchenSilentTip: "للطباعة دون نافذة طباعة كل مرة، افتح Chrome أو Edge على هذا الكمبيوتر بالخيار --kiosk-printing واجعل طابعة المطبخ هي الطابعة الافتراضية. الهواتف والأجهزة اللوحية تعرض نافذة الطباعة الخاصة بها دائمًا.",
+    kitchenTestPrint: "اطبع تذكرة تجريبية",
+    kitchenTestLabel: "تذكرة تجريبية",
+    kitchenTestDish: "صنف تجريبي",
+    kitchenStationWaiting: "في انتظار الطلبات. أبقِ هذه الشاشة مفتوحة ومضاءة.",
+    kitchenRecentTitle: "آخر تذاكر المطبخ",
+    kitchenPrintAgain: "اطبع مرة أخرى",
+    notice_kitchenSendFailed: "تعذّر الوصول إلى طابعة المطبخ — طُبعت التذكرة هنا بدلًا من ذلك.",
     soundSettingHint: "شغّل صوتًا على هذا الجهاز كلما وصل طلب جديد من عميل أو من الكول سنتر (منيو QR أو رابط الطلب أو الكول سنتر). يسري على هذا الجهاز فقط.",
     soundOn: "الصوت يعمل",
     soundOff: "الصوت متوقف",
@@ -1909,7 +1958,7 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. Switching tables preserves each table's in-progress order separately.
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
@@ -1923,7 +1972,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance; the expected cash only subtracts cash expenses recorded during this shift — ones a previous shift already took out of the drawer are not subtracted again), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Shift numbers in this list are always worked out from the current orders (so an order edited or a pay-later bill that grew after clock-out is reflected) and show the payment-method split; a shift nobody clocked out of is closed automatically the next time that person signs in, and marked "auto-closed". Managers also get a "Day check" card: pick a business day and see every completed order grouped by the shift it was rung up in — plus a "Not in any logged shift" row for orders taken while the person had no shift in the log — adding up to exactly the Dashboard's revenue for that day. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
-- **Settings**: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
+- **Settings**: a "Kitchen printing" choice (per device) with four options: Off (default); "Print on this device" (a kitchen ticket prints here every time an order is saved on this device); "Send to the kitchen printer" (the ticket is sent to the device set as the kitchen printer — for phones, tablets and tills that have no printer); and "This device is the kitchen printer" (connect the kitchen printer to this device and keep the app open and awake — it prints every ticket saved on any device within about 10 seconds, shows the recent tickets with a "Print again" button, and has a test-ticket button). A kitchen ticket shows the table or takeaway, ticket number, time, each dish with its quantity and notes, delivery/pickup, and no prices; adding items to an existing unpaid invoice prints a ticket with only the added items, marked as an addition. Browsers always show a print window unless the computer's Chrome/Edge is started with the --kiosk-printing option and the kitchen printer is the default printer; phones and tablets always show their own print window. Also: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How the money numbers fit together
 Every money figure — Dashboard, Receipts, Shift, Staff, Close the day, Expenses — is worked out by the same single calculation from the saved orders, expenses and shifts, so tabs only differ when they answer different questions. The rules: an order counts as a sale when it is completed (an unpaid pay-later bill still counts, and is listed separately; cancelled and refunded orders are not sales). A sale belongs to the business day it was created in (the Shift hours in Settings decide where a day starts). Cash enters the drawer when it is paid (delivery cash when the rider settles) and leaves it when an order is returned or a cash expense is recorded — a cash expense reduces the drawer of the shift it was recorded in. A shift belongs to the business day most of it falls in. Orders created while nobody was clocked in are shown as "not inside any shift". Cash handed from one shift to the next is compared only within the same business day: cash is often collected when a day ends, so the first shift of a day is never compared with the last shift of the day before. Totals saved at clock-out are only a record; screens always recompute from the orders. All screens re-check the server about every 15 seconds, so after a short moment every terminal shows the same figures; if two screens differ for more than a minute, reloading the page forces a fresh read. The Staff tab leaderboard adds up every order each person created in the last 30 days, the same orders the Dashboard counts.
@@ -2714,6 +2763,12 @@ function POSPrototype({ tenantId }) {
   const [manualOutOfStock, setManualOutOfStock] = useState({}); // { [itemId]: true } — items staff marked out of stock by hand, on top of ingredient-based availability
   const [manualOutLoaded, setManualOutLoaded] = useState(false);
   const manualOutWritesRef = useRef(0);
+  const [kitchenMode, setKitchenMode] = useState("off"); // device-local: off | here | send | station — see "kitchen-print-mode" in lib/tenantStorage.js
+  const [kitchenRecent, setKitchenRecent] = useState([]); // station only: the latest tickets in the shared queue
+  const kitchenModeRef = useRef("off");
+  const kitchenPrintedRef = useRef([]); // ids this station has already printed
+  const kitchenSinceRef = useRef(0); // only tickets created after the station was switched on are printed
+  const kitchenHandlerRef = useRef(() => {}); // always the newest handler, so the poll never uses a stale language/closure
   const [orderSoundOn, setOrderSoundOn] = useState(false); // device-local — see the "order-sound" key in lib/tenantStorage.js
   const audioCtxRef = useRef(null);
   const seenPendingIdsRef = useRef(null);
@@ -3204,6 +3259,60 @@ function POSPrototype({ tenantId }) {
       osc.start(start);
       osc.stop(start + 0.5);
     });
+  };
+  // ---- Kitchen printing (per device) ----
+  useEffect(() => {
+    Promise.all([storage.get("kitchen-print-mode"), storage.get("kitchen-print-since"), storage.get("kitchen-printed")])
+      .then(([m, since, printed]) => {
+        const mode = KITCHEN_MODES.includes(m?.value) ? m.value : "off";
+        kitchenModeRef.current = mode;
+        setKitchenMode(mode);
+        kitchenSinceRef.current = Number(since?.value) || 0;
+        try {
+          const ids = JSON.parse(printed?.value || "[]");
+          kitchenPrintedRef.current = Array.isArray(ids) ? ids : [];
+        } catch (e) {
+          kitchenPrintedRef.current = [];
+        }
+      })
+      .catch(() => {});
+  }, []);
+  // The printer device must not fall asleep, or it would stop checking for new tickets.
+  useEffect(() => {
+    if (kitchenMode !== "station" || typeof navigator === "undefined" || !navigator.wakeLock) return undefined;
+    let lock = null;
+    let stopped = false;
+    const grab = async () => {
+      try {
+        lock = await navigator.wakeLock.request("screen");
+      } catch (e) {
+        // not allowed right now (battery saver, hidden page) — tried again when the page is visible
+      }
+    };
+    grab();
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && !stopped) grab();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      stopped = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      try {
+        if (lock) lock.release();
+      } catch (e) {
+        // already released
+      }
+    };
+  }, [kitchenMode]);
+  const changeKitchenMode = (mode) => {
+    setKitchenMode(mode);
+    kitchenModeRef.current = mode;
+    storage.set("kitchen-print-mode", mode).catch(() => {});
+    if (mode === "station") {
+      kitchenSinceRef.current = Date.now();
+      storage.set("kitchen-print-since", String(kitchenSinceRef.current)).catch(() => {});
+      delete dataVersionsRef.current["kitchen-queue"];
+    }
   };
   const toggleOrderSound = (on) => {
     setOrderSoundOn(on);
@@ -4008,6 +4117,8 @@ function POSPrototype({ tenantId }) {
           setCheckoutRequests(next);
         },
       },
+      // Only the device set up as the kitchen printer asks for this one.
+      "kitchen-queue": { every: 10000, only: () => kitchenModeRef.current === "station", apply: (v) => { kitchenHandlerRef.current(parseKitchenQueue(v)); } },
       "open-shifts": { every: 30000, apply: (v) => { setOpenShifts(parse(v, {})); setOpenShiftsLoaded(true); } },
       "item-out-of-stock": {
         every: 30000,
@@ -4038,6 +4149,7 @@ function POSPrototype({ tenantId }) {
       const now = Date.now();
       const keys = [];
       Object.entries(subs).forEach(([k, s]) => {
+        if (s.only && !s.only()) return;
         if (now - (last[k] || 0) >= s.every - 500) keys.push(k);
       });
       if (now - lastLocalWriteRef.current >= 6000) {
@@ -5008,6 +5120,9 @@ function POSPrototype({ tenantId }) {
       whatsappLog: [],
     };
 
+    // The kitchen hears about it straight away, whatever happens to the save below.
+    dispatchKitchenTicket(kitchenTicketFromReceipt({ ...receipt, servedBy: receipt.servedBy }));
+
     const receiptOk = await appendReceipt(thisMonthKey(), receipt);
 
     let customerOk = true;
@@ -5087,6 +5202,9 @@ function POSPrototype({ tenantId }) {
       const menuItem = findMenuItemAnywhere(cartItem.id);
       (menuItem?.recipe || []).forEach((r) => updateIngredientStock(r.ingredientId, -r.qty * cartItem.qty));
     });
+
+    // Only the items being added go to the kitchen, marked as an addition to an existing order.
+    dispatchKitchenTicket(kitchenTicketFromReceipt({ ...target, items: cart.map((c) => ({ name: c.name, qty: c.qty, note: c.note || "" })), servedBy: currentEmployee ? { name: currentEmployee.name } : target.servedBy }, true));
 
     const newItems = cart.map((c) => {
       const menuItem = findMenuItemAnywhere(c.id);
@@ -5304,6 +5422,95 @@ function POSPrototype({ tenantId }) {
   };
   const printSavedReceipt = (r) => {
     printViaHiddenFrame(t("ticketNumber", { n: r.ticketNo }), buildSavedReceiptBodyHtml(r), isRtl);
+  };
+
+  // ---- Kitchen tickets: the order without prices, printed here or sent to the kitchen printer device ----
+  const kitchenLabels = () => ({
+    title: t("kitchenTicketTitle"),
+    ticketNumber: (n) => t("ticketNumber", { n }),
+    takeaway: t("takeawayLabel"),
+    pickup: t("pickupBadge"),
+    delivery: (zone) => t("deliveryBadge", { zone }),
+    added: t("kitchenAddedLabel"),
+    total: (n) => t("kitchenItemsTotal", { n }),
+    servedBy: (name) => t("kitchenServedBy", { name }),
+    eta: (text) => t("kitchenEta", { text }),
+  });
+  const printKitchenTicket = (ticket) => {
+    const time = new Date(ticket.at).toLocaleTimeString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" });
+    printViaHiddenFrame(t("kitchenTicketTitle"), kitchenTicketBodyHtml(ticket, kitchenLabels(), time), isRtl);
+  };
+  const kitchenTicketFromReceipt = (r, extra = false) =>
+    buildKitchenTicket({
+      ticketNo: r.ticketNo,
+      table: r.table,
+      items: r.items,
+      customerName: r.customer?.name,
+      deliveryMethod: r.deliveryMethod,
+      zoneLabel: r.deliveryZoneLabel,
+      eta: r.eta,
+      servedBy: r.servedBy?.name,
+      extra,
+    });
+  // Puts a ticket in the shared queue and checks it is really there afterwards (two tills saving at the very same
+  // moment could otherwise overwrite each other's entry); true once it is safely queued.
+  const queueKitchenTicket = async (ticket) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const current = await storage.get("kitchen-queue");
+        const next = addToKitchenQueue(parseKitchenQueue(current?.value), ticket);
+        if (!(await storage.set("kitchen-queue", JSON.stringify(next)))) continue;
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        const check = await storage.get("kitchen-queue");
+        if (parseKitchenQueue(check?.value).some((x) => x.id === ticket.id)) return true;
+      } catch (e) {
+        // try again
+      }
+    }
+    return false;
+  };
+  // Called whenever an order is created: does whatever this device is set up to do (nothing, by default).
+  const dispatchKitchenTicket = async (ticket) => {
+    const mode = kitchenModeRef.current;
+    if (mode === "here") {
+      printKitchenTicket(ticket);
+    } else if (mode === "station") {
+      kitchenPrintedRef.current = [...kitchenPrintedRef.current, ticket.id].slice(-80);
+      storage.set("kitchen-printed", JSON.stringify(kitchenPrintedRef.current)).catch(() => {});
+      printKitchenTicket(ticket);
+    } else if (mode === "send") {
+      const queued = await queueKitchenTicket(ticket);
+      if (!queued) {
+        printKitchenTicket(ticket);
+        flashNotice(t("notice_kitchenSendFailed"));
+      }
+    }
+  };
+  // The kitchen-printer device: prints each new ticket from the shared queue once.
+  const handleKitchenQueue = (list) => {
+    setKitchenRecent([...list].reverse().slice(0, 12));
+    const todo = kitchenTicketsToPrint(list, kitchenPrintedRef.current, kitchenSinceRef.current);
+    if (todo.length === 0) return;
+    kitchenPrintedRef.current = [...kitchenPrintedRef.current, ...todo.map((x) => x.id)].slice(-80);
+    storage.set("kitchen-printed", JSON.stringify(kitchenPrintedRef.current)).catch(() => {});
+    todo.forEach((ticket, i) => setTimeout(() => printKitchenTicket(ticket), i * 2500));
+  };
+  kitchenHandlerRef.current = handleKitchenQueue;
+  const printKitchenTicketFromCart = () => {
+    const n = ensureTicketNo();
+    printKitchenTicket(buildKitchenTicket({
+      ticketNo: n,
+      table: activeTableId === null ? null : tableLabel(activeTableId),
+      items: cart,
+      customerName,
+      deliveryMethod,
+      zoneLabel: deliveryZoneLabel,
+      eta: orderEta,
+      servedBy: currentEmployee?.name,
+    }));
+  };
+  const printKitchenTestTicket = () => {
+    printKitchenTicket(buildKitchenTicket({ ticketNo: null, table: t("kitchenTestLabel"), items: [{ name: t("kitchenTestDish"), qty: 2, note: "" }, { name: t("kitchenTestDish"), qty: 1, note: "—" }], servedBy: currentEmployee?.name }));
   };
 
   // One ledger over the receipts, expenses and shifts this device has loaded. Every money figure on every tab
@@ -8268,6 +8475,9 @@ function POSPrototype({ tenantId }) {
               </div>
             )}
 
+            <button disabled={cart.length === 0} onClick={printKitchenTicketFromCart} title={t("kitchenTicketTooltip")} style={{ width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: cart.length === 0 ? "#5A5F6A" : "var(--text-muted)", fontSize: 12.5, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
+              {t("kitchenTicketButton")}
+            </button>
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
               <button disabled={cart.length === 0} onClick={printOrderReceipt} title={t("printReceiptTooltip")} style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "var(--border)" : theme.secondary}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : theme.secondaryLight, fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
                 {t("printReceipt")}
@@ -8995,6 +9205,7 @@ function POSPrototype({ tenantId }) {
                         {!editing && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: voided ? 0 : 8 }}>
                             <button onClick={() => printSavedReceipt(r)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("printReceipt")}</button>
+                            <button onClick={() => printKitchenTicket(kitchenTicketFromReceipt(r))} title={t("kitchenTicketTooltip")} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("kitchenTicketButton")}</button>
                           </div>
                         )}
 
@@ -11249,6 +11460,46 @@ function POSPrototype({ tenantId }) {
                   <button onClick={playOrderChime} style={{ padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("soundTest")}</button>
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>{t("soundSettingHint")}</div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("kitchenSettingTitle")}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {KITCHEN_MODES.map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => changeKitchenMode(mode)}
+                      style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${kitchenMode === mode ? theme.secondary : "var(--border)"}`, background: kitchenMode === mode ? "rgba(176,141,87,0.18)" : "transparent", color: kitchenMode === mode ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                    >
+                      {t(`kitchenMode${mode.charAt(0).toUpperCase()}${mode.slice(1)}`)}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t(`kitchenHint_${kitchenMode}`)}</div>
+                {kitchenMode !== "off" && kitchenMode !== "send" && <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("kitchenSilentTip")}</div>}
+                {kitchenMode !== "off" && (
+                  <button onClick={printKitchenTestTicket} style={{ marginTop: 10, padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("kitchenTestPrint")}</button>
+                )}
+                {kitchenMode === "station" && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 12, color: theme.secondaryLight, marginBottom: 8 }}>{t("kitchenStationWaiting")}</div>
+                    {kitchenRecent.length > 0 && (
+                      <>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("kitchenRecentTitle")}</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {kitchenRecent.map((tk) => (
+                            <div key={tk.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", fontSize: 12.5 }}>
+                              <span>
+                                {new Date(tk.at).toLocaleTimeString(isRtl ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })} · {tk.table || t("takeawayLabel")}{tk.ticketNo !== null && tk.ticketNo !== undefined ? ` · #${tk.ticketNo}` : ""} · {tk.items.reduce((s, it) => s + it.qty, 0)}
+                              </span>
+                              <button onClick={() => printKitchenTicket(tk)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("kitchenPrintAgain")}</button>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
