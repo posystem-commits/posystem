@@ -7,7 +7,7 @@
   "dailyDigest": false,
   "remindHours": 24,
   "cashPickupsExpected": [],
-  "dayEndCollection": [],
+  "dayEndCollection": "all",
   "acknowledged": [
     {
       "tenant": "089591ae-3a36-4432-8b78-cf2f3ad4cb87",

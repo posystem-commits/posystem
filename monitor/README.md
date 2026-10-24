@@ -28,7 +28,7 @@ Nothing here can change a restaurant's data. The only writes are the monitor's o
 
 Thresholds live in `monitor/config.json`.
 
-**Day-end cash collection.** If a restaurant takes the cash out of the drawer at the end of the day, the last shift of the day looks "short" by exactly that amount. Put the restaurant's id in `dayEndCollection` in `config.json` and that last difference is reported as an amount to check against what was really taken (🔵), instead of as a shortage. Earlier shifts of the day stay strict.
+**Day-end cash collection.** Every day is checked on its own — nothing is carried from one day into the next. The cash is collected at the end of each day, so the last shift of the day looks "short" by exactly what was collected; that last difference is reported as an amount to check against what was really taken (🔵), never as a shortage, and the weekly report adds the week's collections up. Earlier shifts of the day stay strict. (`dayEndCollection` in `config.json`: `"all"`, or a list of restaurant ids.)
 
 ## Telegram commands
 
