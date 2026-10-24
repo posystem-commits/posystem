@@ -1,0 +1,61 @@
+# The always-on manager's heavy checks. Runs on GitHub's servers (free for this usage), completely separate
+# from the app's hosting and the database. See monitor/README.md.
+name: Monitor
+
+on:
+  schedule:
+    - cron: "7 * * * *"   # every hour, 7 minutes past
+  workflow_dispatch: {}
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # only to save the monitor's own notes on the 'monitor-state' branch
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the one dependency the monitor needs
+        run: npm install --no-save --no-audit --no-fund @supabase/supabase-js@2
+
+      - name: Load the monitor's memory
+        run: |
+          git fetch origin monitor-state 2>/dev/null || true
+          if git rev-parse --verify origin/monitor-state >/dev/null 2>&1; then
+            git worktree add --detach .monitor-state origin/monitor-state
+          else
+            git worktree add --orphan -b monitor-state .monitor-state
+          fi
+
+      - name: Run the checks
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          MONITOR_SUPABASE_KEY: ${{ secrets.MONITOR_SUPABASE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+        run: node --no-warnings monitor/run.mjs check --state .monitor-state/state.json
+
+      - name: Save the monitor's memory
+        if: always()
+        run: |
+          cd .monitor-state
+          git config user.name "pos-monitor"
+          git config user.email "monitor@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "monitor state" -q
+            git push origin HEAD:monitor-state
+          fi

@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "check:numbers": "node scripts/check-numbers.js"
+    "check:numbers": "node scripts/check-numbers.js",
+    "monitor": "node --no-warnings monitor/run.mjs",
+    "monitor:test": "node --no-warnings monitor/test-inbox.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

@@ -1,0 +1,19 @@
+# Free Cloudflare Worker: every minute it checks that the POS is reachable and answering, and tells the owner
+# on Telegram if it isn't (and again when it recovers). Separate from Vercel and Supabase.
+name = "pos-uptime-watch"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[kv_namespaces]]
+binding = "STATE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Secrets (set with `wrangler secret put`): TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_IDS (comma separated), HEALTHCHECK_URL (optional)
+# Variables:
+[vars]
+SITE = "https://posystem-steel.vercel.app"
+PROBE_TENANT = "1e9da9de-1e02-4376-a6cf-4433a62bedf1"   # the test restaurant: probes never touch a real one
+KAIVO_PAGE = "/t/089591ae-3a36-4432-8b78-cf2f3ad4cb87"   # read-only page load, same as a customer opening it

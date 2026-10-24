@@ -1,0 +1,28 @@
+// Quick self-test of the chat commands (no network): node monitor/test-inbox.mjs
+import { handleMessage } from "./inbox.mjs";
+import { emptyState, shortId } from "./lib/state.mjs";
+const state = emptyState();
+const fp = "t1|CASH_PICKUP|k1";
+state.findings[fp] = { fp, tenant: "t1", tenantName: "Kaivo", code: "CASH_PICKUP", severity: "amber", title: "1,291 EGP taken out", first: "2026-10-20T00:00:00Z" };
+const owners = ["111"];
+const now = new Date().toISOString();
+const run = (chatId, name, text) => handleMessage({ state, chatId, name, text, nowIso: now, envOwners: owners }).map((r) => `→ ${r.to}: ${r.text.replace(/<[^>]+>/g, "")}`).join("\n");
+const ok = (cond, msg) => { if (!cond) { console.error("FAIL:", msg); process.exitCode = 1; } else console.log("ok:", msg); };
+console.log(run("111", "Owner", "/start"));
+console.log(run("222", "Sara", "/start"));
+ok(state.pendingJoins && state.pendingJoins["222"], "stranger's /start creates a pending join request");
+console.log(run("111", "Owner", "/approve 222"));
+ok(state.recipients.some((r) => r.chatId === "222" && r.role === "viewer"), "owner approves -> viewer");
+console.log(run("222", "Sara", "/explain abc nope"));
+const inv = run("111", "Owner", "/invite");
+const code = inv.match(/\/join (\w+)/)[1];
+console.log(run("333", "Omar", "/join " + code));
+ok(state.recipients.some((r) => r.chatId === "333"), "invite code works");
+console.log(run("333", "Omar", "/join " + code));
+console.log(run("111", "Owner", `/explain ${shortId(fp)} that's the owner's daily cash pickup`));
+ok(state.cashPickupsExpected && state.cashPickupsExpected.includes("t1"), "explaining a pickup teaches the monitor");
+console.log(run("111", "Owner", "/usage vercel_calls=900000 supabase_egress_gb=1.2"));
+ok(state.usage && state.usage.values.vercel_calls === 900000, "usage numbers saved");
+console.log(run("222", "Sara", "/status"));
+console.log(run("222", "Sara", "/usage vercel_calls=1"));
+ok(state.usage.values.vercel_calls === 900000, "viewer cannot change usage");
