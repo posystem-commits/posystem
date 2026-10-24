@@ -3,15 +3,13 @@ import bcrypt from "bcryptjs";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ADMIN_COOKIE, verifyAdminToken } from "@/lib/adminAuth";
 import { validatePin } from "@/lib/supportAuth";
-import { alertsConfigured, alertChatCount, sendAlert } from "@/lib/alerts";
 
 export const dynamic = "force-dynamic";
 
 // Support access settings, for the owner only (middleware.js already requires the admin session for /api/admin/*).
-//   GET     status, alerts setup, and the latest sign-in attempts
+//   GET     status and the latest sign-in attempts
 //   PUT     set or change the 4-digit PIN   { pin, password }
 //   DELETE  switch the PIN off              { password }
-//   POST    { action: "test-alert" }
 
 // Changing the PIN asks for the admin account's own password again, so a left-open admin tab can't be used to
 // quietly set a new one.
@@ -28,7 +26,7 @@ export async function GET() {
   const db = supabaseAdmin();
   const settings = await db.from("support_settings").select("pin_hash, updated_at").eq("id", 1).maybeSingle();
   if (settings.error) {
-    if (isMissingTable(settings.error)) return NextResponse.json({ setupNeeded: true, alerts: { configured: alertsConfigured(), chats: alertChatCount() } });
+    if (isMissingTable(settings.error)) return NextResponse.json({ setupNeeded: true });
     return NextResponse.json({ error: settings.error.message }, { status: 500 });
   }
   const { data: log } = await db.from("support_access_log").select("id, tenant_id, outcome, ip, user_agent, created_at").order("created_at", { ascending: false }).limit(60);
@@ -43,7 +41,6 @@ export async function GET() {
     setupNeeded: false,
     pinSet: !!settings.data?.pin_hash,
     pinUpdatedAt: settings.data?.updated_at || null,
-    alerts: { configured: alertsConfigured(), chats: alertChatCount() },
     failuresLast24h: (log || []).filter((l) => l.outcome === "fail" && Date.parse(l.created_at) > dayAgo).length,
     log: (log || []).map((l) => ({ ...l, restaurant_name: names[l.tenant_id] || "Unknown restaurant" })),
   });
@@ -57,7 +54,6 @@ export async function PUT(req) {
   const pin_hash = await bcrypt.hash(body.pin, 10);
   const { error } = await supabaseAdmin().from("support_settings").upsert({ id: 1, pin_hash, updated_at: new Date().toISOString() }, { onConflict: "id" });
   if (error) return NextResponse.json({ error: isMissingTable(error) ? "Run the one-time setup first." : error.message }, { status: 500 });
-  await sendAlert("🔑 The support PIN was changed from the admin page.");
   return NextResponse.json({ ok: true });
 }
 
@@ -66,14 +62,5 @@ export async function DELETE(req) {
   if (!(await confirmPassword(req, body?.password))) return NextResponse.json({ error: "Your password is needed to switch the code off, and it didn't match." }, { status: 403 });
   const { error } = await supabaseAdmin().from("support_settings").upsert({ id: 1, pin_hash: null, updated_at: new Date().toISOString() }, { onConflict: "id" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  await sendAlert("🔒 The support PIN was switched off from the admin page.");
   return NextResponse.json({ ok: true });
-}
-
-export async function POST(req) {
-  const body = await req.json().catch(() => null);
-  if (body?.action !== "test-alert") return NextResponse.json({ error: "Unknown action" }, { status: 400 });
-  if (!alertsConfigured()) return NextResponse.json({ ok: false, error: "Alerts aren't set up yet — add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_IDS in Vercel." }, { status: 400 });
-  const result = await sendAlert("✅ Test alert from your admin page — support alerts will arrive here.");
-  return NextResponse.json({ ok: result.ok, sent: result.sent, error: result.ok ? null : result.reason });
 }

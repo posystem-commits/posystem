@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { sendAlert } from "@/lib/alerts";
 import { SUPPORT_COOKIE, SUPPORT_SESSION_SECONDS, LIMITS, signSupportToken, verifySupportToken, supportCookieOptions, clientIp, lockState } from "@/lib/supportAuth";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +10,6 @@ export const dynamic = "force-dynamic";
 // returned as an httpOnly cookie. Whatever goes wrong, the answer a wrong guesser sees is the same.
 
 const WRONG = () => NextResponse.json({ error: "Incorrect code" }, { status: 401 });
-const cairoNow = () => new Date().toLocaleString("en-GB", { timeZone: "Africa/Cairo", dateStyle: "medium", timeStyle: "short" });
 
 const logAttempt = (tenantId, outcome, ip, ua) =>
   supabaseAdmin().from("support_access_log").insert({ tenant_id: tenantId, outcome, ip, user_agent: (ua || "").slice(0, 200) });
@@ -51,20 +49,10 @@ export async function POST(req, { params }) {
   const valid = /^\d{4}$/.test(pin) && (await bcrypt.compare(pin, settings.pin_hash));
   if (!valid) {
     await logAttempt(tenantId, "fail", ip, ua);
-    const failsNow = ipTimes.filter((t) => Date.now() - t < LIMITS.perIpWindowMs).length + 1;
-    const globalNow = globalTimes.length + 1;
-    if (failsNow === 3 || failsNow === LIMITS.perIpFails || globalNow === LIMITS.globalFails) {
-      await sendAlert(
-        failsNow >= LIMITS.perIpFails || globalNow >= LIMITS.globalFails
-          ? `⛔ Support sign-in LOCKED after repeated wrong codes\nRestaurant: ${tenant.restaurant_name}\nDevice IP: ${ip}\nTime: ${cairoNow()}`
-          : `⚠️ Wrong support code entered ${failsNow} times\nRestaurant: ${tenant.restaurant_name}\nDevice IP: ${ip}\nTime: ${cairoNow()}`
-      );
-    }
     return WRONG();
   }
 
   await logAttempt(tenantId, "ok", ip, ua);
-  await sendAlert(`🔓 Support sign-in used\nRestaurant: ${tenant.restaurant_name}\nDevice IP: ${ip}\nTime: ${cairoNow()}`);
 
   const token = await signSupportToken(tenantId);
   const expiresAt = new Date(Date.now() + SUPPORT_SESSION_SECONDS * 1000).toISOString();

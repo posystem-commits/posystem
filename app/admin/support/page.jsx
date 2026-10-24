@@ -102,7 +102,6 @@ export default function SupportAccessPage() {
       load();
     }
   };
-  const testAlert = () => call("POST", { action: "test-alert" }, "Test alert sent — check Telegram");
 
   const copySql = async () => {
     try {
@@ -118,7 +117,7 @@ export default function SupportAccessPage() {
     <AdminShell
       eyebrow="Maintenance"
       title="Support access"
-      subtitle="A hidden sign-in on every restaurant's terminal that lets you in as a manager — to check numbers or fix something — without clocking in. Protected by a 4-digit code you set here."
+      subtitle="A hidden sign-in on every restaurant's terminal that lets you in as a manager — to check numbers or fix something — without clocking in. Protected by a 4-digit code you set here. Every attempt is recorded below."
       narrow
     >
       {error && <Notice tone="bad" style={{ marginBottom: 16 }}>{error}</Notice>}
@@ -139,9 +138,8 @@ export default function SupportAccessPage() {
             </Card>
           )}
 
-          <div className="ad-grid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+          <div className="ad-grid cols-2">
             <Stat label="Support code" value={data.setupNeeded ? "–" : data.pinSet ? "On" : "Off"} tone={data.pinSet ? "good" : undefined} />
-            <Stat label="Telegram alerts" value={data.alerts.configured ? "On" : "Off"} tone={data.alerts.configured ? "good" : "warn"} />
             <Stat label="Wrong codes, 24 h" value={data.setupNeeded ? "–" : data.failuresLast24h} tone={data.failuresLast24h ? "bad" : undefined} />
           </div>
 
@@ -168,28 +166,6 @@ export default function SupportAccessPage() {
               </form>
             </Card>
           )}
-
-          <Card>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 220 }}>
-                <h2 className="ad-card-title">Telegram alerts</h2>
-                <p className="ad-card-sub" style={{ marginBottom: data.alerts.configured ? 0 : 14 }}>
-                  {data.alerts.configured
-                    ? `Connected to ${data.alerts.chats} chat${data.alerts.chats === 1 ? "" : "s"}. You are messaged whenever the support sign-in is used, when wrong codes are entered repeatedly, and when the code is changed.`
-                    : "Not connected yet, so nothing is sent. Sign-ins are still recorded below."}
-                </p>
-              </div>
-              <Button variant="ghost" onClick={testAlert} disabled={busy || !data.alerts.configured}>Send a test alert</Button>
-            </div>
-            {!data.alerts.configured && (
-              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13.5, lineHeight: 1.75, color: "var(--ad-muted)" }}>
-                <li>In Telegram, message <b>@BotFather</b> → <code>/newbot</code> → copy the token it gives you.</li>
-                <li>Message <b>@userinfobot</b> to get your chat id (a number).</li>
-                <li>In Vercel → your project → Settings → Environment Variables, add <code>TELEGRAM_BOT_TOKEN</code> and <code>TELEGRAM_CHAT_IDS</code> (several ids separated by commas), then redeploy.</li>
-                <li>Send your new bot a message once (<code>/start</code>) so it is allowed to write to you.</li>
-              </ol>
-            )}
-          </Card>
 
           {!data.setupNeeded && (
             <Card pad={false} style={{ overflow: "hidden" }}>
