@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import AdminNav from "@/components/AdminNav";
-import { COLORS, FONT_SERIF, RADIUS, SHADOW } from "@/lib/theme";
-
-const inputStyle = { width: "100%", boxSizing: "border-box", padding: "10px 12px", border: `1px solid ${COLORS.line}`, borderRadius: RADIUS.sm, fontSize: 13.5, fontFamily: "inherit" };
-const labelStyle = { display: "block", fontSize: 11.5, color: COLORS.charcoalSoft, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 500 };
+import AdminShell from "@/components/AdminShell";
+import { Avatar, Badge, Button, Card, Field, Notice, Segmented, Skeleton } from "@/components/admin/ui";
 
 // The POS terminal route (app/t/[tenantId]/page.jsx) works for any tenant id already in the
 // database — no separate provisioning step, so this link is live the instant the tenant exists.
@@ -15,32 +13,12 @@ function posLink(tenantId) {
   return `${window.location.origin}/t/${tenantId}`;
 }
 
-function SegmentedControl({ options, value, onChange }) {
-  return (
-    <div style={{ display: "flex", gap: 6 }}>
-      {options.map(({ key, label }) => (
-        <button
-          key={key}
-          onClick={() => onChange(key)}
-          style={{
-            flex: 1,
-            padding: "9px 0",
-            borderRadius: RADIUS.sm,
-            border: `1px solid ${value === key ? COLORS.burgundy : COLORS.line}`,
-            background: value === key ? COLORS.burgundy : "transparent",
-            color: value === key ? "#fff" : COLORS.ink,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: "pointer",
-            textTransform: "capitalize",
-            transition: "background 0.15s ease, border-color 0.15s ease",
-          }}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
+function statusOf(tenant) {
+  if (tenant.status === "paused") return { text: "Paused", tone: "warn" };
+  const days = Math.round((new Date(`${tenant.paid_until}T00:00:00`).getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000);
+  if (days < 0) return { text: "Expired", tone: "bad", days };
+  if (days <= 7) return { text: `${days}d left`, tone: days <= 3 ? "bad" : "warn", days };
+  return { text: "Active", tone: "good", days };
 }
 
 export default function TenantDetailPage() {
@@ -140,120 +118,116 @@ export default function TenantDetailPage() {
     }
   };
 
-  if (error) {
-    return (
-      <div>
-        <AdminNav />
-        <div style={{ maxWidth: 640, margin: "40px auto", padding: "0 24px", fontSize: 13, color: COLORS.red }}>{error}</div>
-      </div>
-    );
-  }
-
   if (!tenant) {
     return (
-      <div>
-        <AdminNav />
-        <div style={{ maxWidth: 640, margin: "40px auto", padding: "0 24px", fontSize: 13, color: COLORS.charcoalSoft }}>Loading…</div>
-      </div>
+      <AdminShell eyebrow="Customer" title={error ? "Customer not found" : "Loading…"} narrow>
+        {error ? (
+          <>
+            <Notice tone="bad" style={{ marginBottom: 16 }}>{error}</Notice>
+            <Button as={Link} variant="ghost" href="/admin">Back to customers</Button>
+          </>
+        ) : (
+          <Skeleton rows={3} height={110} />
+        )}
+      </AdminShell>
     );
   }
 
+  const status = statusOf(tenant);
   return (
-    <div>
-      <AdminNav />
-      <div style={{ maxWidth: 640, margin: "0 auto", padding: "32px 24px" }}>
-        <h1 style={{ fontFamily: FONT_SERIF, fontSize: 22, fontWeight: 600, marginTop: 0, marginBottom: 14, color: COLORS.ink }}>{tenant.restaurant_name}</h1>
+    <AdminShell
+      eyebrow={<Link href="/admin" style={{ textDecoration: "none", color: "inherit" }}>← Customers</Link>}
+      title={tenant.restaurant_name}
+      subtitle={tenant.live_name && tenant.live_name !== tenant.restaurant_name ? `Shown on their terminal as “${tenant.live_name}”.` : undefined}
+      actions={
+        <>
+          <Badge tone={status.tone}>{status.text}</Badge>
+          <Button variant="ghost" icon="external" as="a" href={posLink(id)} target="_blank" rel="noopener noreferrer">Open terminal</Button>
+        </>
+      }
+    >
+      <div className="ad-split">
+        <div className="ad-stack">
+          <Card>
+            <h2 className="ad-card-title">Restaurant</h2>
+            <p className="ad-card-sub">How you know them. The name here is your own record — their terminal has its own name in Settings.</p>
+            <Field label="Restaurant name">
+              <input className="ad-input" value={tenant.restaurant_name || ""} onChange={(e) => update("restaurant_name", e.target.value)} />
+            </Field>
+            <div className="ad-form-grid">
+              <Field label="Contact name"><input className="ad-input" value={tenant.contact_name || ""} onChange={(e) => update("contact_name", e.target.value)} /></Field>
+              <Field label="Contact phone"><input className="ad-input" value={tenant.contact_phone || ""} onChange={(e) => update("contact_phone", e.target.value)} /></Field>
+            </div>
+            <Field label="Contact email" hint="Just for your own records — the 7/3/1-day renewal notice shows up in their POS terminal, not by email.">
+              <input className="ad-input" type="email" value={tenant.contact_email || ""} onChange={(e) => update("contact_email", e.target.value)} />
+            </Field>
+          </Card>
 
-        <div style={{ background: COLORS.card, border: `1px solid ${COLORS.line}`, borderRadius: RADIUS.lg, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, color: "#8A8580", textTransform: "uppercase", letterSpacing: 0.4 }}>POS link</span>
-          <code style={{ fontSize: 12, color: "#4A4A45", flex: 1, minWidth: 200, wordBreak: "break-all" }}>{posLink(id)}</code>
-          <button onClick={copyLink} style={{ fontSize: 12, padding: "6px 12px", borderRadius: RADIUS.sm, border: `1px solid ${COLORS.line}`, background: "transparent", cursor: "pointer", flexShrink: 0, color: COLORS.ink }}>
-            {linkCopied ? "Copied!" : "Copy"}
-          </button>
-          <a href={posLink(id)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, padding: "6px 12px", borderRadius: RADIUS.sm, border: `1px solid ${COLORS.burgundy}`, color: COLORS.burgundy, textDecoration: "none", flexShrink: 0 }}>
-            Open POS terminal
-          </a>
+          <Card>
+            <h2 className="ad-card-title">Subscription</h2>
+            <p className="ad-card-sub">Pausing, or letting the paid-until date pass, locks their terminal within seconds.</p>
+            <div className="ad-form-grid">
+              <Field label="Status">
+                <Segmented options={[{ key: "active", label: "Active" }, { key: "paused", label: "Paused" }]} value={tenant.status} onChange={(v) => update("status", v)} />
+              </Field>
+              <Field label="Paid until">
+                <input className="ad-input" type="date" value={tenant.paid_until || ""} onChange={(e) => update("paid_until", e.target.value)} />
+              </Field>
+            </div>
+            <div style={{ marginTop: -6, marginBottom: 18 }}>
+              <Button variant="quiet" size="sm" icon="plus" onClick={extend30Days}>Extend 30 days</Button>
+              <span className="ad-hint" style={{ marginLeft: 6 }}>from today, or from the current date if it is later</span>
+            </div>
+            <Field label="Package" hint="Controls which features show up in their POS terminal — define what's in each package under Packages.">
+              <Segmented options={[{ key: "basic", label: "basic" }, { key: "standard", label: "standard" }, { key: "premium", label: "premium" }]} value={tenant.package} onChange={(v) => update("package", v)} />
+            </Field>
+          </Card>
+
+          <Card>
+            <h2 className="ad-card-title">Notes</h2>
+            <p className="ad-card-sub">Payment history or anything worth remembering.</p>
+            <textarea className="ad-textarea" value={tenant.notes || ""} onChange={(e) => update("notes", e.target.value)} placeholder="e.g. 500 EGP cash, Aug 19, covers Sept" />
+          </Card>
+
+          {error && <Notice tone="bad">{error}</Notice>}
+
+          <div className="ad-savebar" style={{ borderTop: "none", paddingTop: 0 }}>
+            <span className="ad-hint" style={{ margin: 0 }}>Changes are saved when you press Save.</span>
+            <Button onClick={save} disabled={saving}>{saving ? "Saving…" : savedFlash ? "Saved ✓" : "Save changes"}</Button>
+          </div>
         </div>
 
-        <div style={{ background: COLORS.card, border: `1px solid ${COLORS.line}`, borderRadius: RADIUS.lg, padding: 24, display: "flex", flexDirection: "column", gap: 18, boxShadow: SHADOW.card }}>
-          <div>
-            <label style={labelStyle}>Restaurant name</label>
-            <input style={inputStyle} value={tenant.restaurant_name || ""} onChange={(e) => update("restaurant_name", e.target.value)} />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Contact name</label>
-              <input style={inputStyle} value={tenant.contact_name || ""} onChange={(e) => update("contact_name", e.target.value)} />
+        <div className="ad-stack">
+          <Card>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+              <Avatar name={tenant.restaurant_name} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600 }}>{tenant.restaurant_name}</div>
+                <div className="ad-row-meta">{(tenant.package || "basic").replace(/^./, (c) => c.toUpperCase())} package</div>
+              </div>
             </div>
-            <div>
-              <label style={labelStyle}>Contact phone</label>
-              <input style={inputStyle} value={tenant.contact_phone || ""} onChange={(e) => update("contact_phone", e.target.value)} />
+            <div className="ad-kv"><span>Status</span><span><Badge tone={status.tone}>{status.text}</Badge></span></div>
+            <div className="ad-kv"><span>Paid until</span><span>{tenant.paid_until || "—"}</span></div>
+            <div className="ad-kv"><span>Customer since</span><span>{tenant.created_at ? tenant.created_at.slice(0, 10) : "—"}</span></div>
+          </Card>
+
+          <Card>
+            <h2 className="ad-card-title" style={{ fontSize: 15 }}>POS terminal link</h2>
+            <p className="ad-card-sub" style={{ marginBottom: 12 }}>Staff bookmark this on their devices.</p>
+            <code className="ad-code" style={{ marginBottom: 12 }}>{posLink(id)}</code>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Button variant="ghost" size="sm" icon="copy" onClick={copyLink}>{linkCopied ? "Copied" : "Copy"}</Button>
+              <Button as="a" variant="ghost" size="sm" icon="external" href={posLink(id)} target="_blank" rel="noopener noreferrer">Open</Button>
             </div>
-          </div>
+          </Card>
 
-          <div>
-            <label style={labelStyle}>Contact email</label>
-            <input style={inputStyle} type="email" value={tenant.contact_email || ""} onChange={(e) => update("contact_email", e.target.value)} />
-            <div style={{ fontSize: 11, color: "#8A8580", marginTop: 5 }}>Just for your own records — the 7/3/1-day renewal notice shows up in their POS terminal, not by email.</div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Status</label>
-              <SegmentedControl
-                options={[{ key: "active", label: "Active" }, { key: "paused", label: "Paused" }]}
-                value={tenant.status}
-                onChange={(v) => update("status", v)}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Paid until</label>
-              <input style={inputStyle} type="date" value={tenant.paid_until || ""} onChange={(e) => update("paid_until", e.target.value)} />
-            </div>
-          </div>
-          <button onClick={extend30Days} style={{ alignSelf: "flex-start", fontSize: 12, color: COLORS.burgundy, fontWeight: 500, background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: -10 }}>
-            + Extend 30 days from today (or from current paid-until, if later)
-          </button>
-
-          <div>
-            <label style={labelStyle}>Package</label>
-            <SegmentedControl
-              options={[{ key: "basic", label: "basic" }, { key: "standard", label: "standard" }, { key: "premium", label: "premium" }]}
-              value={tenant.package}
-              onChange={(v) => update("package", v)}
-            />
-            <div style={{ fontSize: 11, color: "#8A8580", marginTop: 5 }}>
-              Controls which features show up in their POS terminal — define what's in each package under Packages.
-            </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Notes / payment history</label>
-            <textarea
-              style={{ ...inputStyle, minHeight: 80, fontFamily: "inherit", resize: "vertical" }}
-              value={tenant.notes || ""}
-              onChange={(e) => update("notes", e.target.value)}
-              placeholder="e.g. 500 EGP cash, Aug 19, covers Sept"
-            />
-          </div>
-
-          {error && <div style={{ fontSize: 13, color: COLORS.red }}>{error}</div>}
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4, paddingTop: 14, borderTop: `1px solid ${COLORS.lineSoft}` }}>
-            <button onClick={remove} style={{ fontSize: 12.5, color: COLORS.red, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-              Remove customer
-            </button>
-            <button
-              onClick={save}
-              disabled={saving}
-              style={{ padding: "10px 20px", borderRadius: RADIUS.sm, border: "none", background: COLORS.burgundy, color: "#fff", fontSize: 13.5, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}
-            >
-              {saving ? "Saving…" : savedFlash ? "Saved ✓" : "Save changes"}
-            </button>
-          </div>
+          <Card>
+            <h2 className="ad-card-title" style={{ fontSize: 15, color: "var(--ad-red)" }}>Danger zone</h2>
+            <p className="ad-card-sub" style={{ marginBottom: 12 }}>Removing a customer deletes all of their data. A backup copy is saved first.</p>
+            <Button variant="danger" size="sm" onClick={remove}>Remove customer</Button>
+          </Card>
         </div>
       </div>
-    </div>
+    </AdminShell>
   );
 }

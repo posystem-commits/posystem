@@ -6,6 +6,8 @@ import SiteView from "@/src/site/SiteView";
 import StockImportModal from "@/src/stock/StockImport";
 import { buildTicket as buildKitchenTicket, ticketBodyHtml as kitchenTicketBodyHtml, addToQueue as addToKitchenQueue, parseQueue as parseKitchenQueue, ticketsToPrint as kitchenTicketsToPrint, KITCHEN_MODES } from "@/src/kitchen/kitchenTicket";
 import { buildPlan as buildStockImportPlan } from "@/src/stock/importLogic";
+// Opened only by the secret gesture on the login screen, so it is fetched only then.
+const SupportLogin = React.lazy(() => import("@/src/support/SupportLogin"));
 import WebsiteSettingsPanel from "@/src/site/WebsiteSettings";
 import { mergeSiteSettings, ITEM_BADGES } from "@/src/site/presets";
 import { makeSiteT } from "@/src/site/siteStrings";
@@ -2661,6 +2663,9 @@ function POSPrototype({ tenantId }) {
   const rosterLoadFailedRef = useRef(false);
   const [currentEmployee, setCurrentEmployee] = useState(null); // {id, name} | null — who's clocked in (or just viewing — see viewingOnly) on this device
   const [currentEmployeeLoaded, setCurrentEmployeeLoaded] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportExpiresAt, setSupportExpiresAt] = useState(null); // ms timestamp while a support session is open on this device
+  const supportTapsRef = useRef([]);
   const [viewingOnly, setViewingOnly] = useState(false); // manager checking the system from their phone, e.g. — signed in but not on shift, so it never touches shift stats
   const [pendingManagerLogin, setPendingManagerLogin] = useState(null); // a manager whose PIN just verified, waiting on their Clock in / Just view choice
   // Shared, live registry of shifts currently open on ANY device — {[employeeId]: {employeeId, employeeName, clockIn}}.
@@ -6895,6 +6900,64 @@ function POSPrototype({ tenantId }) {
       }
     })();
   };
+  // ---- Support session (opened from the hidden sign-in; the 4-digit code is checked on the server) ----
+  // Seven quick taps on the restaurant name of the login screen. Nothing on screen reacts to the taps.
+  const handleBrandTap = () => {
+    const now = Date.now();
+    supportTapsRef.current = [...supportTapsRef.current.filter((x) => now - x < 4000), now];
+    if (supportTapsRef.current.length >= 7) {
+      supportTapsRef.current = [];
+      setSupportOpen(true);
+    }
+  };
+  const enterSupportSession = (expiresAtIso) => {
+    setCurrentEmployee({ id: "support", name: "Support" });
+    setViewingOnly(true);
+    setShiftStart(null);
+    setSupportExpiresAt(Date.parse(expiresAtIso));
+    setSupportOpen(false);
+    storage.set("support-session", expiresAtIso).catch(() => {});
+  };
+  const endSupportSession = () => {
+    fetch(`/api/pos/${encodeURIComponent(tenantId)}/support`, { method: "DELETE" }).catch(() => {});
+    storage.delete("support-session").catch(() => {});
+    setSupportExpiresAt(null);
+    setCurrentEmployee(null);
+    setViewingOnly(false);
+    setShiftStart(null);
+  };
+  // A reload keeps the session going — but only asks the server if this device remembers having one.
+  useEffect(() => {
+    if (!currentEmployeeLoaded || currentEmployee) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const remembered = await storage.get("support-session");
+        if (!remembered?.value || Date.parse(remembered.value) < Date.now()) {
+          if (remembered?.value) storage.delete("support-session").catch(() => {});
+          return;
+        }
+        const res = await fetch(`/api/pos/${encodeURIComponent(tenantId)}/support`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (data?.active) enterSupportSession(data.expiresAt);
+        else storage.delete("support-session").catch(() => {});
+      } catch (e) {
+        // no session to restore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentEmployeeLoaded]);
+  useEffect(() => {
+    if (!supportExpiresAt) return undefined;
+    const id = setInterval(() => {
+      if (Date.now() >= supportExpiresAt) endSupportSession();
+    }, 15000);
+    return () => clearInterval(id);
+  }, [supportExpiresAt]);
+
   // A manager checking the system without actually working a shift — from their phone, say. Signs
   // them in (so role-gated tabs and "who's using this device" still work normally) but skips
   // shift-start entirely, so none of the shift/cash-reconciliation machinery ever engages and
@@ -6916,6 +6979,10 @@ function POSPrototype({ tenantId }) {
   // Leaves a viewing-only session — no shift to end, so unlike clockOut this needs no confirmation
   // and writes nothing to the shift log.
   const exitViewingMode = () => {
+    if (supportExpiresAt) {
+      endSupportSession();
+      return;
+    }
     setCurrentEmployee(null);
     setViewingOnly(false);
     setShiftStart(null);
@@ -7820,8 +7887,8 @@ function POSPrototype({ tenantId }) {
           input:focus { outline: none; border-color: ${theme.secondary} !important; box-shadow: 0 0 0 3px ${theme.secondary}33; }
         `}</style>
         <div style={{ width: "100%", maxWidth: 380 }}>
-          <div style={{ textAlign: "center", marginBottom: 28 }}>
-            {logoUrl && <img src={logoUrl} alt={restaurantName} style={{ height: 44, width: "auto", maxWidth: 160, objectFit: "contain", margin: "0 auto 10px", display: "block" }} />}
+          <div onClick={handleBrandTap} style={{ textAlign: "center", marginBottom: 28, userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", touchAction: "manipulation", cursor: "default" }}>
+            {logoUrl && <img draggable={false} src={logoUrl} alt={restaurantName} style={{ height: 44, width: "auto", maxWidth: 160, objectFit: "contain", margin: "0 auto 10px", display: "block" }} />}
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 24, fontWeight: 600 }}>{restaurantName}</div>
           </div>
 
@@ -7951,6 +8018,11 @@ function POSPrototype({ tenantId }) {
           <div style={{ textAlign: "center", marginTop: 28, fontSize: 10, letterSpacing: 0.6, color: "#4A4F5A" }}>G&amp;B</div>
         </div>
         {hasFeature("helpChat") && helpChatWidget}
+        {supportOpen && (
+          <React.Suspense fallback={null}>
+            <SupportLogin tenantId={tenantId} isRtl={isRtl} theme={theme} onSuccess={({ expiresAt }) => enterSupportSession(expiresAt)} onClose={() => setSupportOpen(false)} />
+          </React.Suspense>
+        )}
       </div>
     );
   }

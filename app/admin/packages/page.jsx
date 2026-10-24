@@ -1,46 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import AdminNav from "@/components/AdminNav";
-import { COLORS, FONT_SERIF, RADIUS, SHADOW } from "@/lib/theme";
+import React, { useEffect, useState } from "react";
+import AdminShell from "@/components/AdminShell";
+import { Button, Card, Notice, Skeleton, Toggle } from "@/components/admin/ui";
 
 const PACKAGE_LABELS = { basic: "Basic", standard: "Standard", premium: "Premium" };
 const PACKAGES = ["basic", "standard", "premium"];
-
-function Toggle({ on, onClick, label }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      style={{
-        width: 40,
-        height: 22,
-        borderRadius: RADIUS.pill,
-        border: "none",
-        background: on ? COLORS.burgundy : COLORS.line,
-        position: "relative",
-        cursor: "pointer",
-        padding: 0,
-        flexShrink: 0,
-        transition: "background 0.15s ease",
-      }}
-    >
-      <span
-        style={{
-          position: "absolute",
-          top: 2,
-          left: on ? 20 : 2,
-          width: 18,
-          height: 18,
-          borderRadius: "50%",
-          background: "#fff",
-          boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
-          transition: "left 0.15s ease",
-        }}
-      />
-    </button>
-  );
-}
 
 export default function PackagesPage() {
   const [features, setFeatures] = useState(null);
@@ -48,7 +13,6 @@ export default function PackagesPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
-  const [btnHover, setBtnHover] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -89,69 +53,40 @@ export default function PackagesPage() {
   };
 
   return (
-    <div>
-      <AdminNav />
-      <div style={{ maxWidth: 780, margin: "0 auto", padding: "32px 24px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 10 }}>
-          <h1 style={{ fontFamily: FONT_SERIF, fontSize: 22, fontWeight: 600, margin: 0, color: COLORS.ink }}>Packages</h1>
-          <button
-            onClick={save}
-            disabled={saving || !matrix}
-            onMouseEnter={() => setBtnHover(true)}
-            onMouseLeave={() => setBtnHover(false)}
-            style={{
-              padding: "9px 18px",
-              borderRadius: RADIUS.sm,
-              border: "none",
-              background: saving ? COLORS.burgundy : btnHover ? COLORS.burgundyDark : COLORS.burgundy,
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: saving ? "default" : "pointer",
-              opacity: saving ? 0.7 : 1,
-              transition: "background 0.15s ease",
-            }}
-          >
-            {saving ? "Saving…" : savedFlash ? "Saved ✓" : "Save changes"}
-          </button>
-        </div>
-        <p style={{ fontSize: 13.5, color: COLORS.charcoalSoft, marginTop: 0, marginBottom: 26, lineHeight: 1.5 }}>
-          Choose which features each package includes. Order-taking and basic settings are always available on every package — everything below is optional. Assign a restaurant to a package from its customer detail page.
-        </p>
+    <AdminShell
+      eyebrow="Plans"
+      title="Packages"
+      subtitle="Choose which features each package includes. Order-taking and basic settings are always available on every package — everything below is optional. Assign a restaurant to a package from its customer page."
+      narrow
+      actions={<Button onClick={save} disabled={saving || !matrix}>{saving ? "Saving…" : savedFlash ? "Saved ✓" : "Save changes"}</Button>}
+    >
+      {error && <Notice tone="bad" style={{ marginBottom: 16 }}>{error}</Notice>}
 
-        {error && <div style={{ fontSize: 13, color: COLORS.red, marginBottom: 16 }}>{error}</div>}
-
-        {!matrix ? (
-          <div style={{ fontSize: 13, color: COLORS.charcoalSoft }}>Loading…</div>
-        ) : (
-          <div style={{ background: COLORS.card, border: `1px solid ${COLORS.line}`, borderRadius: RADIUS.lg, overflow: "hidden", boxShadow: SHADOW.card }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr repeat(3, 90px)", borderBottom: `1px solid ${COLORS.line}`, background: COLORS.cream }}>
-              <div style={{ padding: "11px 16px", fontSize: 11, fontWeight: 600, color: COLORS.charcoalSoft, textTransform: "uppercase", letterSpacing: 0.4 }}>Feature</div>
-              {PACKAGES.map((pkg) => (
-                <div key={pkg} style={{ padding: "11px 8px", fontSize: 11.5, fontWeight: 700, color: COLORS.ink, textAlign: "center" }}>{PACKAGE_LABELS[pkg]}</div>
-              ))}
-            </div>
-            {features.map((f, i) => (
-              <div
-                key={f.key}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr repeat(3, 90px)",
-                  alignItems: "center",
-                  borderBottom: i < features.length - 1 ? `1px solid ${COLORS.lineSoft}` : "none",
-                }}
-              >
-                <div style={{ padding: "13px 16px", fontSize: 13.5, color: COLORS.ink }}>{f.label}</div>
-                {PACKAGES.map((pkg) => (
-                  <div key={pkg} style={{ display: "flex", justifyContent: "center" }}>
-                    <Toggle on={matrix[pkg][f.key]} onClick={() => toggle(pkg, f.key)} label={`${f.label} — ${PACKAGE_LABELS[pkg]}`} />
-                  </div>
-                ))}
-              </div>
+      {!matrix ? (
+        <Skeleton rows={6} height={54} />
+      ) : (
+        <Card pad={false} style={{ overflow: "hidden" }}>
+          <div className="ad-matrix">
+            <div className="head">Feature</div>
+            {PACKAGES.map((pkg) => (
+              <div key={pkg} className="head center">{PACKAGE_LABELS[pkg]}</div>
             ))}
+            {features.map((f, i) => {
+              const last = i === features.length - 1 ? " last" : "";
+              return (
+                <React.Fragment key={f.key}>
+                  <div className={last.trim()} style={{ fontSize: 14, fontWeight: 500 }}>{f.label}</div>
+                  {PACKAGES.map((pkg) => (
+                    <div key={pkg} className={`cell${last}`}>
+                      <Toggle on={matrix[pkg][f.key]} onClick={() => toggle(pkg, f.key)} label={`${f.label} — ${PACKAGE_LABELS[pkg]}`} />
+                    </div>
+                  ))}
+                </React.Fragment>
+              );
+            })}
           </div>
-        )}
-      </div>
-    </div>
+        </Card>
+      )}
+    </AdminShell>
   );
 }

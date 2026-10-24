@@ -2,39 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { COLORS, FONT_SERIF, SHADOW, RADIUS } from "@/lib/theme";
-
-const inputStyle = {
-  width: "100%",
-  boxSizing: "border-box",
-  padding: "10px 12px",
-  marginBottom: 16,
-  border: `1px solid ${COLORS.line}`,
-  borderRadius: RADIUS.sm,
-  fontSize: 14,
-  fontFamily: "inherit",
-  outline: "none",
-  transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-};
-
-function FormField({ label, ...props }) {
-  const [focused, setFocused] = useState(false);
-  return (
-    <>
-      <label style={{ display: "block", fontSize: 12, color: COLORS.charcoalSoft, marginBottom: 5, fontWeight: 500 }}>{label}</label>
-      <input
-        {...props}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        style={{
-          ...inputStyle,
-          borderColor: focused ? COLORS.burgundy : COLORS.line,
-          boxShadow: focused ? `0 0 0 3px ${COLORS.burgundy}1A` : "none",
-        }}
-      />
-    </>
-  );
-}
+import { Button, Notice } from "@/components/admin/ui";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -42,7 +10,6 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [btnHover, setBtnHover] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -69,48 +36,46 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, background: COLORS.cream }}>
-      <form
-        onSubmit={submit}
-        style={{ width: "100%", maxWidth: 360, background: COLORS.card, borderRadius: RADIUS.xl, padding: "36px 32px", boxShadow: SHADOW.raised, border: `1px solid ${COLORS.line}` }}
-      >
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
-          <span style={{ fontFamily: FONT_SERIF, fontWeight: 600, fontSize: 26, color: COLORS.burgundy }}>G&amp;B</span>
-          <span style={{ fontSize: 11.5, color: COLORS.charcoalSoft, letterSpacing: 1.2, textTransform: "uppercase" }}>Admin</span>
-        </div>
-        <p style={{ fontSize: 13.5, color: COLORS.charcoalSoft, marginTop: 0, marginBottom: 26, lineHeight: 1.5 }}>Sign in to manage restaurant customers.</p>
-
-        <FormField label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        <FormField label="Password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-
-        {error && (
-          <div style={{ fontSize: 13, color: COLORS.red, background: COLORS.redLight, borderRadius: RADIUS.sm, padding: "9px 12px", marginBottom: 16 }}>
-            {error}
+    <div className="ad-root">
+      <div className="ad-login">
+        <section className="ad-login-art">
+          <div className="ad-brand" style={{ padding: 0 }}>
+            <div className="ad-brand-mark">G</div>
+            <div>
+              <div className="ad-brand-name">G&amp;B</div>
+              <div className="ad-brand-sub">Admin</div>
+            </div>
           </div>
-        )}
+          <div>
+            <div className="ad-login-quote">
+              Every restaurant you run, <em>in one calm place.</em>
+            </div>
+          </div>
+          <div className="ad-login-note">Customers, subscriptions, packages and support access — all managed from here.</div>
+        </section>
+        <section className="ad-login-form">
+          <form className="ad-login-card ad-fade" onSubmit={submit}>
+            <div className="ad-eyebrow">Welcome back</div>
+            <h1>Sign in</h1>
+            <p className="ad-sub" style={{ marginBottom: 28 }}>Use your admin account to manage your restaurant customers.</p>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          onMouseEnter={() => setBtnHover(true)}
-          onMouseLeave={() => setBtnHover(false)}
-          style={{
-            width: "100%",
-            padding: "12px 0",
-            borderRadius: RADIUS.sm,
-            border: "none",
-            background: submitting ? COLORS.burgundy : btnHover ? COLORS.burgundyDark : COLORS.burgundy,
-            color: "#fff",
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: submitting ? "default" : "pointer",
-            opacity: submitting ? 0.75 : 1,
-            transition: "background 0.15s ease",
-          }}
-        >
-          {submitting ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+            <div className="ad-field">
+              <label className="ad-label" htmlFor="ad-email">Email</label>
+              <input id="ad-email" className="ad-input" type="email" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="ad-field">
+              <label className="ad-label" htmlFor="ad-password">Password</label>
+              <input id="ad-password" className="ad-input" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+
+            {error && <Notice tone="bad" style={{ marginBottom: 16 }}>{error}</Notice>}
+
+            <Button type="submit" block disabled={submitting} style={{ padding: "13px 0" }}>
+              {submitting ? "Signing in…" : "Sign in"}
+            </Button>
+          </form>
+        </section>
+      </div>
     </div>
   );
 }
