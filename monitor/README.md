@@ -23,9 +23,12 @@ Nothing here can change a restaurant's data. The only writes are the monitor's o
 * **Data** — expenses without a time, days not signed off (when the restaurant normally does).
 * **Subscriptions** — a restaurant's paid-until date (the POS blocks itself the day after).
 * **Capacity** — database space (free plan 500 MB; amber at 60 %, red at 80 %), safety-copy freshness, growth forecast. Vercel/Supabase transfer limits can't be read automatically: send the numbers with `/usage` once a month.
+* **Support access** — every use of the hidden support sign-in on a restaurant's terminal is reported immediately (🔴, from the hourly round), as are repeated wrong codes and lock-outs; the test restaurant is silent. The weekly report counts them.
 * **Availability** — the POS page and data service, every minute, including Vercel's "payment required" pause.
 
 Thresholds live in `monitor/config.json`.
+
+**Day-end cash collection.** If a restaurant takes the cash out of the drawer at the end of the day, the last shift of the day looks "short" by exactly that amount. Put the restaurant's id in `dayEndCollection` in `config.json` and that last difference is reported as an amount to check against what was really taken (🔵), instead of as a shortage. Earlier shifts of the day stay strict.
 
 ## Telegram commands
 
@@ -37,7 +40,7 @@ Messages sent to the bot are answered during the hourly round (within about an h
 ## One-time setup (needs your accounts)
 
 1. **Telegram bot** — in Telegram open `@BotFather`, send `/newbot`, copy the token. Then message your new bot `/start` and tell me; I read your chat id.
-2. **GitHub secrets** (repository → Settings → Secrets and variables → Actions): `SUPABASE_URL`, `MONITOR_SUPABASE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_IDS` (your chat id; add more owners with commas), `HEALTHCHECK_URL`.
+2. **GitHub secrets** — run `powershell -ExecutionPolicy Bypass -File monitorcopy-secrets.ps1`. It opens the right GitHub page and, one by one, tells you the name to type and puts the value on your clipboard (the two database values come from `.env.local`; the two Telegram ones you copy from Telegram). The four are `SUPABASE_URL`, `MONITOR_SUPABASE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_IDS` (your chat id; add more owners with commas). `HEALTHCHECK_URL` can be added later (step 3).
 3. **healthchecks.io** — free account; make two checks: *GitHub hourly* (period 1 h, grace 1 h) and *Uptime Worker* (period 1 min, grace 5 min); connect both to your Telegram. Put the first URL in the GitHub secret and the second in the Worker.
 4. **Cloudflare Worker** — free account; `npx wrangler kv namespace create STATE`, paste the id into `monitor/worker/wrangler.toml`, set the secrets (`wrangler secret put TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_IDS`, `HEALTHCHECK_URL`), then `npx wrangler deploy`.
 5. **Backup heartbeat** — I add one line to the nightly backup so healthchecks.io hears from it every night (a third check, period 1 day).

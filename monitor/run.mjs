@@ -29,13 +29,14 @@ if (fs.existsSync(path.join(root, ".env.local")) && !process.env.SUPABASE_URL) {
   }
 }
 
-const { connect, loadTenants, loadTenantData, loadUsage } = await import("./lib/data.mjs");
+const { connect, loadTenants, loadTenantData, loadUsage, loadSupportLog } = await import("./lib/data.mjs");
 const { loadState, saveState, reconcile, openFindings, shortId } = await import("./lib/state.mjs");
 const { broadcast } = await import("./lib/telegram.mjs");
 const { alertText, ICON, esc } = await import("./lib/format.mjs");
 const { numbersChecks } = await import("./checks/numbers.mjs");
 const { businessChecks } = await import("./checks/business.mjs");
 const { capacityChecks } = await import("./checks/capacity.mjs");
+const { securityChecks, supportWeekly } = await import("./checks/security.mjs");
 const { buildWeeklyReport } = await import("./weekly.mjs");
 const { processInbox } = await import("./inbox.mjs");
 const L = await import(pathToFileURL(path.join(root, "src/ledger.js")).href);
@@ -68,7 +69,9 @@ async function runChecks(db, nowMs) {
   const usage = await loadUsage(db);
   const capacity = capacityChecks({ usage, cfg, nowMs });
   findings.push(...capacity.findings);
-  return { findings, contexts, usage, capacity, summary };
+  const supportLog = await loadSupportLog(db, new Date(nowMs - 8 * 86400000).toISOString());
+  findings.push(...securityChecks({ log: supportLog, tenants, cfg, nowMs }));
+  return { findings, contexts, usage, capacity, summary, supportLine: supportWeekly({ log: supportLog, tenants, nowMs }) };
 }
 
 async function main() {
@@ -127,7 +130,7 @@ async function main() {
     if (mode === "weekly" && !flag("force") && !weeklyDue) {
       console.log("Not due yet (use --force to send now).");
     } else {
-      const text = buildWeeklyReport({ contexts: result.contexts, usage: result.usage, capacity: result.capacity, state, cfg, nowMs, L });
+      const text = buildWeeklyReport({ contexts: result.contexts, usage: result.usage, capacity: result.capacity, supportLine: result.supportLine, state, cfg, nowMs, L });
       await broadcast(state, text, { roles: ["owner", "viewer"], dry });
       if (!dry) {
         state.lastWeekly = local.toDateString();

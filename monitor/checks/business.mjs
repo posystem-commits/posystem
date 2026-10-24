@@ -48,8 +48,16 @@ export function businessChecks({ L, ledger, data, nowMs, cfg, isTest }) {
   days.forEach((day) => {
     const cd = ledger.closeDay(day, nowMs);
     if (!cd) return;
-    cd.drawers.forEach((d) => {
+    cd.drawers.forEach((d, di) => {
       if (d.loading) return;
+      // Some restaurants take the cash out of the drawer at the end of the day, AFTER the last shift's count is
+      // typed in or just before it — the last shift of the day then looks "short" by exactly what was collected.
+      // For restaurants that confirmed this (config.dayEndCollection), that last difference is reported as a
+      // collection to check against what was really taken, not as a shortage.
+      if (d.gap !== null && d.gap <= -th.shiftGapAmber && di === cd.drawers.length - 1 && (cfg.dayEndCollection || []).includes(t.id)) {
+        out.push(finding({ ...base, code: "DAY_END_COLLECTION", key: d.key, severity: "info", topic: "cash", title: `Day-end cash collection of about ${money(Math.abs(d.gap))} (${day}) — ${d.name} counted ${money(d.counted)} of ${money(d.expected)} expected`, detail: `Does this match the cash actually taken out of the drawer at the end of ${day}? If not, tell me.` }));
+        return;
+      }
       if (d.gap !== null && Math.abs(d.gap) >= th.shiftGapAmber) {
         const sev = Math.abs(d.gap) >= th.shiftGapRed ? "red" : "amber";
         const why = d.solve && d.solve.items.length

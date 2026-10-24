@@ -9,7 +9,7 @@ const pctChange = (a, b) => (b > 0 ? `${a >= b ? "+" : ""}${Math.round(((a - b) 
 // The Thursday report. Plain and complete: how each restaurant did, whether the cash added up, what went
 // wrong and what is still open, where the system is heading (space, subscriptions), and what the monitor
 // would like to ask.
-export function buildWeeklyReport({ contexts, usage, capacity, state, cfg, nowMs, L }) {
+export function buildWeeklyReport({ contexts, usage, capacity, supportLine, state, cfg, nowMs, L }) {
   const today = contexts[0]?.ledger.bizDay(new Date(nowMs).toISOString());
   const end = addDays(today, -1); // last full business day
   const start = addDays(end, -6);
@@ -112,6 +112,7 @@ export function buildWeeklyReport({ contexts, usage, capacity, state, cfg, nowMs
     }
   }
   lines.push(`Backups: nightly copy to Google Drive and in-database safety copies are being checked.`);
+  if (supportLine) lines.push(supportLine);
   const u = state.usage && state.usage.values;
   if (u) {
     const parts = [];

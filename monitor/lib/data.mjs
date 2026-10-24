@@ -74,6 +74,12 @@ export async function loadTenantData(db, tenant, nowMs, monthsBack = 2) {
   };
 }
 
+// Recent sign-ins to the hidden support access (table support_access_log). Empty if that table doesn't exist yet.
+export async function loadSupportLog(db, sinceIso) {
+  const { data, error } = await db.from("support_access_log").select("id, tenant_id, outcome, ip, created_at").gte("created_at", sinceIso).order("created_at", { ascending: false }).limit(500);
+  return error ? [] : data || [];
+}
+
 // Whole-database size per restaurant (live records and safety copies), for the free-plan space limit.
 export async function loadUsage(db) {
   const tenants = await loadTenants(db);

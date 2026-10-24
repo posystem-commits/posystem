@@ -7,6 +7,7 @@
   "dailyDigest": false,
   "remindHours": 24,
   "cashPickupsExpected": [],
+  "dayEndCollection": [],
   "acknowledged": [
     {
       "tenant": "089591ae-3a36-4432-8b78-cf2f3ad4cb87",
@@ -39,6 +40,8 @@
     "countsRequiredFrom": "2026-10-18T02:00:00Z",
     "noSalesZeroHours": 2,
     "revenueDropPercent": 50,
-    "snapshotStaleHours": 36
+    "snapshotStaleHours": 36,
+    "supportEventWindowHours": 3,
+    "supportFailAlertCount": 3
   }
 }

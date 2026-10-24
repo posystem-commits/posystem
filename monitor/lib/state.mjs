@@ -55,7 +55,8 @@ export function reconcile(state, current, nowIso, remindHours) {
   Object.values(state.findings).forEach((f) => {
     if (!seen.has(f.fp) && !f.resolvedAt) {
       f.resolvedAt = nowIso;
-      if (f.notifiedAt && f.notifiedSeverity === "red") resolved.push(f);
+      // One-off events (a support sign-in, say) are announced once and simply drop off — no "resolved" message.
+      if (f.notifiedAt && f.notifiedSeverity === "red" && !f.event) resolved.push(f);
     }
   });
   return { newAlerts, reminders, resolved };
