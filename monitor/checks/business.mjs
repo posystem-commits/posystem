@@ -48,15 +48,16 @@ export function businessChecks({ L, ledger, data, nowMs, cfg, isTest }) {
   days.forEach((day) => {
     const cd = ledger.closeDay(day, nowMs);
     if (!cd) return;
-    cd.drawers.forEach((d, di) => {
+    cd.drawers.forEach((d) => {
       if (d.loading) return;
-      // Some restaurants take the cash out of the drawer at the end of the day, AFTER the last shift's count is
-      // typed in or just before it — the last shift of the day then looks "short" by exactly what was collected.
-      // That is the normal pattern here (config.dayEndCollection: "all", or a list of restaurant ids), so the last
-      // difference of a day is reported as a collection to check against what was really taken, not as a shortage.
-      // Each day is judged on its own; nothing is carried from one day to the next.
-      if (d.gap !== null && d.gap <= -th.shiftGapAmber && di === cd.drawers.length - 1 && (cfg.dayEndCollection === "all" || (cfg.dayEndCollection || []).includes(t.id))) {
-        out.push(finding({ ...base, code: "DAY_END_COLLECTION", key: d.key, severity: "info", topic: "cash", title: `Day-end cash collection of about ${money(Math.abs(d.gap))} (${day}) — ${d.name} counted ${money(d.counted)} of ${money(d.expected)} expected`, detail: `Does this match the cash actually taken out of the drawer at the end of ${day}? If not, tell me.` }));
+      // The day's cash is collected around the last shift's count, so that shift looks "short" by what was taken.
+      // Once the amount is typed in on Close the day the drawer is checked strictly against it (below). Until then
+      // the difference is only an implied collection: not a shortage, but a reminder to type the amount in once the
+      // day is over. Each day is judged on its own; nothing is carried from one day to the next.
+      if (d.impliedCollection) {
+        if (day < today && d.impliedCollection >= th.shiftGapAmber) {
+          out.push(finding({ ...base, code: "COLLECTION_NOT_RECORDED", key: day, severity: "amber", topic: "cash", title: `Day-end collection not recorded for ${day}: ${d.name} counted ${money(d.counted)} of ${money(d.expected)} expected (about ${money(d.impliedCollection)} taken out)`, detail: `Type the amount actually collected into Close the day for ${day}; then the drawer is checked against it and any real difference shows up.` }));
+        }
         return;
       }
       if (d.gap !== null && Math.abs(d.gap) >= th.shiftGapAmber) {

@@ -56,7 +56,7 @@ async function runChecks(db, nowMs) {
   const summary = { checks: 0, failed: 0 };
   for (const tenant of tenants) {
     const data = await loadTenantData(db, tenant, nowMs);
-    const ledger = L.createLedger({ receiptsByMonth: data.receiptsByMonth, expensesByMonth: data.expensesByMonth, shiftLog: data.shiftLog, openShifts: data.openShifts, shiftHours: data.shiftHours || L.DEFAULT_SHIFT_HOURS, menu: {}, labels });
+    const ledger = L.createLedger({ receiptsByMonth: data.receiptsByMonth, expensesByMonth: data.expensesByMonth, shiftLog: data.shiftLog, openShifts: data.openShifts, shiftHours: data.shiftHours || L.DEFAULT_SHIFT_HOURS, menu: {}, labels, collections: data.collections });
     const isTest = cfg.testTenants.includes(tenant.id);
     const nc = numbersChecks({ L, N, ledger, data, nowMs, cfg });
     summary.checks += nc.summary.checks;

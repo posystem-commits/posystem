@@ -52,6 +52,7 @@ export async function loadTenantData(db, tenant, nowMs, monthsBack = 2) {
     "shift-hours-config",
     "pending-orders",
     "day-closings",
+    "day-collections",
   ];
   const { data, error } = await db.from("tenant_pos_kv").select("key, value, updated_at").eq("tenant_id", tenant.id).in("key", keys);
   if (error) throw new Error(`${tenant.restaurant_name}: ${error.message}`);
@@ -71,6 +72,7 @@ export async function loadTenantData(db, tenant, nowMs, monthsBack = 2) {
     shiftHours: parse(byKey.get("shift-hours-config")?.value, null),
     pendingOrders: parse(byKey.get("pending-orders")?.value, []),
     dayClosings: parse(byKey.get("day-closings")?.value, {}),
+    collections: parse(byKey.get("day-collections")?.value, {}),
   };
 }
 

@@ -44,15 +44,18 @@ export function buildWeeklyReport({ contexts, usage, capacity, supportLine, stat
     let outsideN = 0;
     let pickups = 0;
     let collected = 0;
-    const dayEnd = cfg.dayEndCollection === "all" || (cfg.dayEndCollection || []).includes(c.data.tenant.id);
+    let unrecorded = 0;
     for (let d = start; d <= end; d = addDays(d, 1)) {
       const cd = c.ledger.closeDay(d, nowMs);
       if (!cd) continue;
       outsideN += cd.outside.length;
-      cd.drawers.forEach((dr, di) => {
-        // The last shift of a day is counted after the end-of-day cash collection: that difference is the collection.
-        if (dayEnd && dr.gap !== null && dr.gap <= -cfg.thresholds.shiftGapAmber && di === cd.drawers.length - 1) {
-          collected += Math.abs(dr.gap);
+      cd.drawers.forEach((dr) => {
+        // The last shift of a day is counted around the end-of-day cash collection. With the amount typed in, the
+        // drawer is checked against it like any other; without it, the difference is only an implied collection.
+        if (dr.collected > 0) collected += dr.collected;
+        if (dr.impliedCollection) {
+          collected += dr.impliedCollection;
+          unrecorded++;
           counted++;
           return;
         }
@@ -67,7 +70,7 @@ export function buildWeeklyReport({ contexts, usage, capacity, supportLine, stat
       });
     }
     lines.push(`Cash: ${counted} shift counts checked · net difference ${gapSum >= 0 ? "+" : ""}${money(gapSum)}${biggest && Math.abs(biggest.gap) >= 1 ? ` · biggest ${biggest.gap < 0 ? "short" : "over"} ${money(Math.abs(biggest.gap))} (${esc(biggest.name)}, ${biggest.day})` : ""}`);
-    if (collected) lines.push(`Day-end cash collections implied by the last count of each day: ${money(collected)} — does that match what you took?`);
+    if (collected) lines.push(`Day-end cash collections: ${money(collected)}${unrecorded ? ` — ${unrecorded} day(s) without the amount typed in on Close the day (counted as implied)` : " — all recorded"}`);
     if (pickups) lines.push(`Cash taken out between shifts (pickups): ${money(pickups)}`);
     if (uncounted) lines.push(`⚠️ ${uncounted} shift(s) ended without a count`);
     if (outsideN) lines.push(`⚠️ ${outsideN} order(s) were rung up when nobody was clocked in`);
