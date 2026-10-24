@@ -261,6 +261,7 @@ export function createLedger(data) {
   // now on carry the order's exact total before and after; older ones are estimated from the dish price.
   const itemEdits = (r, notBefore, priceOf) => {
     const nets = {};
+    const discountNets = {}; // a discount added/changed/removed after payment (kind: "discount"), kept apart from dishes
     let value = 0;
     let exact = true;
     let by = null;
@@ -273,7 +274,10 @@ export function createLedger(data) {
       any = true;
       by = h.editedBy?.name || by;
       at = h.timestamp;
-      item.forEach((c) => { nets[c.name] = (nets[c.name] || 0) + (Number(c.to) - Number(c.from)); });
+      item.forEach((c) => {
+        const target = c.kind === "discount" ? discountNets : nets;
+        target[c.name] = (target[c.name] || 0) + (Number(c.to) - Number(c.from));
+      });
       if (typeof h.totalBefore === "number" && typeof h.totalAfter === "number") {
         value += h.totalAfter - h.totalBefore;
       } else {
@@ -283,10 +287,12 @@ export function createLedger(data) {
     });
     if (!any) return null;
     const parts = Object.entries(nets).filter(([, d]) => d !== 0);
-    if (parts.length === 0) return null;
-    const down = parts.filter(([, d]) => d < 0).map(([name, d]) => `${name} ×${-d}`).join(", ");
-    const up = parts.filter(([, d]) => d > 0).map(([name, d]) => `${name} ×${d}`).join(", ");
-    return { by, at, value: round2(value), down, up, exact };
+    const discountParts = Object.entries(discountNets).filter(([, d]) => round2(d) !== 0);
+    if (parts.length === 0 && discountParts.length === 0) return null;
+    // More discount lowers the bill (like removing dishes); less discount raises it.
+    const down = [...parts.filter(([, d]) => d < 0).map(([name, d]) => `${name} ×${-d}`), ...discountParts.filter(([, d]) => d > 0).map(([name, d]) => `${name} ${round2(d)}`)].join(", ");
+    const up = [...parts.filter(([, d]) => d > 0).map(([name, d]) => `${name} ×${d}`), ...discountParts.filter(([, d]) => d < 0).map(([name, d]) => `${name} ${round2(-d)}`)].join(", ");
+    return { by, at, value: round2(value), down, up, exact, discountOnly: parts.length === 0 };
   };
 
   const closeDay = (day, nowMs) => {
@@ -330,7 +336,7 @@ export function createLedger(data) {
         }
         if (r.paymentMethod === "cash") {
           const ed = itemEdits(r, since, priceOf);
-          if (ed && Math.abs(ed.value) >= 0.01) events.push({ kind: ed.value < 0 ? "qtyDown" : "qtyUp", n: r.ticketNo, amount: round2(-ed.value), approx: !ed.exact, by: ed.by, at: ed.at, list: ed.value < 0 ? ed.down : ed.up, afterClose: !!sh.clockOut && ed.at > sh.clockOut });
+          if (ed && Math.abs(ed.value) >= 0.01) events.push({ kind: ed.discountOnly ? (ed.value < 0 ? "discountDown" : "discountUp") : ed.value < 0 ? "qtyDown" : "qtyUp", n: r.ticketNo, amount: round2(-ed.value), approx: !ed.exact, by: ed.by, at: ed.at, list: ed.value < 0 ? ed.down : ed.up, afterClose: !!sh.clockOut && ed.at > sh.clockOut });
         }
       });
       pool.filter((r) => (r.status === "cancelled" || r.status === "refunded") && !returnTimeOf(r) && r.paid !== false && inWin(r.paidAt || r.timestamp)).forEach((r) => {

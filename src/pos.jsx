@@ -437,6 +437,15 @@ const STRINGS = {
     paymentMethodEditLabel: "Payment method",
     paymentMethodEditSplitNote: "Picking a method here replaces the split-payment breakdown with a single method.",
     editReasonLabel: "Reason for edit (optional)",
+    discountEditLabel: "Discount",
+    editDiscountTitle: "Discount",
+    editDiscountValuePlaceholder: "No discount",
+    editDiscountRemove: "Remove discount",
+    editDiscountHint: "Leave the value empty for no discount. A reason is required when a discount is added or changed.",
+    editNewTotal: "Total after this edit: {{new}} (was {{old}})",
+    editHistoryDiscountRemoved: "removed",
+    cdDiscountDown: "Order #{{n}} got a discount ({{list}}) from {{by}} at {{at}}, after it was paid — {{about}}{{amount}} less on the bill. If the customer paid the original price, the extra cash is in the drawer.",
+    cdDiscountUp: "Order #{{n}} had its discount reduced or removed ({{list}}) by {{by}} at {{at}}, after it was paid — {{about}}{{amount}} more on the bill. If the customer didn't pay the difference, the drawer is short by that much.",
     editReasonPlaceholder: "e.g. customer changed their mind",
     viewEditHistory: "View edit history ({{n}})",
     hideEditHistory: "Hide edit history",
@@ -1287,6 +1296,15 @@ const STRINGS = {
     paymentMethodEditLabel: "طريقة الدفع",
     paymentMethodEditSplitNote: "اختيار طريقة هنا يستبدل تقسيم الدفع بطريقة واحدة فقط.",
     editReasonLabel: "سبب التعديل (اختياري)",
+    discountEditLabel: "الخصم",
+    editDiscountTitle: "الخصم",
+    editDiscountValuePlaceholder: "بدون خصم",
+    editDiscountRemove: "إزالة الخصم",
+    editDiscountHint: "اترك القيمة فارغة لعدم وجود خصم. السبب مطلوب عند إضافة خصم أو تغييره.",
+    editNewTotal: "الإجمالي بعد هذا التعديل: {{new}} (كان {{old}})",
+    editHistoryDiscountRemoved: "أُزيل",
+    cdDiscountDown: "في الفاتورة رقم {{n}} أضاف {{by}} الساعة {{at}} خصمًا ({{list}}) بعد دفعها — أي {{about}}{{amount}} أقل في الفاتورة. لو دفع العميل السعر الأصلي، فالنقدية الزائدة موجودة في الدرج.",
+    cdDiscountUp: "في الفاتورة رقم {{n}} خفّض {{by}} الخصم أو أزاله ({{list}}) الساعة {{at}} بعد دفعها — أي {{about}}{{amount}} أكثر في الفاتورة. لو لم يدفع العميل الفرق، فالدرج ناقص بهذا المبلغ.",
     editReasonPlaceholder: "مثال: العميل غيّر رأيه",
     viewEditHistory: "عرض سجل التعديلات ({{n}})",
     hideEditHistory: "إخفاء سجل التعديلات",
@@ -1965,7 +1983,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
 - **Website** (manager-only; comes with the Online ordering link feature): turns the online-ordering link into a branded website for the restaurant. A manager picks one of five looks (Classic, Modern, Dark, Bold, Minimal — each sets fonts, shapes and layout together), can override the button and highlight colors (otherwise the brand colors from Settings are used), uploads a cover photo and up to 6 gallery photos, writes a tagline and an "About us" text in English and Arabic, adds an announcement banner, address and social links (Instagram, Facebook, TikTok, WhatsApp, website), chooses which sections show (About, Popular items row, Gallery, Opening hours — the hours and the "Open now / Closed" badge come from Settings → Shift hours) and chooses the language the page opens in. A live phone preview sits next to the controls (a "Preview" button on phones). Everything saves automatically, but customers keep seeing the original ordering page until the "Published" switch is turned on, and it can be switched off again at any time. The tab also lets the manager claim a short web address (for example /r/my-restaurant) to share on social media or print on menus; the original long link keeps working. Orders can't be sent from the preview. In the Menu editor, each dish has an "On your website" section: labels (Popular, New, Spicy, Vegetarian, Chef's pick) and a "Show in the Popular row" checkbox. Dish photos and the short description are what the website shows on each menu card. The website look also applies to table QR menus once published.
-- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match) and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
+- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match), add, change or remove the order's discount (no need to delete the order and make a new one — a discount that is added or changed needs a written reason, the total and the service/VAT recalculate right away, a "Total after this edit" line shows the new bill before you save, and the change is recorded in the edit history and in the cash-drawer explanation on Close the day if the order was already paid), and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see totals, outstanding payables, and a by-category breakdown. Like the Dashboard and Receipts, it can be filtered by Month (a month dropdown), a single Day (a calendar), or a custom Range (any start and end date) using the toggle at the top; the totals, payables and category breakdown follow the chosen period.
 - **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
@@ -2592,6 +2610,7 @@ function POSPrototype({ tenantId }) {
   const [editDraftItems, setEditDraftItems] = useState([]);
   const [editReason, setEditReason] = useState("");
   const [editPaymentMethod, setEditPaymentMethod] = useState(null);
+  const [editDraftDiscount, setEditDraftDiscount] = useState({ type: "percent", value: "", reason: "" }); // the discount while a saved order is being edited
   const [restockAmounts, setRestockAmounts] = useState({}); // per-ingredient typed bulk-restock amount, keyed by ingredient id
   const [expandedHistoryId, setExpandedHistoryId] = useState(null); // receipt id whose edit-history panel is open, if any
 
@@ -6093,12 +6112,39 @@ function POSPrototype({ tenantId }) {
     setEditDraftItems(r.items.map((it) => ({ ...it })));
     setEditReason("");
     setEditPaymentMethod(r.paymentMethod || null);
+    setEditDraftDiscount(r.discount ? { type: r.discount.type, value: String(r.discount.value), reason: r.discount.reason || "" } : { type: "percent", value: "", reason: "" });
   };
   const cancelEditReceipt = () => {
     setEditingReceiptId(null);
     setEditDraftItems([]);
     setEditReason("");
     setEditPaymentMethod(null);
+    setEditDraftDiscount({ type: "percent", value: "", reason: "" });
+  };
+  // What the edited discount boxes mean for this order: the discount to store (null = none), whether the
+  // discount itself changed (so it needs a reason and goes in the edit history), or which notice to show.
+  const resolveEditDiscount = (r) => {
+    const d = editDraftDiscount;
+    const v = Number(d.value);
+    const old = r.discount || null;
+    if (String(d.value).trim() === "" || v === 0) return { discount: null, changed: !!old };
+    if (!(v > 0) || (d.type === "percent" && v > 100)) return { error: "notice_enterDiscountValue" };
+    const reason = (d.reason || "").trim();
+    if (old && old.type === d.type && Number(old.value) === v) {
+      // same discount — only the wording of the reason may differ
+      return { discount: reason.length >= 3 && reason !== (old.reason || "") ? { ...old, reason } : old, changed: false };
+    }
+    if (reason.length < 3) return { error: "notice_discountReasonRequired" };
+    return { discount: { type: d.type, value: v, reason }, changed: true };
+  };
+  // The bill for an order after an edit — worked out with THIS order's own service/VAT rates, never today's.
+  const editedBillFor = (r, items, disc) => {
+    const newSubtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
+    const newDiscAmt = discountAmount(newSubtotal, disc);
+    const newNet = newSubtotal - newDiscAmt;
+    const newServiceAmt = Math.round(newNet * ((r.serviceRate || 0) / 100) * 100) / 100;
+    const newVatAmt = Math.round((newNet + newServiceAmt) * ((r.vatRate || 0) / 100) * 100) / 100;
+    return { subtotal: newSubtotal, discountAmount: newDiscAmt, serviceAmount: newServiceAmt, vatAmount: newVatAmt, total: newNet + newServiceAmt + newVatAmt + (r.deliveryFee || 0) };
   };
   const changeEditQty = (index, delta, original) => {
     setEditDraftItems((prev) =>
@@ -6125,6 +6171,12 @@ function POSPrototype({ tenantId }) {
     );
   };
   const saveEditReceipt = (r) => {
+    // Checked before anything is touched, so a missing reason never leaves stock half-adjusted.
+    const discountEdit = hasFeature("discounts") ? resolveEditDiscount(r) : { discount: r.discount || null, changed: false };
+    if (discountEdit.error) {
+      flashNotice(t(discountEdit.error));
+      return;
+    }
     // Paired by position, not by menu item id — a receipt can have two lines for the same dish
     // with different notes (e.g. one plain, one "no onions"), and matching by id alone would
     // conflate them.
@@ -6157,13 +6209,23 @@ function POSPrototype({ tenantId }) {
       changes.push({ name: t("paymentMethodEditLabel"), from: t(`payment_${r.paymentMethod}`), to: t(`payment_${editPaymentMethod}`) });
     }
     const cleaned = finalItems;
-    const newSubtotal = cleaned.reduce((s, it) => s + it.price * it.qty, 0);
-    const newDiscAmt = discountAmount(newSubtotal, r.discount);
     // Recomputed using THIS receipt's own stored rates, not today's live settings — editing an
     // old order shouldn't retroactively apply a VAT/service rate change made since then.
-    const newNet = newSubtotal - newDiscAmt;
-    const newServiceAmt = Math.round(newNet * ((r.serviceRate || 0) / 100) * 100) / 100;
-    const newVatAmt = Math.round((newNet + newServiceAmt) * ((r.vatRate || 0) / 100) * 100) / 100;
+    const bill = editedBillFor(r, cleaned, discountEdit.discount);
+    const { subtotal: newSubtotal, discountAmount: newDiscAmt, serviceAmount: newServiceAmt, vatAmount: newVatAmt } = bill;
+    if (discountEdit.changed) {
+      // The discount's own effect on the bill, measured on the new items so a dish change isn't counted twice.
+      const before = Math.round(discountAmount(newSubtotal, r.discount) * 100) / 100;
+      const after = Math.round(newDiscAmt * 100) / 100;
+      const nd = discountEdit.discount;
+      changes.push({
+        name: t("discountEditLabel"),
+        from: before,
+        to: after,
+        kind: "discount",
+        detail: nd ? `${nd.type === "percent" ? `${nd.value}%` : money(Number(nd.value))} — ${nd.reason}` : t("editHistoryDiscountRemoved"),
+      });
+    }
     const historyEntry = changes.length > 0
       ? {
           timestamp: new Date().toISOString(),
@@ -6172,7 +6234,7 @@ function POSPrototype({ tenantId }) {
           changes,
         }
       : null;
-    const newTotal = newNet + newServiceAmt + newVatAmt + (r.deliveryFee || 0);
+    const newTotal = bill.total;
     // Saved with the edit so what an edit did to the bill is known exactly, not worked out later from
     // dish prices (Close the day uses this to explain cash gaps).
     if (historyEntry) {
@@ -6193,6 +6255,7 @@ function POSPrototype({ tenantId }) {
       ...r,
       items: cleaned,
       subtotal: newSubtotal,
+      discount: discountEdit.discount,
       discountAmount: newDiscAmt,
       serviceAmount: newServiceAmt,
       vatAmount: newVatAmt,
@@ -6351,6 +6414,8 @@ function POSPrototype({ tenantId }) {
     if (e.kind === "pay") return t(e.from === "cash" ? "cdEditCashToOther" : "cdEditOtherToCash", { n: e.n, amount: money(e.orderTotal), from: lbl(e.from), to: lbl(e.to), by: e.by || "—", at: cdFmtTime(e.at), paidAt: cdFmtTime(e.paidAt) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
     if (e.kind === "qtyDown") return t("cdItemQtyDown", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), about: e.approx ? t("cdAbout") : "", amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
     if (e.kind === "qtyUp") return t("cdItemQtyUp", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), about: e.approx ? t("cdAbout") : "", amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
+    if (e.kind === "discountDown") return t("cdDiscountDown", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), about: e.approx ? t("cdAbout") : "", amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
+    if (e.kind === "discountUp") return t("cdDiscountUp", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), about: e.approx ? t("cdAbout") : "", amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
     if (e.kind === "legacyVoid") return t("cdItemLegacyVoid", { n: e.n, amount: money(e.amount), status: t(e.status === "cancelled" ? "cancelledBadge" : "refundedBadge").toLowerCase() });
     return t("cdItemLooseExpense", { what: e.what, amount: money(Math.abs(e.amount)) });
   };
@@ -9161,6 +9226,32 @@ function POSPrototype({ tenantId }) {
                                 </div>
                               </div>
                             ))}
+                            {hasFeature("discounts") && (
+                              <div style={{ marginBottom: 10 }}>
+                                <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginBottom: 5 }}>{t("editDiscountTitle")}</div>
+                                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                                  <select value={editDraftDiscount.type} onChange={(e) => setEditDraftDiscount((d) => ({ ...d, type: e.target.value }))} className="field" style={{ fontSize: 12, padding: "5px 6px" }}>
+                                    <option value="percent">%</option>
+                                    <option value="fixed">EGP</option>
+                                  </select>
+                                  <input type="number" min="0" value={editDraftDiscount.value} onChange={(e) => setEditDraftDiscount((d) => ({ ...d, value: e.target.value }))} placeholder={t("editDiscountValuePlaceholder")} className="field" style={{ width: 110, fontSize: 12, padding: "5px 8px" }} />
+                                  {String(editDraftDiscount.value).trim() !== "" && (
+                                    <button onClick={() => setEditDraftDiscount((d) => ({ ...d, value: "", reason: "" }))} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("editDiscountRemove")}</button>
+                                  )}
+                                </div>
+                                {String(editDraftDiscount.value).trim() !== "" && (
+                                  <input type="text" value={editDraftDiscount.reason || ""} onChange={(e) => setEditDraftDiscount((d) => ({ ...d, reason: e.target.value }))} placeholder={t("discountReasonPlaceholder")} maxLength={120} className="field" style={{ width: "100%", fontSize: 12, marginTop: 6 }} />
+                                )}
+                                <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 4 }}>{t("editDiscountHint")}</div>
+                                {(() => {
+                                  const v = Number(editDraftDiscount.value);
+                                  const preview = editedBillFor(r, editDraftItems, v > 0 ? { type: editDraftDiscount.type, value: v } : null);
+                                  return Math.abs(preview.total - r.total) >= 0.005 ? (
+                                    <div style={{ fontSize: 11.5, color: theme.secondaryLight, marginTop: 6, fontFamily: "IBM Plex Mono, monospace" }}>{t("editNewTotal", { new: money(preview.total), old: money(r.total) })}</div>
+                                  ) : null;
+                                })()}
+                              </div>
+                            )}
                             <div style={{ marginBottom: 10 }}>
                               <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginBottom: 5 }}>{t("paymentMethodEditLabel")}</div>
                               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -9276,7 +9367,7 @@ function POSPrototype({ tenantId }) {
                                     </div>
                                     {(h.changes || []).map((c, ci) => (
                                       <div key={ci} style={{ color: "var(--text-faint)", fontFamily: "IBM Plex Mono, monospace", fontSize: 10.5 }}>
-                                        {t("editHistoryChange", { item: c.name, from: c.from, to: c.to })}
+                                        {t("editHistoryChange", { item: c.name, from: c.from, to: c.to })}{c.detail ? ` (${c.detail})` : ""}
                                       </div>
                                     ))}
                                   </div>
