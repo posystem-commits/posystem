@@ -106,7 +106,7 @@ const fmt = (n) => (Math.round(n * 100) / 100).toFixed(2);
     cd.drawers.forEach((d) => {
       if (d.loading || d.expected === null) return;
       check("drawer", `${day} ${d.name} expected = opening + cash in - paid out`, eq(d.expected, d.opening + d.cashIn - d.paidOut), `${fmt(d.expected)} vs ${fmt(d.opening + d.cashIn - d.paidOut)}`);
-      if (d.gap !== null) check("drawer", `${day} ${d.name} gap = counted - expected`, eq(d.gap, d.counted - d.expected), `${fmt(d.gap)} vs ${fmt(d.counted - d.expected)}`);
+      if (d.gap !== null) check("drawer", `${day} ${d.name} gap = counted - (expected - collected at day end)`, eq(d.gap, d.counted - (d.expected - (d.collected || 0))), `${fmt(d.gap)} vs ${fmt(d.counted - (d.expected - (d.collected || 0)))}`);
     });
     const ex = ledger.expensesInDays(day, day).reduce((s, e) => s + e.amount, 0);
     check("day", `${day} expenses agree`, eq(cd.expenseTotal, ex), `${fmt(cd.expenseTotal)} vs ${fmt(ex)}`);

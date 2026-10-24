@@ -156,11 +156,14 @@ export const solveGap = (gap, items) => {
 const sortedEdits = (r, notBefore) => [...(r.editHistory || [])].filter((h) => h.timestamp >= notBefore).sort((a, b) => (a.timestamp < b.timestamp ? -1 : 1));
 
 // ---- the ledger ----
-// data: { receiptsByMonth, expensesByMonth, shiftLog, openShifts, shiftHours, menu, labels }
+// data: { receiptsByMonth, expensesByMonth, shiftLog, openShifts, shiftHours, menu, labels, collections }
+//   collections: { "YYYY-MM-DD": { amount, by, at } } — the cash taken out of the drawer at the end of that business day,
+//   typed in on Close the day. It belongs to the day's LAST shift: that shift's drawer should hold (opening + cash in -
+//   paid out - collected) when it is counted.
 //   labels: { methodByLabel: {"Cash": "cash", ...}, isPayLabel: (name) => bool } — how an edit history names
 //   the "payment method" field, in whichever language it was written.
 export function createLedger(data) {
-  const { receiptsByMonth = {}, expensesByMonth = {}, shiftLog = [], openShifts = {}, shiftHours, menu = {}, labels = { methodByLabel: {}, isPayLabel: () => false } } = data;
+  const { receiptsByMonth = {}, expensesByMonth = {}, shiftLog = [], openShifts = {}, shiftHours, menu = {}, labels = { methodByLabel: {}, isPayLabel: () => false }, collections = {} } = data;
   const bizDay = (iso) => businessDateForTimestamp(iso, shiftHours);
 
   const monthsLoaded = (keys) => keys.every((k) => receiptsByMonth[k] !== undefined);
@@ -311,6 +314,10 @@ export function createLedger(data) {
 
     const shifts = allShifts();
     const dayShifts = shifts.filter((sh) => shiftDayOf(sh, nowMs) === day);
+    const collectionRow = collections[day];
+    const collectionAmount = collectionRow && Number.isFinite(Number(collectionRow.amount)) && Number(collectionRow.amount) >= 0 ? round2(Number(collectionRow.amount)) : null;
+    const dayCollection = collectionAmount === null ? null : { amount: collectionAmount, by: collectionRow.by || null, at: collectionRow.at || null };
+    const lastShiftOfDay = dayShifts[dayShifts.length - 1];
     const coverShift = (r) => shifts.find((x) => x.employeeId === r.servedBy?.id && r.timestamp >= x.clockIn && (!x.clockOut || r.timestamp <= x.clockOut));
     const insideAnyShift = (iso) => shifts.some((x) => iso >= x.clockIn && iso <= (x.clockOut || nowIso));
 
@@ -322,8 +329,14 @@ export function createLedger(data) {
       const { pool, expenses } = src;
       const flows = cashFlows(pool, expenses, inWin);
       const expected = sh.opening !== null ? round2(sh.opening + flows.cashIn - flows.paidOut) : null;
-      const gap = expected !== null && sh.counted !== null ? round2(sh.counted - expected) : null;
-      const gapAtClosing = sh.savedExpected !== null && sh.counted !== null ? round2(sh.counted - sh.savedExpected) : null;
+      // The day's cash collection comes out of the last shift's drawer after (or just before) its count.
+      const isLast = sh === lastShiftOfDay;
+      const dayCollected = isLast && dayCollection ? dayCollection.amount : 0;
+      const gap = expected !== null && sh.counted !== null ? round2(sh.counted - (expected - dayCollected)) : null;
+      const gapAtClosing = sh.savedExpected !== null && sh.counted !== null ? round2(sh.counted - (sh.savedExpected - dayCollected)) : null;
+      // No amount typed yet: whatever the last shift is short by is most likely the collection — shown as that, not as
+      // a shortage, until the real amount is recorded and it can be checked.
+      const impliedCollection = isLast && !dayCollection && gap !== null && gap < -0.005 ? round2(-gap) : null;
 
       // Recorded events that could explain a difference between the drawer and the books.
       const events = [];
@@ -347,7 +360,7 @@ export function createLedger(data) {
         events.push({ kind: "looseExpense", what: e.category, amount: -e.amount });
       });
       const solve = gap !== null && Math.abs(gap) >= 0.01 ? solveGap(gap, events) : null;
-      return { ...sh, ...flows, expected, gap, gapAtClosing, events, solve };
+      return { ...sh, ...flows, expected, gap, gapAtClosing, events, solve, collected: dayCollected, impliedCollection };
     });
 
     // The cash that moved between one shift's closing count and the next one's opening count — but only within
@@ -374,7 +387,7 @@ export function createLedger(data) {
     // closed (inside shifts AND in the gaps between them), against the final count.
     const first = drawers[0];
     const last = drawers[drawers.length - 1];
-    let dayTotals = { opening: null, cashIn: 0, paidOut: 0, finalCounted: null, expectedEnd: null, gap: null, shiftGaps: 0, residuals: 0 };
+    let dayTotals = { opening: null, cashIn: 0, paidOut: 0, finalCounted: null, expectedEnd: null, gap: null, shiftGaps: 0, residuals: 0, collected: 0, impliedCollection: null };
     if (first && last && !first.loading) {
       const lastEnd = last.clockOut || nowIso;
       const src = poolFor(first.clockIn, lastEnd);
@@ -390,13 +403,15 @@ export function createLedger(data) {
           shiftGaps: round2(drawers.reduce((s, d) => s + (d.gap || 0), 0)),
           residuals: round2(drawers.slice(1).reduce((s, d) => s + (d.between ? d.between.residual : d.handover || 0), 0)),
         };
-        dayTotals.gap = dayTotals.expectedEnd !== null && dayTotals.finalCounted !== null ? round2(dayTotals.finalCounted - dayTotals.expectedEnd) : null;
+        dayTotals.collected = dayCollection ? dayCollection.amount : 0;
+        dayTotals.gap = dayTotals.expectedEnd !== null && dayTotals.finalCounted !== null ? round2(dayTotals.finalCounted - (dayTotals.expectedEnd - dayTotals.collected)) : null;
+        dayTotals.impliedCollection = !dayCollection && dayTotals.gap !== null && dayTotals.gap < -0.005 && last.impliedCollection ? last.impliedCollection : null;
       }
     }
 
     const outside = dayCompleted.filter((r) => !coverShift(r));
     const unpaid = p.unpaid.orders;
-    return { day, revenue: p.revenue, orders: p.orders, byMethod, discounts: { n: p.discounts.n, total: p.discounts.total }, voided: { n: voided.length, total: p.voidedTotal }, expenseTotal, drawers, dayTotals, outside, unpaid };
+    return { day, collection: dayCollection, revenue: p.revenue, orders: p.orders, byMethod, discounts: { n: p.discounts.n, total: p.discounts.total }, voided: { n: voided.length, total: p.voidedTotal }, expenseTotal, drawers, dayTotals, outside, unpaid };
   };
 
   return { bizDay, monthsLoaded, ordersInDays, expensesInDays, period, allShifts, shiftDayOf, shiftTotals, employeeTotals, closeDay, cashFlows };
