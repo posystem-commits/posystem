@@ -227,6 +227,12 @@ const STRINGS = {
     priceListsSubtitle: "Mirror the menu with different pricing for delivery apps, events, or a separate brand — same items and recipes, your prices.",
     newProfileNamePlaceholder: "Price list name (e.g. Talabat)",
     createProfile: "Create price list",
+    profileStartFromLabel: "Start from",
+    profileStartEmpty: "Empty — follows the main menu's prices",
+    profileStartMain: "A copy of the main menu (its prices as they are now)",
+    profileStartCopyOf: "A copy of “{{name}}”",
+    notice_profileCreatedCopy: "Price list \"{{name}}\" created as a copy of {{source}}.",
+    profileCopyMainName: "the main menu",
     noProfilesYet: "No price lists yet — create one to offer different pricing without duplicating your menu.",
     managePrices: "Manage prices",
     closeManage: "Close",
@@ -1111,6 +1117,12 @@ const STRINGS = {
     priceListsSubtitle: "اعكس نفس القائمة بأسعار مختلفة لتطبيقات التوصيل أو المناسبات أو علامة تجارية أخرى — نفس الأصناف والمكونات، بأسعارك أنت.",
     newProfileNamePlaceholder: "اسم قائمة الأسعار (مثال: طلبات)",
     createProfile: "إنشاء قائمة أسعار",
+    profileStartFromLabel: "ابدأ من",
+    profileStartEmpty: "فارغة — تتبع أسعار القائمة الرئيسية",
+    profileStartMain: "نسخة من القائمة الرئيسية (بأسعارها الحالية)",
+    profileStartCopyOf: "نسخة من \"{{name}}\"",
+    notice_profileCreatedCopy: "تم إنشاء قائمة الأسعار \"{{name}}\" كنسخة من {{source}}.",
+    profileCopyMainName: "القائمة الرئيسية",
     noProfilesYet: "لا توجد قوائم أسعار بعد — أنشئ واحدة لعرض أسعار مختلفة دون تكرار القائمة.",
     managePrices: "إدارة الأسعار",
     closeManage: "إغلاق",
@@ -2031,7 +2043,7 @@ don't see mentioned anywhere in this list, or one that's missing for them specif
 that you don't see it and it may not be included in their current plan — don't guess.
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
-- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list).
+- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list).
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
@@ -2557,6 +2569,7 @@ function POSPrototype({ tenantId }) {
   const menuProfilesLoadFailedRef = useRef(false);
   const [activeMenuProfile, setActiveMenuProfile] = useState(null); // profile id currently governing the order screen's prices, or null for the base menu
   const [newProfileName, setNewProfileName] = useState("");
+  const [newProfileSource, setNewProfileSource] = useState(""); // "" = start empty, "main" = copy the main menu's prices, or the id of a price list to copy
   const [managingProfileId, setManagingProfileId] = useState(null); // which profile's price-management panel is expanded, if any
 
   const [tableCount, setTableCount] = useState(12);
@@ -7739,11 +7752,35 @@ function POSPrototype({ tenantId }) {
       flashNotice(t("notice_giveProfileName"));
       return;
     }
-    const profile = { id: newId("profile"), name, priceOverrides: {}, extraItems: {} };
+    let profile = { id: newId("profile"), name, priceOverrides: {}, extraItems: {} };
+    let copiedFrom = null;
+    if (newProfileSource === "main") {
+      // Every main-menu dish gets its current price written into the list, so the list keeps those prices even if
+      // the main menu's change later (edit any of them in the list to suit).
+      profile = { ...profile, priceOverrides: Object.fromEntries(Object.values(menu).flat().map((it) => [it.id, it.price])) };
+      copiedFrom = t("profileCopyMainName");
+    } else if (newProfileSource) {
+      const source = menuProfiles.find((p) => p.id === newProfileSource);
+      if (source) {
+        // A full copy: prices, dishes removed from it, its own categories and its own dishes (with fresh ids and the
+        // same recipes — they are separate dishes from then on).
+        profile = {
+          ...profile,
+          priceOverrides: { ...(source.priceOverrides || {}) },
+          hiddenItems: [...(source.hiddenItems || [])],
+          extraCategories: [...(source.extraCategories || [])],
+          extraItems: Object.fromEntries(
+            Object.entries(source.extraItems || {}).map(([cat, items]) => [cat, (items || []).map((it) => ({ ...it, id: newId("item"), recipe: (it.recipe || []).map((r) => ({ ...r })), badges: [...(it.badges || [])] }))])
+          ),
+        };
+        copiedFrom = `"${source.name}"`;
+      }
+    }
     setMenuProfiles((prev) => [...prev, profile]);
     setNewProfileName("");
+    setNewProfileSource("");
     setManagingProfileId(profile.id);
-    flashNotice(t("notice_profileCreated", { name }));
+    flashNotice(copiedFrom ? t("notice_profileCreatedCopy", { name, source: copiedFrom }) : t("notice_profileCreated", { name }));
   };
   const renameMenuProfile = (profileId, name) => {
     setMenuProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, name } : p)));
@@ -8866,9 +8903,19 @@ function POSPrototype({ tenantId }) {
             <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 3 }}>{t("priceListsTitle")}</div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14 }}>{t("priceListsSubtitle")}</div>
 
-            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-              <input type="text" value={newProfileName} onChange={(e) => setNewProfileName(e.target.value)} placeholder={t("newProfileNamePlaceholder")} className="field" style={{ flex: 1 }} />
+            <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+              <input type="text" value={newProfileName} onChange={(e) => setNewProfileName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") createMenuProfile(); }} placeholder={t("newProfileNamePlaceholder")} className="field" style={{ flex: 1, minWidth: 180 }} />
               <button onClick={createMenuProfile} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("createProfile")}</button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("profileStartFromLabel")}</span>
+              <select value={newProfileSource} onChange={(e) => setNewProfileSource(e.target.value)} className="field" style={{ flex: 1, minWidth: 200 }}>
+                <option value="">{t("profileStartEmpty")}</option>
+                <option value="main">{t("profileStartMain")}</option>
+                {menuProfiles.map((p) => (
+                  <option key={p.id} value={p.id}>{t("profileStartCopyOf", { name: p.name })}</option>
+                ))}
+              </select>
             </div>
 
             {menuProfiles.length === 0 && <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noProfilesYet")}</div>}
