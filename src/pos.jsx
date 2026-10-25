@@ -208,6 +208,17 @@ const STRINGS = {
     removePhoto: "Remove photo",
     photoUploadedHint: "This photo shows everywhere this item appears.",
     suggestedPhotoHint: "No photo yet — showing the dish's initials until you upload one.",
+    profileAddCategoryPlaceholder: "New category for this price list only",
+    profileAddCategory: "Add category",
+    profileOwnCategoryBadge: "this list only",
+    profileDeleteCategory: "Delete category",
+    confirm_deleteProfileCategory: "Delete the category \"{{name}}\" from this price list, together with all of its items? The main menu is not affected.",
+    profileRemoveItem: "Remove from this list",
+    profileRestoreItem: "Restore",
+    profileItemRemovedBadge: "removed from this list",
+    confirm_removeFromProfile: "Remove \"{{name}}\" from this price list? It stays in the main menu and you can restore it here at any time.",
+    notice_profileCategoryAdded: "Category \"{{name}}\" added to this price list",
+    notice_profileCategoryExists: "That category already exists in this price list",
     priceListsTitle: "Price lists",
     priceListsSubtitle: "Mirror the menu with different pricing for delivery apps, events, or a separate brand — same items and recipes, your prices.",
     newProfileNamePlaceholder: "Price list name (e.g. Talabat)",
@@ -1078,6 +1089,17 @@ const STRINGS = {
     removePhoto: "إزالة الصورة",
     photoUploadedHint: "تظهر هذه الصورة في كل مكان يظهر فيه هذا الصنف.",
     suggestedPhotoHint: "لا توجد صورة بعد — يتم عرض الحروف الأولى للطبق حتى ترفع صورة.",
+    profileAddCategoryPlaceholder: "فئة جديدة لقائمة الأسعار هذه فقط",
+    profileAddCategory: "إضافة فئة",
+    profileOwnCategoryBadge: "هذه القائمة فقط",
+    profileDeleteCategory: "حذف الفئة",
+    confirm_deleteProfileCategory: "حذف الفئة \"{{name}}\" من قائمة الأسعار هذه مع كل أصنافها؟ القائمة الرئيسية لا تتأثر.",
+    profileRemoveItem: "إزالة من هذه القائمة",
+    profileRestoreItem: "استعادة",
+    profileItemRemovedBadge: "أُزيل من هذه القائمة",
+    confirm_removeFromProfile: "إزالة \"{{name}}\" من قائمة الأسعار هذه؟ يبقى في القائمة الرئيسية ويمكنك استعادته هنا في أي وقت.",
+    notice_profileCategoryAdded: "أُضيفت الفئة \"{{name}}\" إلى قائمة الأسعار هذه",
+    notice_profileCategoryExists: "هذه الفئة موجودة بالفعل في قائمة الأسعار هذه",
     priceListsTitle: "قوائم الأسعار",
     priceListsSubtitle: "اعكس نفس القائمة بأسعار مختلفة لتطبيقات التوصيل أو المناسبات أو علامة تجارية أخرى — نفس الأصناف والمكونات، بأسعارك أنت.",
     newProfileNamePlaceholder: "اسم قائمة الأسعار (مثال: طلبات)",
@@ -2002,7 +2024,7 @@ don't see mentioned anywhere in this list, or one that's missing for them specif
 that you don't see it and it may not be included in their current plan — don't guess.
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
-- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
+- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
@@ -2516,7 +2538,8 @@ function POSPrototype({ tenantId }) {
   // A duty-roster-style light record, not a fork: an item with no override here still tracks the
   // base menu's price automatically, so editing the base item's price/recipe/photo is reflected
   // everywhere without having to touch every profile.
-  const [menuProfiles, setMenuProfiles] = useState([]); // [{id, name, priceOverrides: {itemId: price}, extraItems: {category: [item,...]}}]
+  const [menuProfiles, setMenuProfiles] = useState([]); // [{id, name, priceOverrides: {itemId: price}, extraItems: {category: [item,...]}, extraCategories: [name,...] (categories that exist only in this list), hiddenItems: [itemId,...] (main-menu dishes removed from this list)}]
+  const [profileCategoryDraft, setProfileCategoryDraft] = useState({}); // { [profileId]: text typed in "new category for this list" }
   const [menuProfilesLoaded, setMenuProfilesLoaded] = useState(false);
   // Same "don't let a failed read fall through to the placeholder default and get auto-saved over
   // real data" protection as menuLoadFailed above — see that comment. Applies to every config below
@@ -4907,7 +4930,8 @@ function POSPrototype({ tenantId }) {
     const saved = await syncSet("ingredients-config", JSON.stringify(next), true, t("syncLabelStock"));
     return { added, updated, saved };
   };
-  const isIngredientUsed = (id) => Object.values(menu).some((items) => items.some((it) => it.recipe.some((r) => r.ingredientId === id)));
+  const isIngredientUsed = (id) =>
+    [...Object.values(menu), ...menuProfiles.flatMap((p) => Object.values(p.extraItems || {}))].some((items) => (items || []).some((it) => (it.recipe || []).some((r) => r.ingredientId === id)));
   const deleteIngredient = (id) => {
     if (isIngredientUsed(id)) {
       flashNotice(t("notice_cantDeleteUsed"));
@@ -4946,19 +4970,26 @@ function POSPrototype({ tenantId }) {
   // own extra items appended into their category. Recipes/stock always come from the base item
   // (a profile changes price, not what the dish actually is), except for extra items, which only
   // exist within the profile to begin with.
+  // A price list can also have categories of its own, and can leave out main-menu dishes it should not sell.
+  const effectiveCategories = !activeMenuProfileObj ? categories : [...categories, ...(activeMenuProfileObj.extraCategories || []).filter((c) => !categories.includes(c))];
   const effectiveMenu = !activeMenuProfileObj
     ? menu
     : Object.fromEntries(
-        categories.map((cat) => [
+        effectiveCategories.map((cat) => [
           cat,
           [
-            ...(menu[cat] || []).map((it) =>
-              activeMenuProfileObj.priceOverrides[it.id] !== undefined ? { ...it, price: activeMenuProfileObj.priceOverrides[it.id] } : it
-            ),
+            ...(menu[cat] || [])
+              .filter((it) => !(activeMenuProfileObj.hiddenItems || []).includes(it.id))
+              .map((it) => (activeMenuProfileObj.priceOverrides[it.id] !== undefined ? { ...it, price: activeMenuProfileObj.priceOverrides[it.id] } : it)),
             ...((activeMenuProfileObj.extraItems || {})[cat] || []),
           ],
         ])
       );
+  // Switching to a price list that lacks the category being browsed (or back to the main menu from a list's own
+  // category) lands on the first category that exists.
+  useEffect(() => {
+    if (effectiveCategories.length > 0 && !effectiveCategories.includes(active)) setActive(effectiveCategories[0]);
+  }, [activeMenuProfile, menuProfiles, categories, active]);
 
   // remaining ingredient stock after subtracting what's already reserved by the current cart
   const remainingIngredientStock = useMemo(() => {
@@ -5765,13 +5796,18 @@ function POSPrototype({ tenantId }) {
   dashboardReceipts.forEach((r) => r.items.forEach((it) => { if (dashboardItemCategory[it.name] === undefined) dashboardItemCategory[it.name] = dashboardCategoryOf(it); }));
   const dashboardCategoryOptions = [
     ...Object.keys(menu),
+    ...menuProfiles.flatMap((p) => p.extraCategories || []).filter((c, i, all) => !(c in menu) && all.indexOf(c) === i),
     ...(Object.values(dashboardItemCategory).includes(OTHER_CATEGORY) ? [OTHER_CATEGORY] : []),
   ];
   const activeDashboardCategory = dashboardCategoryOptions.includes(dashboardCategory) ? dashboardCategory : "";
   const topSellers = (() => {
     if (!activeDashboardCategory) return Object.entries(dashboardItemTotals).sort((a, b) => b[1] - a[1]).map(([name, qty]) => ({ name, qty }));
     // A chosen category lists every dish on it, including the ones that sold nothing in this period.
-    const names = new Set(activeDashboardCategory === OTHER_CATEGORY ? [] : (menu[activeDashboardCategory] || []).map((i) => i.name));
+    const names = new Set(
+      activeDashboardCategory === OTHER_CATEGORY
+        ? []
+        : [...(menu[activeDashboardCategory] || []), ...menuProfiles.flatMap((p) => (p.extraItems || {})[activeDashboardCategory] || [])].map((i) => i.name)
+    );
     Object.keys(dashboardItemTotals).forEach((name) => { if (dashboardItemCategory[name] === activeDashboardCategory) names.add(name); });
     return [...names].map((name) => ({ name, qty: dashboardItemTotals[name] || 0 })).sort((a, b) => b.qty - a.qty);
   })();
@@ -7430,18 +7466,30 @@ function POSPrototype({ tenantId }) {
     }
     setCategories((prev) => [...prev, name]);
     setMenu((prev) => ({ ...prev, [name]: [] }));
+    // A price list that already had its own category of this name now simply shares the main one.
+    setMenuProfiles((prev) => prev.map((p) => ((p.extraCategories || []).includes(name) ? { ...p, extraCategories: p.extraCategories.filter((c) => c !== name) } : p)));
     setNewCategoryName("");
   };
   const deleteCategory = (cat) => {
     setConfirmDialog({
       message: t("confirm_deleteCategory", { name: cat }),
       onConfirm: () => {
+        const removedIds = new Set((menu[cat] || []).map((it) => it.id));
         setCategories((prev) => prev.filter((c) => c !== cat));
         setMenu((prev) => {
           const next = { ...prev };
           delete next[cat];
           return next;
         });
+        // The category's dishes are gone from every price list too: their prices, removals and the extras added under it.
+        setMenuProfiles((prev) =>
+          prev.map((p) => {
+            const extraItems = { ...(p.extraItems || {}) };
+            delete extraItems[cat];
+            const priceOverrides = Object.fromEntries(Object.entries(p.priceOverrides || {}).filter(([id]) => !removedIds.has(id)));
+            return { ...p, extraItems, priceOverrides, hiddenItems: (p.hiddenItems || []).filter((id) => !removedIds.has(id)) };
+          })
+        );
         if (active === cat) setActive(categories.find((c) => c !== cat) || "");
       },
     });
@@ -7596,9 +7644,58 @@ function POSPrototype({ tenantId }) {
           );
         } else {
           setMenu((prev) => ({ ...prev, [category]: prev[category].filter((it) => it.id !== item.id) }));
+          // ...and out of every price list's own prices and removals.
+          setMenuProfiles((prev) =>
+            prev.map((p) => {
+              const priceOverrides = { ...(p.priceOverrides || {}) };
+              delete priceOverrides[item.id];
+              return { ...p, priceOverrides, hiddenItems: (p.hiddenItems || []).filter((id) => id !== item.id) };
+            })
+          );
         }
       },
     });
+  };
+  // ---- A price list's own categories, and removing a main-menu dish from one list ----
+  const addProfileCategory = (profileId) => {
+    const name = (profileCategoryDraft[profileId] || "").trim();
+    if (!name) {
+      flashNotice(t("notice_giveCategoryName"));
+      return;
+    }
+    const profile = menuProfiles.find((p) => p.id === profileId);
+    if (!profile) return;
+    if (categories.includes(name) || (profile.extraCategories || []).includes(name)) {
+      flashNotice(t("notice_profileCategoryExists"));
+      return;
+    }
+    setMenuProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, extraCategories: [...(p.extraCategories || []), name], extraItems: { ...(p.extraItems || {}), [name]: [] } } : p)));
+    setProfileCategoryDraft((d) => ({ ...d, [profileId]: "" }));
+    flashNotice(t("notice_profileCategoryAdded", { name }));
+  };
+  const deleteProfileCategory = (profileId, cat) => {
+    setConfirmDialog({
+      message: t("confirm_deleteProfileCategory", { name: cat }),
+      onConfirm: () => {
+        setMenuProfiles((prev) =>
+          prev.map((p) => {
+            if (p.id !== profileId) return p;
+            const extraItems = { ...(p.extraItems || {}) };
+            delete extraItems[cat];
+            return { ...p, extraCategories: (p.extraCategories || []).filter((c) => c !== cat), extraItems };
+          })
+        );
+      },
+    });
+  };
+  const removeItemFromProfile = (profileId, item) => {
+    setConfirmDialog({
+      message: t("confirm_removeFromProfile", { name: item.name }),
+      onConfirm: () => setMenuProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, hiddenItems: [...new Set([...(p.hiddenItems || []), item.id])] } : p))),
+    });
+  };
+  const restoreItemInProfile = (profileId, item) => {
+    setMenuProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, hiddenItems: (p.hiddenItems || []).filter((id) => id !== item.id) } : p)));
   };
   // Menu profiles CRUD — see the effectiveMenu/findMenuItemAnywhere note above for how a profile
   // relates to the base menu.
@@ -8271,7 +8368,7 @@ function POSPrototype({ tenantId }) {
         <div style={{ display: "flex", alignItems: "flex-start", flexDirection: isCompact ? "column" : "row" }}>
           <div style={{ flex: 1, width: isCompact ? "100%" : undefined, padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px" }}>
             <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
-              {categories.map((cat) => (
+              {effectiveCategories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setActive(cat)}
@@ -8763,46 +8860,77 @@ function POSPrototype({ tenantId }) {
 
                   {managingProfileId === p.id && (
                     <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
-                      {categories.map((cat) => (
+                      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+                        <input type="text" value={profileCategoryDraft[p.id] || ""} onChange={(e) => setProfileCategoryDraft((d) => ({ ...d, [p.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === "Enter") addProfileCategory(p.id); }} placeholder={t("profileAddCategoryPlaceholder")} className="field" style={{ flex: 1 }} />
+                        <button onClick={() => addProfileCategory(p.id)} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}>{t("profileAddCategory")}</button>
+                      </div>
+                      {[...categories, ...(p.extraCategories || []).filter((c) => !categories.includes(c))].map((cat) => {
+                        const ownCategory = !categories.includes(cat);
+                        return (
                         <div key={cat} style={{ marginBottom: 16 }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{cat}</div>
-                            <button onClick={() => openNewItem(cat, p.id)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("addExtraItem")}</button>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                              {cat}
+                              {ownCategory && <span style={{ marginInlineStart: 8, fontSize: 10, fontWeight: 500, textTransform: "none", letterSpacing: 0, color: theme.secondaryLight, border: `1px solid ${theme.secondary}`, borderRadius: 999, padding: "1px 7px" }}>{t("profileOwnCategoryBadge")}</span>}
+                            </div>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button onClick={() => openNewItem(cat, p.id)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("addExtraItem")}</button>
+                              {ownCategory && <button onClick={() => deleteProfileCategory(p.id, cat)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("profileDeleteCategory")}</button>}
+                            </div>
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                            {(menu[cat] || []).map((item) => (
-                              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5 }}>
-                                <MenuThumb item={item} size={28} />
-                                <span style={{ flex: 1 }}>{item.name}</span>
-                                <span style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "IBM Plex Mono, monospace" }}>{t("baseLabel")} {money(item.price)}</span>
-                                <input
-                                  type="number"
-                                  value={p.priceOverrides[item.id] !== undefined ? p.priceOverrides[item.id] : ""}
-                                  onChange={(e) => setProfilePriceOverride(p.id, item.id, e.target.value)}
-                                  placeholder={String(item.price)}
-                                  className="field"
-                                  style={{ width: 80 }}
-                                />
-                              </div>
-                            ))}
+                            {(menu[cat] || []).map((item) => {
+                              const removed = (p.hiddenItems || []).includes(item.id);
+                              return (
+                                <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, opacity: removed ? 0.55 : 1, flexWrap: "wrap" }}>
+                                  <MenuThumb item={item} size={28} />
+                                  <span style={{ flex: 1, minWidth: 120 }}>
+                                    {item.name}
+                                    {removed && <span style={{ marginInlineStart: 8, fontSize: 10.5, color: "#E3A79C" }}>{t("profileItemRemovedBadge")}</span>}
+                                  </span>
+                                  <span style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "IBM Plex Mono, monospace" }}>{t("baseLabel")} {money(item.price)}</span>
+                                  {removed ? (
+                                    <button onClick={() => restoreItemInProfile(p.id, item)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("profileRestoreItem")}</button>
+                                  ) : (
+                                    <>
+                                      <input
+                                        type="number"
+                                        value={p.priceOverrides[item.id] !== undefined ? p.priceOverrides[item.id] : ""}
+                                        onChange={(e) => setProfilePriceOverride(p.id, item.id, e.target.value)}
+                                        placeholder={String(item.price)}
+                                        className="field"
+                                        style={{ width: 80 }}
+                                      />
+                                      <button onClick={() => removeItemFromProfile(p.id, item)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("profileRemoveItem")}</button>
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })}
                             {((p.extraItems || {})[cat] || []).map((item) => (
-                              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, background: "var(--surface)", borderRadius: 6, padding: "6px 8px" }}>
-                                <MenuThumb item={item} size={28} />
-                                <span style={{ flex: 1 }}>{item.name} <span style={{ fontSize: 10.5, color: theme.secondaryLight }}>{t("extraLabel")}</span></span>
-                                <span style={{ fontSize: 11.5, fontFamily: "IBM Plex Mono, monospace", color: theme.secondary }}>{money(item.price)}</span>
-                                <button
-                                  onClick={() => setItemManualOut(item, !manualOutOfStock[item.id])}
-                                  style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${manualOutOfStock[item.id] ? "#4E7A47" : "#7A4A42"}`, background: "transparent", color: manualOutOfStock[item.id] ? "#9FCB8E" : "#E3A79C", cursor: "pointer" }}
-                                >
-                                  {manualOutOfStock[item.id] ? t("markAvailable") : t("markOutOfStock")}
-                                </button>
-                                <button onClick={() => openEditItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
-                                <button onClick={() => deleteMenuItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
+                              <div key={item.id} style={{ fontSize: 12.5, background: "var(--surface)", borderRadius: 6, padding: "6px 8px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                                  <MenuThumb item={item} size={28} />
+                                  <span style={{ flex: 1, minWidth: 120 }}>{item.name} <span style={{ fontSize: 10.5, color: theme.secondaryLight }}>{t("extraLabel")}</span></span>
+                                  <span style={{ fontSize: 11.5, fontFamily: "IBM Plex Mono, monospace", color: theme.secondary }}>{money(item.price)}</span>
+                                  <button
+                                    onClick={() => setItemManualOut(item, !manualOutOfStock[item.id])}
+                                    style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${manualOutOfStock[item.id] ? "#4E7A47" : "#7A4A42"}`, background: "transparent", color: manualOutOfStock[item.id] ? "#9FCB8E" : "#E3A79C", cursor: "pointer" }}
+                                  >
+                                    {manualOutOfStock[item.id] ? t("markAvailable") : t("markOutOfStock")}
+                                  </button>
+                                  <button onClick={() => openEditItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
+                                  <button onClick={() => deleteMenuItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
+                                </div>
+                                <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 5, paddingInlineStart: 38 }}>
+                                  {(item.recipe || []).length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtQty(r.qty)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
+                                </div>
                               </div>
                             ))}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
