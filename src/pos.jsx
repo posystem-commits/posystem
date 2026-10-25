@@ -6,6 +6,7 @@ import SiteView from "@/src/site/SiteView";
 import StockImportModal from "@/src/stock/StockImport";
 import { buildTicket as buildKitchenTicket, ticketBodyHtml as kitchenTicketBodyHtml, addToQueue as addToKitchenQueue, parseQueue as parseKitchenQueue, ticketsToPrint as kitchenTicketsToPrint, KITCHEN_MODES } from "@/src/kitchen/kitchenTicket";
 import { buildPlan as buildStockImportPlan } from "@/src/stock/importLogic";
+import { parseQty as parseRecipeQty, fmtRecipeQty, isCountUnit, QUICK_FRACTIONS } from "@/src/recipe/qty";
 // Opened only by the secret gesture on the login screen, so it is fetched only then.
 const SupportLogin = React.lazy(() => import("@/src/support/SupportLogin"));
 import WebsiteSettingsPanel from "@/src/site/WebsiteSettings";
@@ -219,6 +220,9 @@ const STRINGS = {
     confirm_removeFromProfile: "Remove \"{{name}}\" from this price list? It stays in the main menu and you can restore it here at any time.",
     notice_profileCategoryAdded: "Category \"{{name}}\" added to this price list",
     notice_profileCategoryExists: "That category already exists in this price list",
+    moveCategoryUp: "Move this category earlier in the tabs",
+    moveCategoryDown: "Move this category later in the tabs",
+    recipeQtyHint: "Fractions are fine: 0.5, 1/2, ½ or 1 1/2.",
     priceListsTitle: "Price lists",
     priceListsSubtitle: "Mirror the menu with different pricing for delivery apps, events, or a separate brand — same items and recipes, your prices.",
     newProfileNamePlaceholder: "Price list name (e.g. Talabat)",
@@ -1100,6 +1104,9 @@ const STRINGS = {
     confirm_removeFromProfile: "إزالة \"{{name}}\" من قائمة الأسعار هذه؟ يبقى في القائمة الرئيسية ويمكنك استعادته هنا في أي وقت.",
     notice_profileCategoryAdded: "أُضيفت الفئة \"{{name}}\" إلى قائمة الأسعار هذه",
     notice_profileCategoryExists: "هذه الفئة موجودة بالفعل في قائمة الأسعار هذه",
+    moveCategoryUp: "حرّك هذا القسم للأمام بين التبويبات",
+    moveCategoryDown: "حرّك هذا القسم للخلف بين التبويبات",
+    recipeQtyHint: "الكسور مقبولة: 0.5 أو 1/2 أو ½ أو 1 1/2.",
     priceListsTitle: "قوائم الأسعار",
     priceListsSubtitle: "اعكس نفس القائمة بأسعار مختلفة لتطبيقات التوصيل أو المناسبات أو علامة تجارية أخرى — نفس الأصناف والمكونات، بأسعارك أنت.",
     newProfileNamePlaceholder: "اسم قائمة الأسعار (مثال: طلبات)",
@@ -2024,7 +2031,7 @@ don't see mentioned anywhere in this list, or one that's missing for them specif
 that you don't see it and it may not be included in their current plan — don't guess.
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
-- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list.
+- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list).
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
@@ -2211,6 +2218,8 @@ function MenuThumb({ item, size = 34 }) {
 
 const money = (n) => `${n.toFixed(2)} EGP`;
 const fmtQty = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+// Stock of a counted unit can be part of a piece (a recipe used half): shown as ½, 7¼ … ; weights keep two decimals.
+const fmtStock = (n, unit) => (isCountUnit(unit) && !Number.isInteger(n) ? fmtRecipeQty(n, unit) : fmtQty(n));
 
 // Business-day shift hours (Settings > Shift hours) — lets a restaurant say "our shift runs
 // 6pm-2am" so a 1am order still counts toward the day the shift started, instead of rolling onto
@@ -7470,6 +7479,30 @@ function POSPrototype({ tenantId }) {
     setMenuProfiles((prev) => prev.map((p) => ((p.extraCategories || []).includes(name) ? { ...p, extraCategories: p.extraCategories.filter((c) => c !== name) } : p)));
     setNewCategoryName("");
   };
+  // Moves a category one place earlier (-1) or later (+1); the Order screen tabs and the customer menus follow.
+  const moveCategory = (cat, dir) => {
+    setCategories((prev) => {
+      const i = prev.indexOf(cat);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+  const moveProfileCategory = (profileId, cat, dir) => {
+    setMenuProfiles((prev) =>
+      prev.map((p) => {
+        if (p.id !== profileId) return p;
+        const list = [...(p.extraCategories || [])];
+        const i = list.indexOf(cat);
+        const j = i + dir;
+        if (i < 0 || j < 0 || j >= list.length) return p;
+        [list[i], list[j]] = [list[j], list[i]];
+        return { ...p, extraCategories: list };
+      })
+    );
+  };
   const deleteCategory = (cat) => {
     setConfirmDialog({
       message: t("confirm_deleteCategory", { name: cat }),
@@ -7530,14 +7563,15 @@ function POSPrototype({ tenantId }) {
   };
 
   const addRecipeLine = () => {
-    if (!recipeDraftIng || !recipeDraftQty || Number(recipeDraftQty) <= 0) {
+    const draftQty = parseRecipeQty(recipeDraftQty);
+    if (!recipeDraftIng || !(draftQty > 0)) {
       flashNotice("Pick an ingredient and a quantity used per serving");
       return;
     }
     const addedId = recipeDraftIng;
     setItemEditor((prev) => {
       const withoutDup = prev.recipe.filter((r) => r.ingredientId !== addedId);
-      return { ...prev, recipe: [...withoutDup, { ingredientId: addedId, qty: Number(recipeDraftQty) }] };
+      return { ...prev, recipe: [...withoutDup, { ingredientId: addedId, qty: draftQty }] };
     });
     setRecipeQtyDrafts((d) => {
       const { [addedId]: _gone, ...rest } = d;
@@ -7551,7 +7585,7 @@ function POSPrototype({ tenantId }) {
   // half-typed value like "0." survives; only a valid number above zero is applied to the recipe.
   const editRecipeLineQty = (ingredientId, raw) => {
     setRecipeQtyDrafts((d) => ({ ...d, [ingredientId]: raw }));
-    const n = parseFloat(raw);
+    const n = parseRecipeQty(raw);
     if (n > 0) setItemEditor((prev) => ({ ...prev, recipe: prev.recipe.map((r) => (r.ingredientId === ingredientId ? { ...r, qty: n } : r)) }));
   };
   const finishRecipeLineQtyEdit = (ingredientId) => {
@@ -8875,6 +8909,12 @@ function POSPrototype({ tenantId }) {
                             </div>
                             <div style={{ display: "flex", gap: 6 }}>
                               <button onClick={() => openNewItem(cat, p.id)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("addExtraItem")}</button>
+                              {ownCategory && (
+                                <>
+                                  <button disabled={(p.extraCategories || []).indexOf(cat) === 0} onClick={() => moveProfileCategory(p.id, cat, -1)} title={t("moveCategoryUp")} aria-label={t("moveCategoryUp")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", opacity: (p.extraCategories || []).indexOf(cat) === 0 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▲</button>
+                                  <button disabled={(p.extraCategories || []).indexOf(cat) === (p.extraCategories || []).length - 1} onClick={() => moveProfileCategory(p.id, cat, 1)} title={t("moveCategoryDown")} aria-label={t("moveCategoryDown")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", opacity: (p.extraCategories || []).indexOf(cat) === (p.extraCategories || []).length - 1 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▼</button>
+                                </>
+                              )}
                               {ownCategory && <button onClick={() => deleteProfileCategory(p.id, cat)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("profileDeleteCategory")}</button>}
                             </div>
                           </div>
@@ -8923,7 +8963,7 @@ function POSPrototype({ tenantId }) {
                                   <button onClick={() => deleteMenuItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
                                 </div>
                                 <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 5, paddingInlineStart: 38 }}>
-                                  {(item.recipe || []).length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtQty(r.qty)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
+                                  {(item.recipe || []).length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtRecipeQty(r.qty, ingredients[r.ingredientId]?.unit)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
                                 </div>
                               </div>
                             ))}
@@ -8941,7 +8981,13 @@ function POSPrototype({ tenantId }) {
           {categories.map((cat) => (
             <div key={cat} style={{ marginBottom: 26 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Fraunces, serif" }}>{cat}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Fraunces, serif" }}>{cat}</div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button disabled={categories.indexOf(cat) === 0} onClick={() => moveCategory(cat, -1)} title={t("moveCategoryUp")} aria-label={t("moveCategoryUp")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: categories.indexOf(cat) === 0 ? "default" : "pointer", opacity: categories.indexOf(cat) === 0 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▲</button>
+                    <button disabled={categories.indexOf(cat) === categories.length - 1} onClick={() => moveCategory(cat, 1)} title={t("moveCategoryDown")} aria-label={t("moveCategoryDown")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: categories.indexOf(cat) === categories.length - 1 ? "default" : "pointer", opacity: categories.indexOf(cat) === categories.length - 1 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▼</button>
+                  </div>
+                </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => openNewItem(cat)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("addItem")}</button>
                   <button onClick={() => deleteCategory(cat)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("deleteCategory")}</button>
@@ -8961,7 +9007,7 @@ function POSPrototype({ tenantId }) {
                             <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5, padding: "2px 8px", borderRadius: 999, background: "#3A2A28", color: "#E3A79C", fontWeight: 500 }}>{t("manuallyOutBadge")}</span>
                           )}
                           <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 6 }}>
-                            {item.recipe.length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtQty(r.qty)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
+                            {item.recipe.length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtRecipeQty(r.qty, ingredients[r.ingredientId]?.unit)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
                           </div>
                         </div>
                       </div>
@@ -9055,10 +9101,9 @@ function POSPrototype({ tenantId }) {
                     <div key={r.ingredientId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, background: "var(--bg)", borderRadius: 6, padding: "7px 10px" }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          value={recipeQtyDrafts[r.ingredientId] ?? String(r.qty)}
+                          type="text"
+                          inputMode="decimal"
+                          value={recipeQtyDrafts[r.ingredientId] ?? fmtRecipeQty(r.qty, ingredients[r.ingredientId]?.unit)}
                           onChange={(e) => editRecipeLineQty(r.ingredientId, e.target.value)}
                           onBlur={() => finishRecipeLineQtyEdit(r.ingredientId)}
                           className="field"
@@ -9084,16 +9129,25 @@ function POSPrototype({ tenantId }) {
                   />
                   <input
                     ref={recipeQtyInputRef}
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={recipeDraftQty}
                     onChange={(e) => setRecipeDraftQty(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") addRecipeLine(); }}
                     placeholder={t("qtyPlaceholder")}
                     className="field"
-                    style={{ width: 70 }}
+                    style={{ width: 82 }}
                   />
                   <button onClick={addRecipeLine} style={{ padding: "9px 12px", borderRadius: 7, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer", fontSize: 12 }}>{t("add")}</button>
                 </div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>{t("recipeQtyHint")}</div>
+                {recipeDraftIng && isCountUnit(ingredients[recipeDraftIng]?.unit) && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                    {QUICK_FRACTIONS.map(([value, glyph]) => (
+                      <button key={glyph} onClick={() => setRecipeDraftQty(String(Math.round(value * 10000) / 10000))} style={{ padding: "5px 11px", borderRadius: 999, border: `1px solid ${Math.abs(parseRecipeQty(recipeDraftQty) - value) < 0.0006 ? theme.secondary : "var(--border)"}`, background: Math.abs(parseRecipeQty(recipeDraftQty) - value) < 0.0006 ? "rgba(176,141,87,0.18)" : "transparent", color: "var(--text-primary)", fontSize: 13, cursor: "pointer" }}>{glyph}</button>
+                    ))}
+                  </div>
+                )}
                 {recipeListOpen && !recipeDraftIng && (
                   <div style={{ marginTop: 6, maxHeight: 190, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 7, background: "var(--bg)" }}>
                     {recipeSearchMatches().length === 0 ? (
@@ -9222,7 +9276,7 @@ function POSPrototype({ tenantId }) {
             {newIngUnit === "custom" && (
               <input type="text" value={newIngUnitCustom} onChange={(e) => setNewIngUnitCustom(e.target.value)} placeholder={t("customUnitPlaceholder")} className="field" style={{ flex: 1, minWidth: 100 }} />
             )}
-            <input type="number" value={newIngStock} onChange={(e) => setNewIngStock(e.target.value)} placeholder={t("startingStockPlaceholder")} className="field" style={{ flex: 1, minWidth: 110 }} />
+            <input type="number" step="any" inputMode="decimal" value={newIngStock} onChange={(e) => setNewIngStock(e.target.value)} placeholder={t("startingStockPlaceholder")} className="field" style={{ flex: 1, minWidth: 110 }} />
             <button onClick={addIngredient} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("add")}</button>
           </div>
           <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: -12, marginBottom: 20 }}>
@@ -9242,7 +9296,7 @@ function POSPrototype({ tenantId }) {
                     </div>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 500 }}>{ing.name}</div>
-                      <span style={{ fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: tagColor.bg, color: tagColor.fg, fontWeight: 500 }}>{tagColor.text} &middot; {fmtQty(ing.stock)} {ing.unit}</span>
+                      <span style={{ fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: tagColor.bg, color: tagColor.fg, fontWeight: 500 }}>{tagColor.text} &middot; {fmtStock(ing.stock, ing.unit)} {ing.unit}</span>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -9250,9 +9304,9 @@ function POSPrototype({ tenantId }) {
                       <button onClick={() => updateIngredientStock(ing.id, -1)} title={t("stockDecreaseTooltip")} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 14 }}>&minus;</button>
                     )}
                     {isManager ? (
-                      <input className="stock-input" type="number" value={ing.stock} onChange={(e) => setIngredientStockValue(ing.id, e.target.value)} onBlur={(e) => commitIngredientStockValue(ing.id, e.target.value)} style={{ width: 64, textAlign: "center", background: "transparent", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }} />
+                      <input className="stock-input" type="number" step="any" inputMode="decimal" value={ing.stock} onChange={(e) => setIngredientStockValue(ing.id, e.target.value)} onBlur={(e) => commitIngredientStockValue(ing.id, e.target.value)} style={{ width: 64, textAlign: "center", background: "transparent", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }} />
                     ) : (
-                      <span style={{ width: 64, textAlign: "center", color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }}>{fmtQty(ing.stock)}</span>
+                      <span style={{ width: 64, textAlign: "center", color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }}>{fmtStock(ing.stock, ing.unit)}</span>
                     )}
                     <button onClick={() => updateIngredientStock(ing.id, 1)} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 14 }}>+</button>
                     <input
