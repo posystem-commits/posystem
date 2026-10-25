@@ -9,9 +9,12 @@ import dynamic from "next/dynamic";
 // browser actually has, so it's loaded client-only.
 const POSApp = dynamic(() => import("@/src/pos.jsx"), {
   ssr: false,
+  // Nothing about any restaurant is shown while the terminal loads — a plain spinner on a neutral ground that follows
+  // the device's light/dark setting.
   loading: () => (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#20242B", color: "#9CA1AC", fontFamily: "sans-serif", fontSize: 13 }}>
-      Loading…
+    <div className="pos-boot" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <style>{`.pos-boot{background:#f4f2ee;color:#8a8680}@media (prefers-color-scheme: dark){.pos-boot{background:#20242B;color:#9CA1AC}}@keyframes pos-boot-spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={{ width: 22, height: 22, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", animation: "pos-boot-spin .8s linear infinite" }} />
     </div>
   ),
 });

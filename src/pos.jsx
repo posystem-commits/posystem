@@ -1943,6 +1943,34 @@ const normalizePhoneForWhatsApp = (raw) => {
 // silently resolve to the wrong one, so an item's stock check can run against a completely
 // unrelated item's recipe.
 let idCounter = 0;
+// What this device last saw of a restaurant's look (name, logo, colours, theme, language), kept so the next visit
+// paints the right restaurant at once. A device that has never opened this restaurant shows a plain spinner until
+// the real details arrive — never anyone else's name or a stock one.
+const bootKey = (tenantId) => `pos-boot:${tenantId}`;
+const readBoot = (tenantId) => {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(bootKey(tenantId)) || "null");
+    return v && typeof v === "object" ? v : null;
+  } catch (e) {
+    return null;
+  }
+};
+const writeBoot = (tenantId, patch) => {
+  try {
+    window.localStorage.setItem(bootKey(tenantId), JSON.stringify({ ...(readBoot(tenantId) || {}), ...patch }));
+  } catch (e) {
+    // storage full or blocked — the next visit just shows the spinner a moment longer
+  }
+};
+function BootLoader() {
+  return (
+    <div className="boot-loader" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <style>{`.boot-loader{background:#f4f2ee;color:#8a8680}@media (prefers-color-scheme: dark){.boot-loader{background:#20242B;color:#9CA1AC}}@keyframes boot-spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={{ width: 22, height: 22, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", animation: "boot-spin .8s linear infinite" }} />
+    </div>
+  );
+}
+
 const newId = (prefix) => `${prefix}_${Date.now()}_${(idCounter++).toString(36)}_${Math.floor(Math.random() * 1e6)}`;
 
 // A short two-tone chime for "a customer just requested the bill" — synthesized rather than an
@@ -2537,6 +2565,7 @@ const restockAmountFor = (unit) => (FINE_UNITS.includes(unit) ? 1 : 10);
 
 function POSPrototype({ tenantId }) {
   const storage = useMemo(() => createTenantStorage(tenantId), [tenantId]);
+  const [bootCache] = useState(() => readBoot(tenantId));
   const [tenantStatus, setTenantStatus] = useState(null); // { status, paid_until, days_remaining, restaurant_name } | null while loading
   const [renewalNoticeDismissed, setRenewalNoticeDismissed] = useState(false);
   const [view, setView] = useState("order"); // "order" | "menu" | "stock" | "receipts" | "customers" | "shift"
@@ -2797,21 +2826,21 @@ function POSPrototype({ tenantId }) {
   const [editingPinValue, setEditingPinValue] = useState("");
   const [nowTick, setNowTick] = useState(() => Date.now());
 
-  const [lang, setLang] = useState("ar");
+  const [lang, setLang] = useState(bootCache?.lang === "en" ? "en" : "ar");
   const [langLoaded, setLangLoaded] = useState(false);
 
   // Staff terminal's own light/dark theme — see the token block in FONTS above. Independent of
   // any per-device local setting so every terminal in the restaurant shows the same theme, same
   // as the rest of branding.
-  const [uiTheme, setUiTheme] = useState("dark");
+  const [uiTheme, setUiTheme] = useState(bootCache?.theme === "light" ? "light" : "dark");
   const [uiThemeLoaded, setUiThemeLoaded] = useState(false);
   const [uiThemeLoadFailed, setUiThemeLoadFailed] = useState(false);
   const uiThemeLoadFailedRef = useRef(false);
 
-  const [restaurantName, setRestaurantName] = useState("Ember & Vine");
-  const [logoUrl, setLogoUrl] = useState(null);
-  const [primaryColor, setPrimaryColor] = useState(COLORS.burgundy);
-  const [secondaryColor, setSecondaryColor] = useState(COLORS.brass);
+  const [restaurantName, setRestaurantName] = useState(bootCache?.name || "");
+  const [logoUrl, setLogoUrl] = useState(bootCache?.logo || null);
+  const [primaryColor, setPrimaryColor] = useState(bootCache?.primary || COLORS.burgundy);
+  const [secondaryColor, setSecondaryColor] = useState(bootCache?.secondary || COLORS.brass);
   const [mapsLink, setMapsLink] = useState(""); // a Google Maps place link, or a plain address — see openInGoogleMaps
   const [phoneNumber, setPhoneNumber] = useState(""); // shown as a "Call" button on the online-ordering page
   const [brandingLoaded, setBrandingLoaded] = useState(false);
@@ -3027,12 +3056,21 @@ function POSPrototype({ tenantId }) {
         const result = await getSharedWithRetry(storage, "restaurant-branding");
         const parsed = result?.value ? JSON.parse(result.value) : null;
         if (parsed) {
-          setRestaurantName(parsed.name || "Ember & Vine");
+          setRestaurantName(parsed.name || "");
           setLogoUrl(parsed.logo || null);
           setPrimaryColor(parsed.primary || theme.primary);
           setSecondaryColor(parsed.secondary || theme.secondary);
           setMapsLink(parsed.mapsLink || "");
           setPhoneNumber(parsed.phone || "");
+        }
+        // A restaurant that never set its own name shows the one it was registered under — never a stock name.
+        if (!parsed || !parsed.name) {
+          try {
+            const st = await (await fetch(`/api/pos/${encodeURIComponent(tenantId)}/status`)).json();
+            if (st?.restaurant_name) setRestaurantName(st.restaurant_name);
+          } catch (e) {
+            // the name stays empty until the next load
+          }
         }
       } catch (e) {
         // fall back to defaults already set
@@ -3495,6 +3533,17 @@ function POSPrototype({ tenantId }) {
     syncSet("menu-availability", serialized, true, t("syncLabelStock"));
   }, [menu, ingredients, menuLoaded, menuLoadFailed, manualOutOfStock, manualOutLoaded]);
 
+  useEffect(() => {
+    if (!brandingLoaded || !restaurantName) return;
+    writeBoot(tenantId, { name: restaurantName, logo: logoUrl && logoUrl.length < 650000 ? logoUrl : null, primary: primaryColor, secondary: secondaryColor });
+  }, [brandingLoaded, restaurantName, logoUrl, primaryColor, secondaryColor]);
+  useEffect(() => {
+    if (uiThemeLoaded && !uiThemeLoadFailed) writeBoot(tenantId, { theme: uiTheme });
+  }, [uiTheme, uiThemeLoaded, uiThemeLoadFailed]);
+  useEffect(() => {
+    if (langLoaded) writeBoot(tenantId, { lang });
+  }, [lang, langLoaded]);
+
   // Ticks once a minute purely to refresh the live "hours worked so far" display while someone's
   // clocked in — doesn't touch storage, just forces a re-render of that one computed string.
   useEffect(() => {
@@ -3710,7 +3759,7 @@ function POSPrototype({ tenantId }) {
     if (id === "dine-in") return t("dineInLabel");
     return tableNames[id] || t("tableNumbered", { n: id });
   };
-  const tableIds = useMemo(() => Array.from({ length: tableCount }, (_, i) => String(i + 1)), [tableCount]);
+  const tableIds = useMemo(() => (tablesLoaded ? Array.from({ length: tableCount }, (_, i) => String(i + 1)) : []), [tableCount, tablesLoaded]);
   // Confirmed orders are kept around (not removed) so the customer's device can pick up the status
   // change — see markPendingOrderConfirmed — so every staff-facing view of "what's pending review"
   // needs to explicitly exclude them.
@@ -8084,6 +8133,7 @@ function POSPrototype({ tenantId }) {
   // vs shared "staff roster"), so wait for both before deciding what to show — otherwise a
   // logged-in employee could flash the login screen for a moment while the roster is still
   // loading in behind them.
+  if (!bootCache && !(brandingLoaded && uiThemeLoaded && langLoaded)) return <BootLoader />;
   if (!currentEmployeeLoaded || !employeesLoaded) {
     return (
       <div data-theme={uiTheme} dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: "var(--bg)", minHeight: "100vh", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -12131,16 +12181,17 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
   // settings and branding (see app/t/[tenantId]/page.jsx) so the page never flashes the original
   // layout first. Restaurants that haven't published it get null here and nothing below changes.
   const siteBoot = bootstrap && bootstrap.settings ? bootstrap : null;
+  const [bootCache] = useState(() => readBoot(tenantId));
   const [lang, setLangState] = useState(siteBoot ? (siteBoot.settings.defaultLang === "en" ? "en" : "ar") : "ar");
   const langChosenRef = useRef(false);
   const setLang = (code) => {
     langChosenRef.current = true;
     setLangState(code);
   };
-  const [restaurantName, setRestaurantName] = useState(siteBoot?.brand?.name || "Ember & Vine");
-  const [logoUrl, setLogoUrl] = useState(siteBoot?.brand?.logo || null);
-  const [primaryColor, setPrimaryColor] = useState(siteBoot?.brand?.primary || COLORS.burgundy);
-  const [secondaryColor, setSecondaryColor] = useState(siteBoot?.brand?.secondary || COLORS.brass);
+  const [restaurantName, setRestaurantName] = useState(siteBoot?.brand?.name || bootCache?.name || "");
+  const [logoUrl, setLogoUrl] = useState(siteBoot?.brand?.logo || bootCache?.logo || null);
+  const [primaryColor, setPrimaryColor] = useState(siteBoot?.brand?.primary || bootCache?.primary || COLORS.burgundy);
+  const [secondaryColor, setSecondaryColor] = useState(siteBoot?.brand?.secondary || bootCache?.secondary || COLORS.brass);
   const [mapsLink, setMapsLink] = useState(siteBoot?.brand?.mapsLink || "");
   const [phoneNumber, setPhoneNumber] = useState(siteBoot?.brand?.phone || "");
   const [siteSettings, setSiteSettings] = useState(siteBoot ? mergeSiteSettings(siteBoot.settings) : null);
@@ -12345,12 +12396,13 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
       if (!value) return;
       if (key === "restaurant-branding") {
         const b = JSON.parse(value);
-        setRestaurantName(b.name || "Ember & Vine");
+        setRestaurantName(b.name || "");
         setLogoUrl(b.logo || null);
         setPrimaryColor(b.primary || COLORS.burgundy);
         setSecondaryColor(b.secondary || COLORS.brass);
         setMapsLink(b.mapsLink || "");
         setPhoneNumber(b.phone || "");
+        if (b.name) writeBoot(tenantId, { name: b.name, logo: b.logo && b.logo.length < 650000 ? b.logo : null, primary: b.primary || COLORS.burgundy, secondary: b.secondary || COLORS.brass });
       } else if (key === "menu-config") {
         const m = JSON.parse(value);
         setCategories(m.categories || []);
@@ -12760,6 +12812,14 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
       )}
     </>
   );
+
+  // A device that has never seen this restaurant waits for its real details instead of showing stock ones.
+  // A restaurant that never set its own name shows the one it was registered under.
+  useEffect(() => {
+    if (!loaded || restaurantName) return;
+    fetch(`/api/pos/${encodeURIComponent(tenantId)}/status`).then((r) => r.json()).then((st) => { if (st?.restaurant_name) setRestaurantName((cur) => cur || st.restaurant_name); }).catch(() => {});
+  }, [loaded]);
+  if (!loaded && !siteBoot && !bootCache) return <BootLoader />;
 
   // The published website look. Everything it shows and does comes from the state above, so ordering
   // behaves exactly like the original page — only the presentation is different.
