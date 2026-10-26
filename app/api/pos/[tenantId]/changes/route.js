@@ -18,7 +18,7 @@ function publicView(key, value, updatedAt, tenantId) {
       Object.keys(m.menu || {}).forEach((cat) => {
         menu[cat] = (m.menu[cat] || []).map((i) => ({ id: i.id, name: i.name, tag: i.tag, price: i.price, badges: Array.isArray(i.badges) ? i.badges : [], featured: !!i.featured, hasImage: !!i.image }));
       });
-      return JSON.stringify({ categories: m.categories || [], menu });
+      return JSON.stringify({ categories: m.categories || [], menu, mainCategories: Array.isArray(m.mainCategories) ? m.mainCategories : [] });
     }
     if (key === "website-media") {
       const m = JSON.parse(value);

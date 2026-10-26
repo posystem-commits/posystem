@@ -6,6 +6,7 @@ import SiteView from "@/src/site/SiteView";
 import StockImportModal from "@/src/stock/StockImport";
 import { buildTicket as buildKitchenTicket, ticketBodyHtml as kitchenTicketBodyHtml, addToQueue as addToKitchenQueue, parseQueue as parseKitchenQueue, ticketsToPrint as kitchenTicketsToPrint, KITCHEN_MODES } from "@/src/kitchen/kitchenTicket";
 import { buildPlan as buildStockImportPlan } from "@/src/stock/importLogic";
+import { orderCategoriesByMain, mainTabsFor, addSubToMain, removeSubFromMain, removeSubEverywhere, moveMain, cleanMains } from "@/src/menu/mainCategories";
 import { parseQty as parseRecipeQty, fmtRecipeQty, isCountUnit, QUICK_FRACTIONS } from "@/src/recipe/qty";
 // Opened only by the secret gesture on the login screen, so it is fetched only then.
 const SupportLogin = React.lazy(() => import("@/src/support/SupportLogin"));
@@ -220,6 +221,16 @@ const STRINGS = {
     confirm_removeFromProfile: "Remove \"{{name}}\" from this price list? It stays in the main menu and you can restore it here at any time.",
     notice_profileCategoryAdded: "Category \"{{name}}\" added to this price list",
     notice_profileCategoryExists: "That category already exists in this price list",
+    mainCategoriesTitle: "Main categories",
+    mainCategoriesSubtitle: "Group your categories under main categories — for example Beef or Chicken. On the Order screen the main categories are the first row of tabs and the categories inside them the second row. A category can sit in more than one main category; categories in none show under \"Other\". With no main category, the Order screen stays exactly as it is.",
+    newMainPlaceholder: "New main category (e.g. Beef)",
+    addMainCategory: "Add main category",
+    mainCategoryOther: "Other",
+    mainAddCategory: "Add a category…",
+    categoryAddToMain: "Add to a main category…",
+    categoryUnderLabel: "Under:",
+    confirm_deleteMainCategory: "Delete the main category \"{{name}}\"? Its categories and dishes stay — they just aren't grouped under it any more.",
+    notice_mainCategoryExists: "A main category with that name already exists",
     moveCategoryUp: "Move this category earlier in the tabs",
     moveCategoryDown: "Move this category later in the tabs",
     recipeQtyHint: "Fractions are fine: 0.5, 1/2, ½ or 1 1/2.",
@@ -1117,6 +1128,16 @@ const STRINGS = {
     confirm_removeFromProfile: "إزالة \"{{name}}\" من قائمة الأسعار هذه؟ يبقى في القائمة الرئيسية ويمكنك استعادته هنا في أي وقت.",
     notice_profileCategoryAdded: "أُضيفت الفئة \"{{name}}\" إلى قائمة الأسعار هذه",
     notice_profileCategoryExists: "هذه الفئة موجودة بالفعل في قائمة الأسعار هذه",
+    mainCategoriesTitle: "الأقسام الرئيسية",
+    mainCategoriesSubtitle: "اجمع أقسامك تحت أقسام رئيسية — مثل لحم البقر أو الدجاج. في شاشة الطلب تكون الأقسام الرئيسية الصف الأول من التبويبات والأقسام داخلها الصف الثاني. يمكن لقسم أن يكون في أكثر من قسم رئيسي؛ والأقسام التي ليست في أي قسم رئيسي تظهر تحت \"أخرى\". وبدون أقسام رئيسية تبقى شاشة الطلب كما هي.",
+    newMainPlaceholder: "قسم رئيسي جديد (مثال: لحم بقري)",
+    addMainCategory: "إضافة قسم رئيسي",
+    mainCategoryOther: "أخرى",
+    mainAddCategory: "إضافة قسم…",
+    categoryAddToMain: "أضف إلى قسم رئيسي…",
+    categoryUnderLabel: "ضمن:",
+    confirm_deleteMainCategory: "حذف القسم الرئيسي \"{{name}}\"؟ تبقى أقسامه وأطباقه — فقط لم تعد مجمّعة تحته.",
+    notice_mainCategoryExists: "يوجد قسم رئيسي بهذا الاسم بالفعل",
     moveCategoryUp: "حرّك هذا القسم للأمام بين التبويبات",
     moveCategoryDown: "حرّك هذا القسم للخلف بين التبويبات",
     recipeQtyHint: "الكسور مقبولة: 0.5 أو 1/2 أو ½ أو 1 1/2.",
@@ -2085,7 +2106,7 @@ don't see mentioned anywhere in this list, or one that's missing for them specif
 that you don't see it and it may not be included in their current plan — don't guess.
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). Switching tables preserves each table's in-progress order separately.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
-- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list).
+- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
@@ -2589,6 +2610,9 @@ function POSPrototype({ tenantId }) {
   const [categories, setCategories] = useState([]);
   const [menu, setMenu] = useState({});
   const [ingredients, setIngredients] = useState({});
+  const [mainCategories, setMainCategories] = useState([]); // [{id, name, subs: [categoryName,...]}] — groups of the categories above (see src/menu/mainCategories.js)
+  const [activeMain, setActiveMain] = useState(null); // the main category tab selected on the Order screen
+  const [newMainName, setNewMainName] = useState("");
   const [menuLoaded, setMenuLoaded] = useState(false);
   // Couldn't reach the real menu/ingredients on this device (e.g. offline at startup) — distinct
   // from "genuinely never set up yet". Critical: menuLoaded still flips true either way so the UI
@@ -3194,6 +3218,7 @@ function POSPrototype({ tenantId }) {
         if (parsed) {
           if (parsed.categories) setCategories(parsed.categories);
           if (parsed.menu) setMenu(parsed.menu);
+          setMainCategories(cleanMains(parsed.mainCategories));
         } else {
           // The server answered and there is no saved menu: a brand-new restaurant. Offer the starter set.
           setCategories(Object.keys(INITIAL_MENU));
@@ -3499,9 +3524,12 @@ function POSPrototype({ tenantId }) {
     // menuLoadFailed: the initial read never actually succeeded, so categories/menu are still
     // whatever placeholder they started as — writing that out would overwrite the tenant's real
     // data. Stays blocked until retryMenuLoad() below confirms a real read.
-    if (!menuLoaded || menuLoadFailed) return;
-    syncSet("menu-config", JSON.stringify({ categories, menu }), true, t("syncLabelMenu"));
-  }, [categories, menu, menuLoaded, menuLoadFailed]);
+    if (!menuLoaded || menuLoadFailed) return undefined;
+    // A burst of edits (grouping several categories in a row, say) is saved once, with the final state — separate
+    // requests sent back to back can arrive out of order and leave an older state stored.
+    const timer = setTimeout(() => syncSet("menu-config", JSON.stringify({ categories, menu, mainCategories }), true, t("syncLabelMenu")), 500);
+    return () => clearTimeout(timer);
+  }, [categories, menu, mainCategories, menuLoaded, menuLoadFailed]);
   // No blanket auto-persist effect for ingredients-config — every mutation (updateIngredientStock,
   // addIngredient, deleteIngredient, commitIngredientStockValue) writes it explicitly against a
   // freshly-fetched value instead. See the "Ingredient stock helpers" section for why.
@@ -4545,6 +4573,7 @@ function POSPrototype({ tenantId }) {
       if (parsed) {
         if (parsed.categories) setCategories(parsed.categories);
         if (parsed.menu) setMenu(parsed.menu);
+        setMainCategories(cleanMains(parsed.mainCategories));
       } else {
         setCategories(Object.keys(INITIAL_MENU));
         setMenu(INITIAL_MENU);
@@ -5085,9 +5114,17 @@ function POSPrototype({ tenantId }) {
       );
   // Switching to a price list that lacks the category being browsed (or back to the main menu from a list's own
   // category) lands on the first category that exists.
+  // With main categories, the first row of tabs is the mains and the second row the categories inside the chosen one.
+  const mainTabs = mainTabsFor(effectiveCategories, mainCategories, t("mainCategoryOther"));
+  const activeMainTab = mainTabs.find((m) => m.id === activeMain) || mainTabs[0] || null;
+  const visibleSubs = activeMainTab ? activeMainTab.subs : effectiveCategories;
+  const selectMain = (tab) => {
+    setActiveMain(tab.id);
+    if (tab.subs.length > 0) setActive(tab.subs[0]);
+  };
   useEffect(() => {
-    if (effectiveCategories.length > 0 && !effectiveCategories.includes(active)) setActive(effectiveCategories[0]);
-  }, [activeMenuProfile, menuProfiles, categories, active]);
+    if (visibleSubs.length > 0 && !visibleSubs.includes(active)) setActive(visibleSubs[0]);
+  }, [activeMenuProfile, menuProfiles, categories, mainCategories, activeMain, active]);
 
   // remaining ingredient stock after subtracting what's already reserved by the current cart
   const remainingIngredientStock = useMemo(() => {
@@ -7578,6 +7615,29 @@ function POSPrototype({ tenantId }) {
     setMenuProfiles((prev) => prev.map((p) => ((p.extraCategories || []).includes(name) ? { ...p, extraCategories: p.extraCategories.filter((c) => c !== name) } : p)));
     setNewCategoryName("");
   };
+  const addMainCategory = () => {
+    const name = newMainName.trim();
+    if (!name) {
+      flashNotice(t("notice_giveCategoryName"));
+      return;
+    }
+    if (mainCategories.some((m) => m.name === name)) {
+      flashNotice(t("notice_mainCategoryExists"));
+      return;
+    }
+    setMainCategories((prev) => [...prev, { id: newId("main"), name, subs: [] }]);
+    setNewMainName("");
+  };
+  const renameMainCategory = (id, name) => setMainCategories((prev) => prev.map((m) => (m.id === id ? { ...m, name } : m)));
+  const deleteMainCategory = (main) => {
+    setConfirmDialog({
+      message: t("confirm_deleteMainCategory", { name: main.name }),
+      onConfirm: () => {
+        setMainCategories((prev) => prev.filter((m) => m.id !== main.id));
+        if (activeMain === main.id) setActiveMain(null);
+      },
+    });
+  };
   // Moves a category one place earlier (-1) or later (+1); the Order screen tabs and the customer menus follow.
   const moveCategory = (cat, dir) => {
     setCategories((prev) => {
@@ -7607,6 +7667,7 @@ function POSPrototype({ tenantId }) {
       message: t("confirm_deleteCategory", { name: cat }),
       onConfirm: () => {
         const removedIds = new Set((menu[cat] || []).map((it) => it.id));
+        setMainCategories((prev) => removeSubEverywhere(prev, cat));
         setCategories((prev) => prev.filter((c) => c !== cat));
         setMenu((prev) => {
           const next = { ...prev };
@@ -8525,8 +8586,25 @@ function POSPrototype({ tenantId }) {
       {view === "order" && (
         <div style={{ display: "flex", alignItems: "flex-start", flexDirection: isCompact ? "column" : "row" }}>
           <div style={{ flex: 1, width: isCompact ? "100%" : undefined, padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px" }}>
+            {mainTabs.length > 0 && (
+              <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                {mainTabs.map((mt) => {
+                  const on = activeMainTab && activeMainTab.id === mt.id;
+                  return (
+                    <button
+                      key={mt.id}
+                      onClick={() => selectMain(mt)}
+                      className="tab-pill"
+                      style={{ padding: "10px 22px", borderRadius: 10, border: `1px solid ${on ? theme.secondary : "var(--border)"}`, background: on ? "rgba(176,141,87,0.18)" : "transparent", color: on ? theme.secondaryLight : "var(--text-muted)", fontSize: 14.5, fontWeight: 600, cursor: "pointer" }}
+                    >
+                      {mt.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
-              {effectiveCategories.map((cat) => (
+              {visibleSubs.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setActive(cat)}
@@ -8987,6 +9065,41 @@ function POSPrototype({ tenantId }) {
           </div>
 
           <div style={{ marginBottom: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 18 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 3 }}>{t("mainCategoriesTitle")}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14, lineHeight: 1.5 }}>{t("mainCategoriesSubtitle")}</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: mainCategories.length ? 14 : 0, flexWrap: "wrap" }}>
+              <input type="text" value={newMainName} onChange={(e) => setNewMainName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addMainCategory(); }} placeholder={t("newMainPlaceholder")} className="field" style={{ flex: 1, minWidth: 180 }} />
+              <button onClick={addMainCategory} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}>{t("addMainCategory")}</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {mainCategories.map((m, mi) => (
+                <div key={m.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <input type="text" value={m.name} onChange={(e) => renameMainCategory(m.id, e.target.value)} className="field" style={{ flex: 1, minWidth: 140, fontWeight: 500 }} />
+                    <button disabled={mi === 0} onClick={() => setMainCategories((prev) => moveMain(prev, m.id, -1))} title={t("moveCategoryUp")} aria-label={t("moveCategoryUp")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: mi === 0 ? "default" : "pointer", opacity: mi === 0 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▲</button>
+                    <button disabled={mi === mainCategories.length - 1} onClick={() => setMainCategories((prev) => moveMain(prev, m.id, 1))} title={t("moveCategoryDown")} aria-label={t("moveCategoryDown")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: mi === mainCategories.length - 1 ? "default" : "pointer", opacity: mi === mainCategories.length - 1 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▼</button>
+                    <button onClick={() => deleteMainCategory(m)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+                    {m.subs.filter((c) => categories.includes(c)).map((c) => (
+                      <span key={c} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "4px 6px 4px 10px", borderRadius: 999, background: "var(--surface)", border: "1px solid var(--border)" }}>
+                        {c}
+                        <button onClick={() => setMainCategories((prev) => removeSubFromMain(prev, m.id, c))} aria-label={t("remove")} style={{ background: "none", border: "none", color: "#E3A79C", cursor: "pointer", fontSize: 13, padding: "0 4px" }}>×</button>
+                      </span>
+                    ))}
+                    {categories.some((c) => !m.subs.includes(c)) && (
+                      <select value="" onChange={(e) => { if (e.target.value) setMainCategories((prev) => addSubToMain(prev, m.id, e.target.value)); }} className="field" style={{ fontSize: 12, padding: "5px 8px" }}>
+                        <option value="">{t("mainAddCategory")}</option>
+                        {categories.filter((c) => !m.subs.includes(c)).map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 3 }}>{t("priceListsTitle")}</div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14 }}>{t("priceListsSubtitle")}</div>
 
@@ -9128,6 +9241,23 @@ function POSPrototype({ tenantId }) {
                 </div>
               </div>
 
+              {mainCategories.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+                  <span style={{ fontSize: 11.5, color: "var(--text-faint)" }}>{t("categoryUnderLabel")}</span>
+                  {mainCategories.filter((m) => m.subs.includes(cat)).map((m) => (
+                    <span key={m.id} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, padding: "3px 6px 3px 10px", borderRadius: 999, border: `1px solid ${theme.secondary}`, color: theme.secondaryLight }}>
+                      {m.name}
+                      <button onClick={() => setMainCategories((prev) => removeSubFromMain(prev, m.id, cat))} aria-label={t("remove")} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 13, padding: "0 3px" }}>×</button>
+                    </span>
+                  ))}
+                  {mainCategories.some((m) => !m.subs.includes(cat)) && (
+                    <select value="" onChange={(e) => { if (e.target.value) setMainCategories((prev) => addSubToMain(prev, e.target.value, cat)); }} className="field" style={{ fontSize: 11.5, padding: "3px 8px" }}>
+                      <option value="">{t("categoryAddToMain")}</option>
+                      {mainCategories.filter((m) => !m.subs.includes(cat)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  )}
+                </div>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {(menu[cat] || []).map((item) => (
                   <div key={item.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px" }}>
@@ -12458,7 +12588,7 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
         if (b.name) writeBoot(tenantId, { name: b.name, logo: b.logo && b.logo.length < 650000 ? b.logo : null, primary: b.primary || COLORS.burgundy, secondary: b.secondary || COLORS.brass });
       } else if (key === "menu-config") {
         const m = JSON.parse(value);
-        setCategories(m.categories || []);
+        setCategories(orderCategoriesByMain(m.categories || [], cleanMains(m.mainCategories)));
         // Strip anything beyond name/tag/price before it ever reaches component state — recipe data
         // (ingredient IDs and quantities) rides along in the same shared record for the staff app's use,
         // but this view has no reason to hold onto it.
