@@ -120,12 +120,16 @@ export const cashFlows = (pool, expensePool, inWin) => {
   const cashIn = cashOrders.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
   const cashReturned = pool.filter((r) => returnTimeOf(r) && inWin(returnTimeOf(r)) && r.paid !== false && notHeldByRider(r)).flatMap(returnAmountsOf).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
   const cashExpenses = expensePool.filter((e) => e.status === "paid" && e.paymentMethod === "cash" && inWin(e.recordedAt || `${e.date}T00:00:00.000Z`)).reduce((s, e) => s + e.amount, 0);
+  // When a delivery rider settles up, the drawer receives what they collected MINUS what they keep as their share of
+  // the delivery fees (and pays them out of the drawer when the restaurant owes them). The share is saved on each
+  // settled order (riderFeeShare) at that moment; settlements made before it was saved leave the drawer as they were.
+  const riderPay = Math.round(pool.filter((r) => r.tableId === "delivery" && r.deliverySettled && r.status === "completed" && r.paid !== false && Number(r.riderFeeShare) > 0 && r.deliverySettledAt && inWin(r.deliverySettledAt)).reduce((s, r) => s + Number(r.riderFeeShare), 0) * 100) / 100;
   const who = {};
   cashOrders.forEach((r) => {
     const cash = receiptMethodAmounts(r).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
     if (cash > 0) who[r.servedBy?.name || "—"] = (who[r.servedBy?.name || "—"] || 0) + cash;
   });
-  return { cashIn, cashReturned, cashExpenses, paidOut: cashReturned + cashExpenses, who };
+  return { cashIn, cashReturned, cashExpenses, riderPay, paidOut: cashReturned + cashExpenses + riderPay, who };
 };
 
 // Finds the set of recorded events whose combined effect best accounts for a gap.

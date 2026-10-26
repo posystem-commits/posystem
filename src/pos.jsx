@@ -286,7 +286,8 @@ const STRINGS = {
     cdOpened: "Opened with",
     cdReceived: "Cash received",
     cdPaidOut: "Cash paid out",
-    cdPaidOutHint: "Cash handed back to customers + cash expenses",
+    cdPaidOutHint: "Cash handed back to customers + cash expenses + riders' pay kept or paid when delivery is settled",
+    riderPayLabel: "Rider pay at delivery settlement",
     cdShouldBe: "Should be",
     cdCollectedTitle: "Cash collected at the end of the day",
     cdCollectedHint: "If the day's cash is taken out of the drawer around the last count, type the amount you took. The drawer is then checked as: should be − collected = counted. Leave it empty if nothing was taken.",
@@ -1197,7 +1198,8 @@ const STRINGS = {
     cdOpened: "بدأت بـ",
     cdReceived: "النقدية المستلمة",
     cdPaidOut: "النقدية المصروفة",
-    cdPaidOutHint: "نقدية أُعيدت للعملاء + مصروفات نقدية",
+    cdPaidOutHint: "نقدية أُعيدت للعملاء + مصروفات نقدية + أجر العامل المخصوم أو المدفوع عند تسوية الدليفري",
+    riderPayLabel: "أجر العامل عند تسوية الدليفري",
     cdShouldBe: "المفروض",
     cdCollectedTitle: "النقدية المسحوبة في نهاية اليوم",
     cdCollectedHint: "إذا تُسحب نقدية اليوم من الدرج حول آخر جرد، اكتب المبلغ الذي سحبته. عندها يُفحص الدرج هكذا: المفروض − المسحوب = المجرود. اتركه فارغًا إن لم يُسحب شيء.",
@@ -2131,7 +2133,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Settings**: a "Print automatically after saving an order" choice (per device): Nothing (default), Customer receipt (with prices), Kitchen ticket (dishes, quantities and notes — no prices) or Both; it prints the moment an order is saved on that device. Right below it, "Where the kitchen ticket prints" has three options: "Print on this device" (the kitchen ticket prints here); "Send to the kitchen printer" (the ticket is sent to the device set as the kitchen printer — for phones, tablets and tills that have no printer); and "This device is the kitchen printer" (connect the kitchen printer to this device and keep the app open and awake — it prints every ticket saved on any device within about 10 seconds, shows the recent tickets with a "Print again" button, and has a test-ticket button). A kitchen ticket shows the table or takeaway, ticket number, time, each dish with its quantity and notes, delivery/pickup, and no prices; adding items to an existing unpaid invoice prints a ticket with only the added items, marked as an addition. Browsers always show a print window unless the computer's Chrome/Edge is started with the --kiosk-printing option and the kitchen printer is the default printer; phones and tablets always show their own print window. Also: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How the money numbers fit together
-Every money figure — Dashboard, Receipts, Shift, Staff, Close the day, Expenses — is worked out by the same single calculation from the saved orders, expenses and shifts, so tabs only differ when they answer different questions. The rules: an order counts as a sale when it is completed (an unpaid pay-later bill still counts, and is listed separately; cancelled and refunded orders are not sales). A sale belongs to the business day it was created in (the Shift hours in Settings decide where a day starts). Cash enters the drawer when it is paid (delivery cash when the rider settles) and leaves it when an order is returned or a cash expense is recorded — a cash expense reduces the drawer of the shift it was recorded in. A shift belongs to the business day most of it falls in. Orders created while nobody was clocked in are shown as "not inside any shift". Cash handed from one shift to the next is compared only within the same business day: cash is often collected when a day ends, so the first shift of a day is never compared with the last shift of the day before. Totals saved at clock-out are only a record; screens always recompute from the orders. All screens re-check the server about every 15 seconds, so after a short moment every terminal shows the same figures; if two screens differ for more than a minute, reloading the page forces a fresh read. The Staff tab leaderboard adds up every order each person created in the last 30 days, the same orders the Dashboard counts.
+Every money figure — Dashboard, Receipts, Shift, Staff, Close the day, Expenses — is worked out by the same single calculation from the saved orders, expenses and shifts, so tabs only differ when they answer different questions. The rules: an order counts as a sale when it is completed (an unpaid pay-later bill still counts, and is listed separately; cancelled and refunded orders are not sales). A sale belongs to the business day it was created in (the Shift hours in Settings decide where a day starts). Cash enters the drawer when it is paid (delivery cash when the rider settles — only what the rider actually hands over: the cash collected minus the rider's share of the delivery fees, which is saved when you press Settle up; if the restaurant owes the rider instead, that payout leaves the drawer, and it shows on Close the day and the Shift tab as "Rider pay at delivery settlement") and leaves it when an order is returned or a cash expense is recorded — a cash expense reduces the drawer of the shift it was recorded in. A shift belongs to the business day most of it falls in. Orders created while nobody was clocked in are shown as "not inside any shift". Cash handed from one shift to the next is compared only within the same business day: cash is often collected when a day ends, so the first shift of a day is never compared with the last shift of the day before. Totals saved at clock-out are only a record; screens always recompute from the orders. All screens re-check the server about every 15 seconds, so after a short moment every terminal shows the same figures; if two screens differ for more than a minute, reloading the page forces a fresh read. The Staff tab leaderboard adds up every order each person created in the last 30 days, the same orders the Dashboard counts.
 ## How staff log in
 The app requires signing in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
 
@@ -6625,11 +6627,12 @@ function POSPrototype({ tenantId }) {
     ? Object.values(expensesByMonth).flat().filter((e) => e.status === "paid" && e.paymentMethod === "cash" && (e.recordedAt || `${e.date}T00:00:00.000Z`) >= shiftStart)
     : [];
   const shiftCashExpensesTotal = shiftFlows.cashExpenses;
+  const shiftRiderPayTotal = shiftFlows.riderPay || 0; // riders' fee share kept (or paid out) when delivery was settled during this shift
   const myOpenShiftEntry = currentEmployee ? openShifts[currentEmployee.id] : null;
   const openingCountedThisShift = !!(myOpenShiftEntry && myOpenShiftEntry.clockIn === shiftStart && myOpenShiftEntry.openingCash !== undefined);
   // For a shift that started with the mandatory count, the counted figure IS the opening cash.
   const openingFloatNum = openingCountedThisShift ? myOpenShiftEntry.openingCash : Number(openingFloat) || 0;
-  const expectedCash = openingFloatNum + shiftCashSalesTotal - shiftCashRefundsTotal - shiftCashExpensesTotal;
+  const expectedCash = openingFloatNum + shiftCashSalesTotal - shiftCashRefundsTotal - shiftCashExpensesTotal - shiftRiderPayTotal;
   const countedCashNum = countedCash === "" ? null : Number(countedCash) || 0;
   const cashVariance = countedCashNum === null ? null : Math.round((countedCashNum - expectedCash) * 100) / 100;
 
@@ -6901,6 +6904,7 @@ function POSPrototype({ tenantId }) {
         <div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("cashSalesLabel"))}</span><span>${money(shiftCashSalesTotal)}</span></div>
         ${shiftUnsettledDeliveryCash > 0 ? `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("unsettledDeliveryCashLabel"))}</span><span>${money(shiftUnsettledDeliveryCash)}</span></div>` : ""}
         ${shiftCashRefundsTotal > 0 ? `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("cashRefundsLabel"))}</span><span>-${money(shiftCashRefundsTotal)}</span></div>` : ""}
+        ${shiftRiderPayTotal > 0 ? `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("riderPayLabel"))}</span><span>-${money(shiftRiderPayTotal)}</span></div>` : ""}
         ${cashExpenseRows}
         <div class="row" style="font-weight:700;margin-top:4px;"><span>${escapeHtml(t("expectedCashLabel"))}</span><span>${money(expectedCash)}</span></div>
         ${countedCashNum !== null ? `<div class="row" style="margin-top:3px;"><span>${escapeHtml(t("countedCashLabel"))}</span><span>${money(countedCashNum)}</span></div>` : ""}
@@ -7621,9 +7625,12 @@ function POSPrototype({ tenantId }) {
         // Re-read the month first: writing back this device's cached copy could erase orders another
         // terminal saved since this one last refreshed.
         const list = await fetchFreshMonth(monthKey);
+        // What the rider keeps of each order's delivery fee is saved with it: the drawer then receives what they hand
+        // over (cash collected minus their share), or pays out what the restaurant owes them.
+        const settledAt = new Date().toISOString();
         const updated = list.map((r) =>
           r.tableId === "delivery" && r.status === "completed" && r.assignedTo?.id === rider.id && r.paid !== false && !r.deliverySettled
-            ? { ...r, deliverySettled: true, deliverySettledAt: new Date().toISOString() }
+            ? { ...r, deliverySettled: true, deliverySettledAt: settledAt, riderFeeShare: agentFeeShare(r.deliveryFee || 0) }
             : r
         );
         await persistMonth(monthKey, updated);
@@ -10865,6 +10872,11 @@ function POSPrototype({ tenantId }) {
                   {shiftCashRefundsTotal > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6, color: "#E3A79C" }}>
                       <span>{t("cashRefundsLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftCashRefundsTotal)}</span>
+                    </div>
+                  )}
+                  {shiftRiderPayTotal > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6, color: "#E3A79C" }}>
+                      <span>{t("riderPayLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftRiderPayTotal)}</span>
                     </div>
                   )}
 
