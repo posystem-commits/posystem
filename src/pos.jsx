@@ -393,6 +393,13 @@ const STRINGS = {
     kitchenTicketButton: "Kitchen ticket",
     kitchenTicketTooltip: "Prints the order for the kitchen — dishes, quantities and notes, no prices",
     kitchenSettingTitle: "Kitchen printing",
+    autoPrintTitle: "Print automatically after saving an order",
+    autoPrintNone: "Nothing",
+    autoPrintReceipt: "Customer receipt",
+    autoPrintKitchen: "Kitchen ticket (no prices)",
+    autoPrintBoth: "Both",
+    autoPrintHint: "Applies to this device only. The customer receipt has the prices; the kitchen ticket has dishes, quantities and notes only. Phones and tablets show their print window each time.",
+    kitchenWhereTitle: "Where the kitchen ticket prints",
     kitchenModeOff: "Off",
     kitchenModeHere: "Print on this device",
     kitchenModeSend: "Send to the kitchen printer",
@@ -1283,6 +1290,13 @@ const STRINGS = {
     kitchenTicketButton: "تذكرة المطبخ",
     kitchenTicketTooltip: "يطبع الطلب للمطبخ — الأصناف والكميات والملاحظات بدون أسعار",
     kitchenSettingTitle: "طباعة المطبخ",
+    autoPrintTitle: "الطباعة التلقائية بعد حفظ الطلب",
+    autoPrintNone: "بدون",
+    autoPrintReceipt: "إيصال العميل",
+    autoPrintKitchen: "تذكرة المطبخ (بدون أسعار)",
+    autoPrintBoth: "الاثنان",
+    autoPrintHint: "يسري على هذا الجهاز فقط. إيصال العميل فيه الأسعار؛ تذكرة المطبخ فيها الأصناف والكميات والملاحظات فقط. الهواتف والأجهزة اللوحية تعرض نافذة الطباعة في كل مرة.",
+    kitchenWhereTitle: "أين تُطبع تذكرة المطبخ",
     kitchenModeOff: "إيقاف",
     kitchenModeHere: "اطبع على هذا الجهاز",
     kitchenModeSend: "أرسل إلى طابعة المطبخ",
@@ -2083,7 +2097,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance; the expected cash only subtracts cash expenses recorded during this shift — ones a previous shift already took out of the drawer are not subtracted again), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count. Below the drawer table there is a "Cash collected at the end of the day" box: type the cash taken out of the drawer at the end of that business day (for restaurants that collect the day's cash around the last count). The last shift's drawer is then checked as should be − collected = counted, so a real shortage shows up and a correct collection shows as matching; until an amount is typed, a last-shift difference is shown as an "≈ collection" in blue (not a shortage) and does not need a note to close the day. Each day is checked on its own — the next day's first count is never compared with the previous day's.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Shift numbers in this list are always worked out from the current orders (so an order edited or a pay-later bill that grew after clock-out is reflected) and show the payment-method split; a shift nobody clocked out of is closed automatically the next time that person signs in, and marked "auto-closed". Managers also get a "Day check" card: pick a business day and see every completed order grouped by the shift it was rung up in — plus a "Not in any logged shift" row for orders taken while the person had no shift in the log — adding up to exactly the Dashboard's revenue for that day. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
-- **Settings**: a "Kitchen printing" choice (per device) with four options: Off (default); "Print on this device" (a kitchen ticket prints here every time an order is saved on this device); "Send to the kitchen printer" (the ticket is sent to the device set as the kitchen printer — for phones, tablets and tills that have no printer); and "This device is the kitchen printer" (connect the kitchen printer to this device and keep the app open and awake — it prints every ticket saved on any device within about 10 seconds, shows the recent tickets with a "Print again" button, and has a test-ticket button). A kitchen ticket shows the table or takeaway, ticket number, time, each dish with its quantity and notes, delivery/pickup, and no prices; adding items to an existing unpaid invoice prints a ticket with only the added items, marked as an addition. Browsers always show a print window unless the computer's Chrome/Edge is started with the --kiosk-printing option and the kitchen printer is the default printer; phones and tablets always show their own print window. Also: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
+- **Settings**: a "Print automatically after saving an order" choice (per device): Nothing (default), Customer receipt (with prices), Kitchen ticket (dishes, quantities and notes — no prices) or Both; it prints the moment an order is saved on that device. Right below it, "Where the kitchen ticket prints" has three options: "Print on this device" (the kitchen ticket prints here); "Send to the kitchen printer" (the ticket is sent to the device set as the kitchen printer — for phones, tablets and tills that have no printer); and "This device is the kitchen printer" (connect the kitchen printer to this device and keep the app open and awake — it prints every ticket saved on any device within about 10 seconds, shows the recent tickets with a "Print again" button, and has a test-ticket button). A kitchen ticket shows the table or takeaway, ticket number, time, each dish with its quantity and notes, delivery/pickup, and no prices; adding items to an existing unpaid invoice prints a ticket with only the added items, marked as an addition. Browsers always show a print window unless the computer's Chrome/Edge is started with the --kiosk-printing option and the kitchen printer is the default printer; phones and tablets always show their own print window. Also: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How the money numbers fit together
 Every money figure — Dashboard, Receipts, Shift, Staff, Close the day, Expenses — is worked out by the same single calculation from the saved orders, expenses and shifts, so tabs only differ when they answer different questions. The rules: an order counts as a sale when it is completed (an unpaid pay-later bill still counts, and is listed separately; cancelled and refunded orders are not sales). A sale belongs to the business day it was created in (the Shift hours in Settings decide where a day starts). Cash enters the drawer when it is paid (delivery cash when the rider settles) and leaves it when an order is returned or a cash expense is recorded — a cash expense reduces the drawer of the shift it was recorded in. A shift belongs to the business day most of it falls in. Orders created while nobody was clocked in are shown as "not inside any shift". Cash handed from one shift to the next is compared only within the same business day: cash is often collected when a day ends, so the first shift of a day is never compared with the last shift of the day before. Totals saved at clock-out are only a record; screens always recompute from the orders. All screens re-check the server about every 15 seconds, so after a short moment every terminal shows the same figures; if two screens differ for more than a minute, reloading the page forces a fresh read. The Staff tab leaderboard adds up every order each person created in the last 30 days, the same orders the Dashboard counts.
@@ -2888,6 +2902,8 @@ function POSPrototype({ tenantId }) {
   const [kitchenMode, setKitchenMode] = useState("off"); // device-local: off | here | send | station — see "kitchen-print-mode" in lib/tenantStorage.js
   const [kitchenRecent, setKitchenRecent] = useState([]); // station only: the latest tickets in the shared queue
   const kitchenModeRef = useRef("off");
+  const [autoPrint, setAutoPrint] = useState("none"); // device-local: none | receipt | kitchen | both — what prints by itself when an order is saved here
+  const autoPrintRef = useRef("none");
   const kitchenPrintedRef = useRef([]); // ids this station has already printed
   const kitchenSinceRef = useRef(0); // only tickets created after the station was switched on are printed
   const kitchenHandlerRef = useRef(() => {}); // always the newest handler, so the poll never uses a stale language/closure
@@ -3393,11 +3409,15 @@ function POSPrototype({ tenantId }) {
   };
   // ---- Kitchen printing (per device) ----
   useEffect(() => {
-    Promise.all([storage.get("kitchen-print-mode"), storage.get("kitchen-print-since"), storage.get("kitchen-printed")])
-      .then(([m, since, printed]) => {
+    Promise.all([storage.get("kitchen-print-mode"), storage.get("kitchen-print-since"), storage.get("kitchen-printed"), storage.get("auto-print")])
+      .then(([m, since, printed, auto]) => {
         const mode = KITCHEN_MODES.includes(m?.value) ? m.value : "off";
         kitchenModeRef.current = mode;
         setKitchenMode(mode);
+        // A device that was already printing kitchen tickets keeps doing exactly that.
+        const savedAuto = ["none", "receipt", "kitchen", "both"].includes(auto?.value) ? auto.value : mode !== "off" ? "kitchen" : "none";
+        autoPrintRef.current = savedAuto;
+        setAutoPrint(savedAuto);
         kitchenSinceRef.current = Number(since?.value) || 0;
         try {
           const ids = JSON.parse(printed?.value || "[]");
@@ -3435,6 +3455,13 @@ function POSPrototype({ tenantId }) {
       }
     };
   }, [kitchenMode]);
+  const changeAutoPrint = (mode) => {
+    setAutoPrint(mode);
+    autoPrintRef.current = mode;
+    storage.set("auto-print", mode).catch(() => {});
+    // Kitchen tickets need somewhere to go: print here unless this device already sends them elsewhere or is the printer.
+    if ((mode === "kitchen" || mode === "both") && kitchenModeRef.current === "off") changeKitchenMode("here");
+  };
   const changeKitchenMode = (mode) => {
     setKitchenMode(mode);
     kitchenModeRef.current = mode;
@@ -5270,8 +5297,8 @@ function POSPrototype({ tenantId }) {
       whatsappLog: [],
     };
 
-    // The kitchen hears about it straight away, whatever happens to the save below.
-    dispatchKitchenTicket(kitchenTicketFromReceipt({ ...receipt, servedBy: receipt.servedBy }));
+    // Whatever this device prints by itself happens straight away, whatever happens to the save below.
+    autoPrintAfterSave(receipt);
 
     const receiptOk = await appendReceipt(thisMonthKey(), receipt);
 
@@ -5354,7 +5381,7 @@ function POSPrototype({ tenantId }) {
     });
 
     // Only the items being added go to the kitchen, marked as an addition to an existing order.
-    dispatchKitchenTicket(kitchenTicketFromReceipt({ ...target, items: cart.map((c) => ({ name: c.name, qty: c.qty, note: c.note || "" })), servedBy: currentEmployee ? { name: currentEmployee.name } : target.servedBy }, true));
+    if (autoPrintRef.current === "kitchen" || autoPrintRef.current === "both") dispatchKitchenTicket(kitchenTicketFromReceipt({ ...target, items: cart.map((c) => ({ name: c.name, qty: c.qty, note: c.note || "" })), servedBy: currentEmployee ? { name: currentEmployee.name } : target.servedBy }, true));
 
     const newItems = cart.map((c) => {
       const menuItem = findMenuItemAnywhere(c.id);
@@ -5621,7 +5648,7 @@ function POSPrototype({ tenantId }) {
   };
   // Called whenever an order is created: does whatever this device is set up to do (nothing, by default).
   const dispatchKitchenTicket = async (ticket) => {
-    const mode = kitchenModeRef.current;
+    const mode = kitchenModeRef.current === "off" ? "here" : kitchenModeRef.current;
     if (mode === "here") {
       printKitchenTicket(ticket);
     } else if (mode === "station") {
@@ -5634,6 +5661,16 @@ function POSPrototype({ tenantId }) {
         printKitchenTicket(ticket);
         flashNotice(t("notice_kitchenSendFailed"));
       }
+    }
+  };
+  // What this device prints by itself the moment an order is saved: the customer receipt (with prices), the kitchen
+  // ticket (without), both, or nothing — as chosen in Settings.
+  const autoPrintAfterSave = (receipt) => {
+    const mode = autoPrintRef.current;
+    if (mode === "receipt" || mode === "both") printViaHiddenFrame(t("ticketNumber", { n: receipt.ticketNo }), buildSavedReceiptBodyHtml(receipt), isRtl);
+    if (mode === "kitchen" || mode === "both") {
+      // Two print windows at once get in each other's way, so the second follows a moment later.
+      setTimeout(() => dispatchKitchenTicket(kitchenTicketFromReceipt(receipt)), mode === "both" ? 1500 : 0);
     }
   };
   // The kitchen-printer device: prints each new ticket from the shared queue once.
@@ -12000,21 +12037,37 @@ function POSPrototype({ tenantId }) {
               </div>
 
               <div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("kitchenSettingTitle")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("autoPrintTitle")}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {KITCHEN_MODES.map((mode) => (
+                  {[["none", "autoPrintNone"], ["receipt", "autoPrintReceipt"], ["kitchen", "autoPrintKitchen"], ["both", "autoPrintBoth"]].map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      onClick={() => changeAutoPrint(mode)}
+                      style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${autoPrint === mode ? theme.secondary : "var(--border)"}`, background: autoPrint === mode ? "rgba(176,141,87,0.18)" : "transparent", color: autoPrint === mode ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                    >
+                      {t(label)}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("autoPrintHint")}</div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("kitchenWhereTitle")}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {KITCHEN_MODES.filter((mode) => mode !== "off").map((mode) => (
                     <button
                       key={mode}
                       onClick={() => changeKitchenMode(mode)}
-                      style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${kitchenMode === mode ? theme.secondary : "var(--border)"}`, background: kitchenMode === mode ? "rgba(176,141,87,0.18)" : "transparent", color: kitchenMode === mode ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                      style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${(kitchenMode === "off" ? "here" : kitchenMode) === mode ? theme.secondary : "var(--border)"}`, background: (kitchenMode === "off" ? "here" : kitchenMode) === mode ? "rgba(176,141,87,0.18)" : "transparent", color: (kitchenMode === "off" ? "here" : kitchenMode) === mode ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
                     >
                       {t(`kitchenMode${mode.charAt(0).toUpperCase()}${mode.slice(1)}`)}
                     </button>
                   ))}
                 </div>
-                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t(`kitchenHint_${kitchenMode}`)}</div>
-                {kitchenMode !== "off" && kitchenMode !== "send" && <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("kitchenSilentTip")}</div>}
-                {kitchenMode !== "off" && (
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t(`kitchenHint_${kitchenMode === "off" ? "here" : kitchenMode}`)}</div>
+                {kitchenMode !== "send" && <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("kitchenSilentTip")}</div>}
+                {(kitchenMode === "station" || autoPrint === "kitchen" || autoPrint === "both") && (
                   <button onClick={printKitchenTestTicket} style={{ marginTop: 10, padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("kitchenTestPrint")}</button>
                 )}
                 {kitchenMode === "station" && (
