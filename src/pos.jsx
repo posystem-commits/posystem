@@ -4,6 +4,8 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createTenantStorage } from "@/lib/tenantStorage";
 import SiteView from "@/src/site/SiteView";
 import StockImportModal from "@/src/stock/StockImport";
+import CustomersImportModal, { exportCustomersFile } from "@/src/customers/CustomersImport";
+import { buildPlan as buildCustomersPlan, applyPlan as applyCustomersPlan } from "@/src/customers/importLogic";
 import { buildTicket as buildKitchenTicket, ticketBodyHtml as kitchenTicketBodyHtml, addToQueue as addToKitchenQueue, parseQueue as parseKitchenQueue, ticketsToPrint as kitchenTicketsToPrint, KITCHEN_MODES } from "@/src/kitchen/kitchenTicket";
 import { buildPlan as buildStockImportPlan } from "@/src/stock/importLogic";
 import { orderCategoriesByMain, mainTabsFor, addSubToMain, removeSubFromMain, removeSubEverywhere, moveMain, cleanMains } from "@/src/menu/mainCategories";
@@ -231,6 +233,10 @@ const STRINGS = {
     categoryUnderLabel: "Under:",
     confirm_deleteMainCategory: "Delete the main category \"{{name}}\"? Its categories and dishes stay — they just aren't grouped under it any more.",
     notice_mainCategoryExists: "A main category with that name already exists",
+    customersImportBtn: "Import from Excel",
+    customersExportBtn: "Export to Excel",
+    notice_customersExported: "{{n}} customers exported",
+    notice_customersExportFailed: "Couldn't create the Excel file — try again",
     moveCategoryUp: "Move this category earlier in the tabs",
     moveCategoryDown: "Move this category later in the tabs",
     recipeQtyHint: "Fractions are fine: 0.5, 1/2, ½ or 1 1/2.",
@@ -1138,6 +1144,10 @@ const STRINGS = {
     categoryUnderLabel: "ضمن:",
     confirm_deleteMainCategory: "حذف القسم الرئيسي \"{{name}}\"؟ تبقى أقسامه وأطباقه — فقط لم تعد مجمّعة تحته.",
     notice_mainCategoryExists: "يوجد قسم رئيسي بهذا الاسم بالفعل",
+    customersImportBtn: "استيراد من إكسل",
+    customersExportBtn: "تصدير إلى إكسل",
+    notice_customersExported: "تم تصدير {{n}} عميل",
+    notice_customersExportFailed: "تعذّر إنشاء ملف إكسل — حاول مجددًا",
     moveCategoryUp: "حرّك هذا القسم للأمام بين التبويبات",
     moveCategoryDown: "حرّك هذا القسم للخلف بين التبويبات",
     recipeQtyHint: "الكسور مقبولة: 0.5 أو 1/2 أو ½ أو 1 1/2.",
@@ -2114,7 +2124,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match), add, change or remove the order's discount (no need to delete the order and make a new one — a discount that is added or changed needs a written reason, the total and the service/VAT recalculate right away, a "Total after this edit" line shows the new bill before you save, and the change is recorded in the edit history and in the cash-drawer explanation on Close the day if the order was already paid), and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see totals, outstanding payables, and a by-category breakdown. Like the Dashboard and Receipts, it can be filtered by Month (a month dropdown), a single Day (a calendar), or a custom Range (any start and end date) using the toggle at the top; the totals, payables and category breakdown follow the chosen period.
 - **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
-- **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
+- **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history. Managers also see "Import from Excel" and "Export to Excel" buttons on this screen: Export downloads every customer (name, phone, address, number of orders, last order date) as an Excel file; Import takes an .xlsx or .csv sheet with a phone column (name and address optional, columns in any order, English or Arabic headings), shows a preview of who will be added or updated, and only saves after you confirm — customers are matched by phone number (+20, 0 and spacing differences don't matter), a blank cell never erases stored details, order counts are kept, nothing is ever deleted, and a template can be downloaded from the import window.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance; the expected cash only subtracts cash expenses recorded during this shift — ones a previous shift already took out of the drawer are not subtracted again), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count. Below the drawer table there is a "Cash collected at the end of the day" box: type the cash taken out of the drawer at the end of that business day (for restaurants that collect the day's cash around the last count). The last shift's drawer is then checked as should be − collected = counted, so a real shortage shows up and a correct collection shows as matching; until an amount is typed, a last-shift difference is shown as an "≈ collection" in blue (not a shortage) and does not need a note to close the day. Each day is checked on its own — the next day's first count is never compared with the previous day's.
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Shift numbers in this list are always worked out from the current orders (so an order edited or a pay-later bill that grew after clock-out is reflected) and show the payment-method split; a shift nobody clocked out of is closed automatically the next time that person signs in, and marked "auto-closed". Managers also get a "Day check" card: pick a business day and see every completed order grouped by the shift it was rung up in — plus a "Not in any logged shift" row for orders taken while the person had no shift in the log — adding up to exactly the Dashboard's revenue for that day. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
@@ -2937,6 +2947,7 @@ function POSPrototype({ tenantId }) {
   const pendingFetchedOkRef = useRef(false);
   const [callCenterLinkCopied, setCallCenterLinkCopied] = useState(false);
   const [stockImportOpen, setStockImportOpen] = useState(false);
+  const [customersImportOpen, setCustomersImportOpen] = useState(false);
   const [newIngName, setNewIngName] = useState("");
   const [newIngUnit, setNewIngUnit] = useState("kg");
   const [newIngUnitCustom, setNewIngUnitCustom] = useState("");
@@ -4899,6 +4910,29 @@ function POSPrototype({ tenantId }) {
   const persistCustomers = async (dict) => {
     setCustomers(dict);
     return syncSet("customers-directory", JSON.stringify(dict), false, t("syncLabelCustomers"));
+  };
+  // Applies an Excel/CSV customer import against the freshest stored directory (not this device's copy), so customers
+  // another terminal saved meanwhile are never overwritten. Nothing is deleted.
+  const applyCustomersImport = async (rows, updateExisting) => {
+    let fresh = customers;
+    try {
+      const result = await storage.get("customers-directory", false);
+      fresh = result?.value ? JSON.parse(result.value) : {};
+    } catch (e) {
+      fresh = customers;
+    }
+    const { directory, added, updated } = applyCustomersPlan(buildCustomersPlan(rows, fresh, { updateExisting }), fresh);
+    if (added + updated === 0) return { added, updated, saved: true };
+    const saved = await persistCustomers(directory);
+    return { added, updated, saved };
+  };
+  const exportCustomers = async () => {
+    try {
+      const n = await exportCustomersFile(customers, isRtl);
+      flashNotice(t("notice_customersExported", { n }));
+    } catch (e) {
+      flashNotice(t("notice_customersExportFailed"));
+    }
   };
 
   const handlePhoneChange = (value) => {
@@ -10396,10 +10430,19 @@ function POSPrototype({ tenantId }) {
 
       {view === "customers" && (
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 780 }}>
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("customersTitle")}</div>
-            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("customersSubtitle")}</div>
+          <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("customersTitle")}</div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("customersSubtitle")}</div>
+            </div>
+            {isManager && customersLoaded && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={() => setCustomersImportOpen(true)} style={{ padding: "9px 16px", borderRadius: 7, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}>{t("customersImportBtn")}</button>
+                <button disabled={Object.keys(customers).length === 0} onClick={exportCustomers} style={{ padding: "9px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 13, fontWeight: 500, cursor: Object.keys(customers).length === 0 ? "default" : "pointer", opacity: Object.keys(customers).length === 0 ? 0.5 : 1, whiteSpace: "nowrap" }}>{t("customersExportBtn")}</button>
+              </div>
+            )}
           </div>
+          {customersImportOpen && isManager && <CustomersImportModal isRtl={isRtl} theme={theme} customers={customers} onApply={applyCustomersImport} onClose={() => setCustomersImportOpen(false)} />}
           {!customersLoaded ? (
             <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
           ) : Object.keys(customers).length === 0 ? (
