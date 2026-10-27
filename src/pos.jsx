@@ -17,6 +17,9 @@ import { mergeSiteSettings, ITEM_BADGES } from "@/src/site/presets";
 import { makeSiteT } from "@/src/site/siteStrings";
 import {
   PAYMENT_METHODS,
+  DIRECT_METHODS,
+  isPlatformMethod,
+  platformOwed,
   receiptMethodAmounts,
   returnTimeOf,
   returnAmountsOf,
@@ -112,6 +115,8 @@ const STRINGS = {
     payment_visa: "Visa",
     payment_instapay: "InstaPay",
     payment_wallet: "Wallet",
+    payment_talabat: "Talabat",
+    payment_elmenus: "Elmenus",
     payment_split: "Split payment",
     splitPaymentOption: "Split payment",
     splitRemainingLabel: "Remaining",
@@ -960,6 +965,16 @@ const STRINGS = {
     settleDeliveryCash: "Settle up",
     confirm_settleDelivery: "Mark all of {{name}}'s outstanding orders as settled?",
     notice_deliverySettled: "Settled up with {{name}}",
+    platformOwedTitle: "Owed by delivery apps",
+    platformOwedSubtitle: "Orders paid through Talabat or Elmenus. The app pays the restaurant later, usually at the end of the month — each order stays here until you mark it received.",
+    platformOwedTotal: "Total owed",
+    platformOwedLoading: "Loading the last few months…",
+    platformOwedShow: "Show orders",
+    platformOwedHide: "Hide orders",
+    platformMarkReceived: "Mark received",
+    confirm_platformReceived: "Mark {{n}} {{app}} orders ({{amount}}) as received?",
+    notice_platformReceived: "{{app}}: {{n}} orders marked received",
+    platformOwedWindowNote: "Covers the last 4 months.",
     riderReportTitle: "Delivery employee report",
     riderReportSubtitle: "Pick a delivery employee and the dates to see every delivery they took — the client, the address and the order amount, with the delivery fee kept separate — then print it for them.",
     riderReportEmployee: "Delivery employee",
@@ -1041,6 +1056,8 @@ const STRINGS = {
     payment_visa: "فيزا",
     payment_instapay: "إنستاباي",
     payment_wallet: "محفظة إلكترونية",
+    payment_talabat: "طلبات",
+    payment_elmenus: "المنيوس",
     payment_split: "دفع مقسّم",
     splitPaymentOption: "دفع مقسّم",
     splitRemainingLabel: "المتبقي",
@@ -1889,6 +1906,16 @@ const STRINGS = {
     settleDeliveryCash: "تسوية الحساب",
     confirm_settleDelivery: "تحديد كل طلبات {{name}} غير المُسوّاة كمُسوّاة؟",
     notice_deliverySettled: "تمت التسوية مع {{name}}",
+    platformOwedTitle: "مستحق من تطبيقات التوصيل",
+    platformOwedSubtitle: "الطلبات المدفوعة عبر طلبات أو المنيوس. يدفع التطبيق للمطعم لاحقًا، عادةً في نهاية الشهر — يظل كل طلب هنا حتى تحدده كمُستلَم.",
+    platformOwedTotal: "إجمالي المستحق",
+    platformOwedLoading: "جارٍ تحميل الأشهر الأخيرة…",
+    platformOwedShow: "عرض الطلبات",
+    platformOwedHide: "إخفاء الطلبات",
+    platformMarkReceived: "تم الاستلام",
+    confirm_platformReceived: "تحديد {{n}} طلب من {{app}} ({{amount}}) كمُستلَم؟",
+    notice_platformReceived: "{{app}}: تم تحديد {{n}} طلب كمُستلَم",
+    platformOwedWindowNote: "يشمل آخر 4 أشهر.",
     riderReportTitle: "تقرير عامل التوصيل",
     riderReportSubtitle: "اختر عامل التوصيل والتواريخ لترى كل توصيلة قام بها — اسم العميل والعنوان وقيمة الطلب، مع رسوم التوصيل منفصلة — ثم اطبع التقرير له.",
     riderReportEmployee: "عامل التوصيل",
@@ -2150,7 +2177,7 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items).
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app: Talabat and Elmenus. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items).
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
@@ -2769,6 +2796,7 @@ function POSPrototype({ tenantId }) {
   const [receiptsFilterMode, setReceiptsFilterMode] = useState("month"); // "month" | "day" | "range"
   const [receiptsFilterDay, setReceiptsFilterDay] = useState(null);
   const [receiptsFilterRangeStart, setReceiptsFilterRangeStart] = useState(null);
+  const [platformOpenKey, setPlatformOpenKey] = useState(null); // Dashboard's "Owed by delivery apps": which app+month row has its orders expanded
   const [riderReportId, setRiderReportId] = useState(null); // Delivery tab's per-employee report: which rider (null = the first one)
   const [riderReportFrom, setRiderReportFrom] = useState(null); // business-day range, YYYY-MM-DD; null = today
   const [riderReportTo, setRiderReportTo] = useState(null);
@@ -4104,7 +4132,7 @@ function POSPrototype({ tenantId }) {
     const modalVtAmt = Math.round((modalSubtotalForValidation + modalSvcAmt) * (modalVatPercent / 100) * 100) / 100;
     const modalGrandTotal = modalSubtotalForValidation + modalSvcAmt + modalVtAmt;
     const splitPayments = paymentMethod === "split"
-      ? PAYMENT_METHODS.map((m) => ({ method: m.id, amount: Math.round((Number(tableSplitAmounts?.[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
+      ? DIRECT_METHODS.map((m) => ({ method: m.id, amount: Math.round((Number(tableSplitAmounts?.[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
       : null;
     if (paymentMethod === "split") {
       const splitSum = splitPayments.reduce((s, sp) => s + sp.amount, 0);
@@ -4514,6 +4542,16 @@ function POSPrototype({ tenantId }) {
     storageKeys.forEach((mk) => ensureMonthLoaded(mk));
     reportingKeys.forEach((mk) => ensureExpenseMonthLoaded(mk));
   }, [dashboardMode, dashboardRangeStart, dashboardRangeEnd]);
+  // Dashboard's "Owed by delivery apps": an app pays about a month late, so this month and the three before it
+  // are always loaded, whatever period the Dashboard itself is showing.
+  useEffect(() => {
+    if (view !== "dashboard") return;
+    let mk = thisMonthKey();
+    for (let i = 0; i < 4; i++) {
+      ensureMonthLoaded(mk);
+      mk = prevMonthKey(mk);
+    }
+  }, [view]);
   // Delivery tab's employee report: fetch every month its dates touch (plus one either side, for
   // the same business-date spillover as the Dashboard).
   useEffect(() => {
@@ -5377,7 +5415,7 @@ function POSPrototype({ tenantId }) {
     const finalTicketNo = ensureTicketNo();
 
     const splitPayments = paymentMethod === "split"
-      ? PAYMENT_METHODS.map((m) => ({ method: m.id, amount: Math.round((Number(splitAmounts[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
+      ? DIRECT_METHODS.map((m) => ({ method: m.id, amount: Math.round((Number(splitAmounts[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
       : null;
     if (paymentMethod === "split") {
       const splitSum = splitPayments.reduce((s, sp) => s + sp.amount, 0);
@@ -5423,8 +5461,8 @@ function POSPrototype({ tenantId }) {
       splitCount: splitCount && splitCount > 1 ? splitCount : null,
       paymentMethod,
       splitPayments,
-      paid: paidNow,
-      paidAt: paidNow ? new Date().toISOString() : null,
+      paid: paidNow || isPlatformMethod(paymentMethod), // a delivery-app order is paid as far as the till is concerned; the app owes the restaurant (see platformOwed)
+      paidAt: (paidNow || isPlatformMethod(paymentMethod)) ? new Date().toISOString() : null,
       customer,
       eta: orderEta.trim(),
       status: "completed",
@@ -5890,6 +5928,53 @@ function POSPrototype({ tenantId }) {
   const receiptsListUnpaid = receiptsListSummary.unpaid.orders;
   const receiptsListUnpaidTotal = receiptsListSummary.unpaid.total;
 
+  // Dashboard: what each delivery app still owes, from every month loaded so far (the last four are always
+  // loaded when the Dashboard opens), grouped by the business month the order was sold in.
+  const platformWindowLoaded = (() => {
+    let mk = thisMonthKey();
+    for (let i = 0; i < 4; i++) {
+      if (receiptsByMonth[mk] === undefined) return false;
+      mk = prevMonthKey(mk);
+    }
+    return true;
+  })();
+  const platformOwedByApp = platformOwed(Object.values(receiptsByMonth).flat())
+    .filter((app) => app.orders.length > 0)
+    .map((app) => {
+      const months = {};
+      app.orders.forEach((x) => {
+        const mk = businessDateForTimestamp(x.r.timestamp, shiftHoursConfig).slice(0, 7);
+        (months[mk] = months[mk] || []).push(x);
+      });
+      return {
+        ...app,
+        months: Object.keys(months).sort().map((mk) => ({
+          key: mk,
+          orders: months[mk].sort((a, b) => (a.r.timestamp < b.r.timestamp ? -1 : 1)),
+          owed: round2(months[mk].reduce((s, x) => s + x.amount, 0)),
+        })),
+      };
+    });
+  const platformOwedGrandTotal = round2(platformOwedByApp.reduce((s, a) => s + a.owed, 0));
+  // The delivery app has paid: mark these orders received so they stop counting as owed. Re-reads each month
+  // first, like every other receipt write, so another terminal's changes are not overwritten.
+  const markPlatformReceived = (app, entries) => {
+    const ids = new Set(entries.map((x) => x.r.id));
+    setConfirmDialog({
+      message: t("confirm_platformReceived", { n: entries.length, app: t(`payment_${app.id}`), amount: money(round2(entries.reduce((s, x) => s + x.amount, 0))) }),
+      onConfirm: async () => {
+        const at = new Date().toISOString();
+        const by = currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null;
+        const monthKeysTouched = [...new Set(entries.map((x) => storageMonthOf(x.r.timestamp)))];
+        for (const mk of monthKeysTouched) {
+          const list = await fetchFreshMonth(mk);
+          await persistMonth(mk, list.map((r) => (ids.has(r.id) && !r.platformSettled ? { ...r, platformSettled: true, platformSettledAt: at, platformSettledBy: by } : r)));
+        }
+        flashNotice(t("notice_platformReceived", { app: t(`payment_${app.id}`), n: entries.length }));
+      },
+    });
+  };
+
   // Delivery tab: one delivery employee's completed deliveries for a run of business days. The order
   // amount is everything the client was charged except the delivery fee, which is listed beside it.
   const riderReportRiders = dutyRoster.filter((p) => p.role === "delivery");
@@ -6121,6 +6206,7 @@ function POSPrototype({ tenantId }) {
   const maxTopSellerQty = Math.max(1, ...topSellers.map((s) => s.qty));
 
   const dashboardByMethod = PAYMENT_METHODS.map((m) => ({ ...m, total: dashboardSummary.byMethod[m.id] }));
+  const dashboardByMethodShown = dashboardByMethod.filter((m) => !m.platform || m.total > 0); // delivery apps only show once they have sales
   const maxMethodTotal = Math.max(1, ...dashboardByMethod.map((m) => m.total));
 
   // Categorized using data already on each receipt: deliveryMethod is only ever set for orders
@@ -6696,7 +6782,7 @@ function POSPrototype({ tenantId }) {
     // Counts orders that touched this method at all — a split order can count toward more than
     // one method's count, same as it contributes to more than one method's total.
     count: paymentsCollectedThisShift.filter((r) => receiptMethodAmounts(r).some((a) => a.method === m.id)).length,
-  }));
+  })).filter((m) => !m.platform || m.count > 0); // delivery apps only show once the shift sold through them
   // A delivery rider physically holds the cash they collect until settleDeliveryCash marks it
   // settled — until then it hasn't reached the drawer, so it doesn't belong in what the drawer
   // is expected to hold. The "by payment method" breakdown above still counts it as cash revenue
@@ -6765,7 +6851,7 @@ function POSPrototype({ tenantId }) {
   // what actually landed in the bank or gateway statement against what the shift expects for that
   // method (sales minus refunds) — same idea as the cash count above, just no opening float, since
   // an electronic balance doesn't carry a physical float over from one shift to the next.
-  const shiftElectronicMethods = PAYMENT_METHODS.filter((m) => m.id !== "cash").map((m) => {
+  const shiftElectronicMethods = DIRECT_METHODS.filter((m) => m.id !== "cash").map((m) => {
     const sales = reconCollected.flatMap(receiptMethodAmounts).filter((a) => a.method === m.id).reduce((sum, a) => sum + a.amount, 0);
     const refunds = returnsThisShift.flatMap(returnAmountsOf).filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0);
     const expected = Math.round((sales - refunds) * 100) / 100;
@@ -9116,7 +9202,7 @@ function POSPrototype({ tenantId }) {
 
             <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>
               {PAYMENT_METHODS.map((m) => (
-                <button key={m.id} onClick={() => setPaymentMethod(m.id)} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === m.id ? theme.secondary : "var(--border)"}`, background: paymentMethod === m.id ? "#3A2E22" : "transparent", color: paymentMethod === m.id ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
+                <button key={m.id} onClick={() => { setPaymentMethod(m.id); if (isPlatformMethod(m.id)) setPaidNow(true); }} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === m.id ? theme.secondary : "var(--border)"}`, background: paymentMethod === m.id ? "#3A2E22" : "transparent", color: paymentMethod === m.id ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
                   {t(`payment_${m.id}`)}
                 </button>
               ))}
@@ -9126,11 +9212,11 @@ function POSPrototype({ tenantId }) {
             </div>
 
             {paymentMethod === "split" && (() => {
-              const splitEntered = PAYMENT_METHODS.reduce((s, m) => s + (Number(splitAmounts[m.id]) || 0), 0);
+              const splitEntered = DIRECT_METHODS.reduce((s, m) => s + (Number(splitAmounts[m.id]) || 0), 0);
               const splitRemaining = Math.round((total - splitEntered) * 100) / 100;
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: 10 }}>
-                  {PAYMENT_METHODS.map((m) => (
+                  {DIRECT_METHODS.map((m) => (
                     <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                       <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t(`payment_${m.id}`)}</span>
                       <input
@@ -9150,7 +9236,7 @@ function POSPrototype({ tenantId }) {
               );
             })()}
 
-            {paymentMethod !== "split" && (
+            {paymentMethod !== "split" && !isPlatformMethod(paymentMethod) && (
               <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                 <button onClick={() => setPaidNow(true)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${paidNow ? "#3F5B45" : "var(--border)"}`, background: paidNow ? "#22301F" : "transparent", color: paidNow ? "#9FCB8E" : "var(--text-muted)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
                   {t("paidNowOption")}
@@ -10323,7 +10409,7 @@ function POSPrototype({ tenantId }) {
                 <div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("paymentStatus")} — {t("statusPaid")}</div>
                   <select value={expenseEditor.paymentMethod} onChange={(e) => setExpenseEditor((p) => ({ ...p, paymentMethod: e.target.value }))} className="field" style={{ width: "100%", boxSizing: "border-box" }}>
-                    {PAYMENT_METHODS.map((m) => <option key={m.id} value={m.id}>{t(`payment_${m.id}`)}</option>)}
+                    {DIRECT_METHODS.map((m) => <option key={m.id} value={m.id}>{t(`payment_${m.id}`)}</option>)}
                   </select>
                 </div>
               )}
@@ -10352,6 +10438,57 @@ function POSPrototype({ tenantId }) {
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("dashboardTitle")}</div>
             <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("dashboardSubtitle")}</div>
           </div>
+
+          {platformOwedByApp.length > 0 && (
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: isMobile ? 14 : 18, marginBottom: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 17, fontWeight: 600 }}>{t("platformOwedTitle")}</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("platformOwedTotal")} <b style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 16, color: theme.secondaryLight }}>{money(platformOwedGrandTotal)}</b></div>
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "4px 0 14px" }}>{t("platformOwedSubtitle")} {platformWindowLoaded ? t("platformOwedWindowNote") : t("platformOwedLoading")}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {platformOwedByApp.map((app) => (
+                  <div key={app.id} style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(176,141,87,0.08)" }}>
+                      <span style={{ fontSize: 14, fontWeight: 600 }}>{t(`payment_${app.id}`)}</span>
+                      <span style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 14, fontWeight: 600 }}>{money(app.owed)}</span>
+                    </div>
+                    {app.months.map((mo) => {
+                      const rowKey = `${app.id}:${mo.key}`;
+                      const open = platformOpenKey === rowKey;
+                      return (
+                        <div key={rowKey} style={{ borderTop: "1px solid var(--border)", padding: "10px 14px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            <div>
+                              <div style={{ fontSize: 13.5, fontWeight: 500 }}>{monthLabel(mo.key)}</div>
+                              <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>{tCount("orderCount", mo.orders.length)} · <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(mo.owed)}</span></div>
+                            </div>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button onClick={() => setPlatformOpenKey(open ? null : rowKey)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{open ? t("platformOwedHide") : t("platformOwedShow")}</button>
+                              <button onClick={() => markPlatformReceived(app, mo.orders)} style={{ fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: theme.primary, color: "#FBF8F2", fontWeight: 600, cursor: "pointer" }}>{t("platformMarkReceived")}</button>
+                            </div>
+                          </div>
+                          {open && (
+                            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                              {mo.orders.map((x) => (
+                                <div key={x.r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, fontSize: 12.5, padding: "5px 0", borderTop: "1px dashed var(--border)" }}>
+                                  <span style={{ color: "var(--text-muted)" }}>{t("ticketNumber", { n: x.r.ticketNo })} · {new Date(x.r.timestamp).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { day: "numeric", month: "short" })}</span>
+                                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                    <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(x.amount)}</span>
+                                    <button onClick={() => markPlatformReceived(app, [x])} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("platformMarkReceived")}</button>
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: 6 }}>
@@ -10520,7 +10657,7 @@ function POSPrototype({ tenantId }) {
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 18 }}>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMixTitle")}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {dashboardByMethod.map((m) => (
+                {dashboardByMethodShown.map((m) => (
                   <div key={m.id}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
                       <span>{t(`payment_${m.id}`)}</span>
@@ -11543,7 +11680,7 @@ function POSPrototype({ tenantId }) {
         const modalService = Math.round(modalSubtotal * (effectiveServicePercent / 100) * 100) / 100;
         const modalVat = Math.round((modalSubtotal + modalService) * (effectiveVatPercent / 100) * 100) / 100;
         const modalTotal = modalSubtotal + modalService + modalVat;
-        const modalSplitEntered = PAYMENT_METHODS.reduce((s, m) => s + (Number(payTableModal.splitAmounts?.[m.id]) || 0), 0);
+        const modalSplitEntered = DIRECT_METHODS.reduce((s, m) => s + (Number(payTableModal.splitAmounts?.[m.id]) || 0), 0);
         const modalSplitRemaining = Math.round((modalTotal - modalSplitEntered) * 100) / 100;
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setPayTableModal(null)}>
@@ -11568,7 +11705,7 @@ function POSPrototype({ tenantId }) {
               <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {PAYMENT_METHODS.map((m) => (
+                  {DIRECT_METHODS.map((m) => (
                     <button
                       key={m.id}
                       onClick={() => setPayTableModal((p) => ({ ...p, paymentMethod: m.id }))}
@@ -11586,7 +11723,7 @@ function POSPrototype({ tenantId }) {
                 </div>
                 {payTableModal.paymentMethod === "split" && (
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                    {PAYMENT_METHODS.map((m) => (
+                    {DIRECT_METHODS.map((m) => (
                       <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                         <span style={{ fontSize: 12.5 }}>{t(`payment_${m.id}`)}</span>
                         <input
@@ -13220,7 +13357,7 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
                     <div style={{ marginTop: 16 }}>
                       <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {PAYMENT_METHODS.map((m) => (
+                        {DIRECT_METHODS.map((m) => (
                           <button
                             key={m.id}
                             onClick={() => setCheckoutMethod(m.id)}

@@ -19,13 +19,23 @@
 //  * A SHIFT belongs to the business day in which its midpoint falls. Its orders are the ones its employee
 //    created between clock-in and clock-out. Orders created outside every shift are reported as such.
 //  * Totals saved at clock-out are a historical record only; screens always recompute from the orders.
+//  * An order paid through a DELIVERY APP (Talabat, Elmenus) is a sale like any other, but no money reaches the
+//    drawer or the bank until the app pays the restaurant, usually at the end of the month. Until someone marks it
+//    received (platformSettled) it is money the app OWES the restaurant — see platformOwed.
 
 export const PAYMENT_METHODS = [
   { id: "cash", label: "Cash" },
   { id: "visa", label: "Visa" },
   { id: "instapay", label: "InstaPay" },
   { id: "wallet", label: "Wallet" },
+  // Delivery apps pay the restaurant later (see platformOwed). Whole-order choices only: never split, never
+  // part of the electronic-balance reconciliation.
+  { id: "talabat", label: "Talabat", platform: true },
+  { id: "elmenus", label: "Elmenus", platform: true },
 ];
+export const DIRECT_METHODS = PAYMENT_METHODS.filter((m) => !m.platform);
+export const PLATFORM_METHODS = PAYMENT_METHODS.filter((m) => m.platform);
+export const isPlatformMethod = (id) => PLATFORM_METHODS.some((m) => m.id === id);
 
 export const round2 = (n) => Math.round(n * 100) / 100;
 
@@ -111,6 +121,18 @@ export const summarize = (completed) => {
     unpaid: { n: unpaid.length, total: unpaid.reduce((s, r) => s + r.total, 0), orders: unpaid },
   };
 };
+
+// ---- money owed by delivery apps ----
+// For each delivery app: the paid, completed orders sold through it that it has not yet paid the restaurant for,
+// with the amount each one carries for that app, and the total owed. `orders` is any list of receipts.
+export const platformOwed = (orders) =>
+  PLATFORM_METHODS.map((m) => {
+    const list = orders
+      .filter((r) => r.status === "completed" && r.paid !== false && !r.platformSettled)
+      .map((r) => ({ r, amount: round2(receiptMethodAmounts(r).filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0)) }))
+      .filter((x) => x.amount > 0);
+    return { id: m.id, label: m.label, orders: list, owed: round2(list.reduce((s, x) => s + x.amount, 0)) };
+  });
 
 // ---- the cash drawer ----
 // Cash that moved inside a time window: received (paid in the window), paid back out to customers, and
