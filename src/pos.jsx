@@ -966,6 +966,19 @@ const STRINGS = {
     settleDeliveryCash: "Settle up",
     confirm_settleDelivery: "Mark all of {{name}}'s outstanding orders as settled?",
     notice_deliverySettled: "Settled up with {{name}}",
+    receiptDetailTapHint: "Tap to see the full receipt",
+    receiptDetailLink: "Details ›",
+    receiptDetailItems: "Items",
+    receiptDetailCustomer: "Customer",
+    receiptDetailPayment: "Payment",
+    receiptDetailNotPaid: "Not paid yet",
+    receiptDetailPaidAt: "Paid {{time}}",
+    receiptDetailPlatformOwed: "Waiting for {{app}} to pay the restaurant",
+    receiptDetailPlatformReceived: "Received from {{app}} · {{time}}",
+    receiptDetailDeliverySettled: "Delivery settled · {{time}}",
+    receiptDetailDeliveryOpen: "Not yet settled with {{name}}",
+    receiptDetailCancelledAt: "Cancelled {{time}} by {{name}}",
+    receiptDetailRefundedAt: "Refunded {{time}} by {{name}}",
     paymentSettingsTitle: "Payment methods",
     paymentSettingsHint: "Choose which payment methods this restaurant offers and what each one is called. Turning one off only hides it for new orders — past orders keep it. Talabat and Elmenus are for orders that come through those apps: the restaurant is paid later, so they are tracked on the Dashboard as money owed.",
     paymentSettingsAddTitle: "Add a payment method",
@@ -1926,6 +1939,19 @@ const STRINGS = {
     settleDeliveryCash: "تسوية الحساب",
     confirm_settleDelivery: "تحديد كل طلبات {{name}} غير المُسوّاة كمُسوّاة؟",
     notice_deliverySettled: "تمت التسوية مع {{name}}",
+    receiptDetailTapHint: "اضغط لعرض الإيصال كاملًا",
+    receiptDetailLink: "التفاصيل ›",
+    receiptDetailItems: "الأصناف",
+    receiptDetailCustomer: "العميل",
+    receiptDetailPayment: "الدفع",
+    receiptDetailNotPaid: "لم يُدفع بعد",
+    receiptDetailPaidAt: "دُفع {{time}}",
+    receiptDetailPlatformOwed: "بانتظار دفع {{app}} للمطعم",
+    receiptDetailPlatformReceived: "تم الاستلام من {{app}} · {{time}}",
+    receiptDetailDeliverySettled: "تمت تسوية التوصيل · {{time}}",
+    receiptDetailDeliveryOpen: "لم تتم التسوية مع {{name}} بعد",
+    receiptDetailCancelledAt: "أُلغي {{time}} بواسطة {{name}}",
+    receiptDetailRefundedAt: "استُرد {{time}} بواسطة {{name}}",
     paymentSettingsTitle: "طرق الدفع",
     paymentSettingsHint: "اختر طرق الدفع التي يقدّمها المطعم واسم كل منها. إيقاف طريقة يخفيها عن الطلبات الجديدة فقط — الطلبات السابقة تحتفظ بها. طلبات والمنيوس للطلبات القادمة عبر هذه التطبيقات: يدفع التطبيق للمطعم لاحقًا، لذلك تُتابَع في لوحة المعلومات كمبالغ مستحقة.",
     paymentSettingsAddTitle: "إضافة طريقة دفع",
@@ -2216,7 +2242,7 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items).
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items).
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
@@ -2653,6 +2679,19 @@ const buildMapsHref = (mapsLink) => {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(trimmed)}`;
 };
 
+// Receipts go to all kinds of printers, including cheap low-resolution thermal ones that turn thin grey type into
+// a smudge. So everything that is printed is made plain and sturdy: a clean sans-serif (not a thin monospace),
+// medium-heavy weight, pure black, nothing smaller than 12.5px, and firmer rules. Done once here, on the finished
+// markup, so every printout (receipts, kitchen tickets, reports, QR sheets) gets it without each one repeating it.
+const printReadable = (html) =>
+  String(html)
+    .replace(/font-size:\s*(\d+(?:\.\d+)?)px/g, (m, n) => {
+      const size = Number(n);
+      return `font-size:${size > 16 ? size : Math.max(12.5, Math.round(size * 1.15 * 2) / 2)}px`;
+    })
+    .replace(/(?<![-\w])color:\s*#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g, "color:#000")
+    .replace(/(border(?:-top)?:\s*)1px/g, "$11.5px");
+
 // Wraps receipt body markup in a small standalone printable document (shared by both the
 // on-page print path and the downloadable file below).
 const receiptDocument = (title, bodyHtml, autoPrint, rtl) => `<!DOCTYPE html>
@@ -2661,17 +2700,20 @@ const receiptDocument = (title, bodyHtml, autoPrint, rtl) => `<!DOCTYPE html>
     <meta charset="utf-8" />
     <title>${escapeHtml(title)}</title>
     <style>
-      @page { margin: 12px; }
+      @page { margin: 6mm 4mm; }
       * { box-sizing: border-box; }
-      body { font-family: ${rtl ? "'Tajawal', 'Courier New', Courier, monospace" : "'Courier New', Courier, monospace"}; color: #000; width: 300px; margin: 0 auto; padding: 16px; }
+      html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { font-family: ${rtl ? "'Tajawal', Tahoma, 'Segoe UI', Arial, sans-serif" : "'Segoe UI', Tahoma, Arial, Helvetica, sans-serif"}; font-size: 14px; font-weight: 600; line-height: 1.45; font-variant-numeric: tabular-nums; text-rendering: geometricPrecision; color: #000; width: 300px; margin: 0 auto; padding: 12px 6px; }
+      b, strong { font-weight: 800; }
       .center { text-align: center; }
-      .row { display: flex; justify-content: space-between; }
-      .dashed { border-top: 1px dashed #000; margin-top: 8px; padding-top: 8px; }
-      ${rtl ? "@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');" : ""}
+      .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; page-break-inside: avoid; }
+      .row > span:last-child { white-space: nowrap; }
+      .dashed { border-top: 1.5px dashed #000; margin-top: 10px; padding-top: 10px; }
+      ${rtl ? "@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800&display=swap');" : ""}
     </style>
     ${autoPrint ? `<script>window.addEventListener("load", function () { setTimeout(function () { window.print(); }, 150); });</script>` : ""}
   </head>
-  <body>${bodyHtml}</body>
+  <body>${printReadable(bodyHtml)}</body>
 </html>`;
 
 // Prints via a hidden same-page <iframe>. This works once the app is deployed as a normal
@@ -2872,6 +2914,7 @@ function POSPrototype({ tenantId }) {
   const [newPayLater, setNewPayLater] = useState(false); // ...and whether its money comes later from an app
   const [paymentConfigLoadFailed, setPaymentConfigLoadFailed] = useState(false);
   const [platformOpenKey, setPlatformOpenKey] = useState(null); // Dashboard's "Owed by delivery apps": which app+month row has its orders expanded
+  const [receiptDetailId, setReceiptDetailId] = useState(null); // Receipts tab: the receipt whose details window is open
   const [riderReportIds, setRiderReportIds] = useState(null); // Delivery tab's employee report: which delivery employees are selected (null = just the first)
   const [receiptsFilterRangeEnd, setReceiptsFilterRangeEnd] = useState(null);
   const [receiptsRangePickerOpen, setReceiptsRangePickerOpen] = useState(false);
@@ -7900,8 +7943,8 @@ function POSPrototype({ tenantId }) {
   const riderReportOrdersTotalOf = (rows) => round2(rows.reduce((s, x) => s + x.amount, 0));
   const riderReportFeesTotalOf = (rows) => round2(rows.reduce((s, x) => s + x.fee, 0));
   const riderReportPrintable = riderReportSelected.filter((p) => p.orders > 0);
-  const printRiderReport = () => {
-    if (riderReportPrintable.length === 0) return;
+  const printRiderReportFor = (riders) => {
+    if (riders.length === 0) return;
     const locale = isRtl ? "ar-EG" : "en-US";
     const stamp = (iso) => new Date(iso).toLocaleString(locale, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
     const line = (label, value, opts = {}) => `<div class="row" style="font-size:${opts.size || 12}px;${opts.bold ? "font-weight:700;" : ""}margin-top:${opts.top ?? 3}px;"><span>${escapeHtml(label)}</span><span>${value}</span></div>`;
@@ -7949,9 +7992,13 @@ function POSPrototype({ tenantId }) {
         <div class="center" style="font-size:10px;margin-top:14px;color:#444;">${escapeHtml(printedAt)}</div>
       </div>`;
     };
-    const body = riderReportPrintable.map((p, i) => section(p, i === 0)).join("");
-    printViaHiddenFrame(`${t("riderReportTitle")} — ${riderReportPrintable.map((p) => p.name).join(", ")}`, body, isRtl);
+    const body = riders.map((p, i) => section(p, i === 0)).join("");
+    printViaHiddenFrame(`${t("riderReportTitle")} — ${riders.map((p) => p.name).join(", ")}`, body, isRtl);
   };
+  const printRiderReport = () => printRiderReportFor(riderReportPrintable);
+
+  // Receipts tab: the receipt whose details are open, always read fresh from the loaded months.
+  const receiptDetail = receiptDetailId ? Object.values(receiptsByMonth).flat().find((x) => x.id === receiptDetailId) || null : null;
 
   // --- Menu / category editor ---
   const addCategory = () => {
@@ -10041,7 +10088,7 @@ function POSPrototype({ tenantId }) {
                     const editing = editingReceiptId === r.id;
                     return (
                       <div key={r.id} style={{ background: "var(--surface)", border: `1px solid ${voided ? "#4A2E2C" : unpaid ? "#5B4F3F" : "var(--border)"}`, borderRadius: 10, padding: "14px 18px", opacity: voided ? 0.7 : 1 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
+                        <div onClick={() => setReceiptDetailId(r.id)} title={t("receiptDetailTapHint")} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, flexWrap: "wrap", gap: 6, cursor: "pointer" }}>
                           <span style={{ fontSize: 13, fontFamily: "IBM Plex Mono, monospace" }}>
                             {t("ticketHash", { n: r.ticketNo })} &middot; {new Date(r.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                             {r.table && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A2E3A", color: "#9CB0E3" }}>{r.table}</span>}
@@ -10128,7 +10175,7 @@ function POSPrototype({ tenantId }) {
                         )}
 
                         {!editing ? (
-                          <div style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: voided ? 0 : 10 }}>
+                          <div onClick={() => setReceiptDetailId(r.id)} title={t("receiptDetailTapHint")} style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: voided ? 0 : 10, cursor: "pointer" }}>
                             {r.items.map((it, idx) => (
                               <span key={idx}>
                                 {it.qty}&times; {it.name}
@@ -10136,6 +10183,7 @@ function POSPrototype({ tenantId }) {
                                 {idx < r.items.length - 1 ? ", " : ""}
                               </span>
                             ))}
+                            <span style={{ marginLeft: 8, color: theme.secondaryLight, whiteSpace: "nowrap" }}>{t("receiptDetailLink")}</span>
                           </div>
                         ) : (
                           <div style={{ marginBottom: 10 }}>
@@ -11370,12 +11418,20 @@ function POSPrototype({ tenantId }) {
                               </div>
                             </div>
                           )}
-                          <button
-                            onClick={() => settleDeliveryCash(p)}
-                            style={{ marginTop: 10, fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: "#FBF8F2", cursor: "pointer", fontWeight: 600 }}
-                          >
-                            {t("settleDeliveryCash")}
-                          </button>
+                          <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button
+                              onClick={() => printRiderReportFor([p])}
+                              style={{ fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 600 }}
+                            >
+                              {t("riderReportPrint")}
+                            </button>
+                            <button
+                              onClick={() => settleDeliveryCash(p)}
+                              style={{ fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: "#FBF8F2", cursor: "pointer", fontWeight: 600 }}
+                            >
+                              {t("settleDeliveryCash")}
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -12379,6 +12435,110 @@ function POSPrototype({ tenantId }) {
           </div>
         </div>
       )}
+
+      {receiptDetail && (() => {
+        const r = receiptDetail;
+        const cancelled = r.status === "cancelled";
+        const refunded = r.status === "refunded";
+        const voided = cancelled || refunded;
+        const unpaid = !voided && r.paid === false;
+        const when = (iso) => (iso ? new Date(iso).toLocaleString(isRtl ? "ar-EG" : "en-US", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) : "");
+        const line = (label, value, opts = {}) => (
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: opts.big ? 16 : 13, fontWeight: opts.big ? 700 : 400, marginTop: opts.big ? 8 : 4, color: opts.color }}>
+            <span>{label}</span>
+            <span style={{ fontFamily: "IBM Plex Mono, monospace", whiteSpace: "nowrap" }}>{value}</span>
+          </div>
+        );
+        const later = allMethods.find((m) => m.platform && m.id === r.paymentMethod);
+        const waiter = r.assignedTo?.role === "waiter" ? r.assignedTo.name : r.servedBy?.name;
+        const section = (title, children) => (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed #C9C2B2" }}>
+            <div style={{ fontSize: 11, color: COLORS.charcoalSoft, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>{title}</div>
+            {children}
+          </div>
+        );
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 16 }} onClick={() => setReceiptDetailId(null)}>
+            <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 22, width: "100%", maxWidth: 440, maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600 }}>{t("ticketHash", { n: r.ticketNo })}</div>
+                <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 18, fontWeight: 700, textDecoration: voided ? "line-through" : "none" }}>{money(r.total)}</div>
+              </div>
+              <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginTop: 2 }}>{when(r.timestamp)}</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                <span style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 999, background: "#E8E2D2" }}>{r.table || t("takeawayLabel")}</span>
+                {r.deliveryMethod && <span style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 999, background: "#E8E2D2" }}>{r.deliveryMethod === "pickup" ? t("pickupBadge") : t("deliveryBadge", { zone: r.deliveryZoneLabel })}</span>}
+                {cancelled && <span style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 999, background: "#F0E3B8" }}>{t("cancelledBadge")}</span>}
+                {refunded && <span style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 999, background: "#F0CFC9" }}>{t("refundedBadge")}</span>}
+                {unpaid && <span style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 999, background: "#F0E3B8", fontWeight: 700 }}>{t("unpaidBadge")}</span>}
+              </div>
+              {(waiter || (r.assignedTo && r.assignedTo.role !== "waiter") || r.eta) && (
+                <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginTop: 8, lineHeight: 1.6 }}>
+                  {waiter && <div>{t("servedByLabel", { name: waiter })}</div>}
+                  {r.assignedTo && r.assignedTo.role !== "waiter" && <div>{t("assignedToBadge", { role: t("roleDelivery"), name: r.assignedTo.name })}</div>}
+                  {r.eta && <div>{t("kitchenEta", { text: r.eta })}</div>}
+                </div>
+              )}
+
+              {r.customer && (r.customer.name || r.customer.phone || r.customer.address) && section(t("receiptDetailCustomer"), (
+                <div style={{ fontSize: 13.5, lineHeight: 1.55 }}>
+                  {r.customer.name && <div style={{ fontWeight: 600 }}>{r.customer.name}</div>}
+                  {r.customer.phone && <div>{r.customer.phone}</div>}
+                  {r.customer.address && <div style={{ color: COLORS.charcoalSoft }}>{r.customer.address}</div>}
+                </div>
+              ))}
+
+              {section(t("receiptDetailItems"), (
+                <div>
+                  {r.items.map((it, idx) => (
+                    <div key={idx} style={{ marginBottom: 6 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13.5 }}>
+                        <span>{it.qty}&times; {it.name}</span>
+                        <span style={{ fontFamily: "IBM Plex Mono, monospace", whiteSpace: "nowrap" }}>{money(it.price * it.qty)}</span>
+                      </div>
+                      {it.note && <div style={{ fontSize: 12, color: COLORS.charcoalSoft, fontStyle: "italic" }}>{it.note}</div>}
+                    </div>
+                  ))}
+                </div>
+              ))}
+
+              <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed #C9C2B2" }}>
+                {line(t("subtotal"), money(r.subtotal))}
+                {r.discount && line(`${t("discount")}${r.discount.type === "percent" ? ` (${r.discount.value}%)` : ""}`, `-${money(r.discountAmount || 0)}`)}
+                {r.discount?.reason && <div style={{ fontSize: 11.5, color: COLORS.charcoalSoft }}>{t("discountReasonLabel", { reason: r.discount.reason })}</div>}
+                {r.serviceRate > 0 && line(`${t("serviceCharge")} (${r.serviceRate}%)`, money(r.serviceAmount || 0))}
+                {r.vatRate > 0 && line(`${t("vat")} (${r.vatRate}%)`, money(r.vatAmount || 0))}
+                {r.deliveryMethod === "delivery" && r.deliveryFee > 0 && line(t("deliveryFeeLineLabel"), money(r.deliveryFee))}
+                {line(t("total"), money(r.total), { big: true })}
+                {r.splitCount > 1 && <div style={{ fontSize: 12, color: COLORS.charcoalSoft, marginTop: 4 }}>{t("splitLabel", { n: r.splitCount })} · {t("eachPays", { amount: money(r.total / r.splitCount) })}</div>}
+              </div>
+
+              {section(t("receiptDetailPayment"), (
+                <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>
+                  {r.paymentMethod === "split" && Array.isArray(r.splitPayments)
+                    ? r.splitPayments.map((sp) => <div key={sp.method}>{t("paidVia", { method: t(`payment_${sp.method}`) })} — {money(sp.amount)}</div>)
+                    : <div>{t("paidVia", { method: t(`payment_${r.paymentMethod}`) })}</div>}
+                  {r.paid === false ? <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailNotPaid")}</div> : r.paidAt && <div style={{ color: COLORS.charcoalSoft }}>{t("receiptDetailPaidAt", { time: when(r.paidAt) })}</div>}
+                  {later && !voided && (r.platformSettled
+                    ? <div style={{ color: "#3F5B45", fontWeight: 600 }}>{t("receiptDetailPlatformReceived", { app: t(`payment_${later.id}`), time: when(r.platformSettledAt) })}</div>
+                    : <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailPlatformOwed", { app: t(`payment_${later.id}`) })}</div>)}
+                  {r.tableId === "delivery" && r.assignedTo && !voided && (r.deliverySettled
+                    ? <div style={{ color: "#3F5B45", fontWeight: 600 }}>{t("receiptDetailDeliverySettled", { time: when(r.deliverySettledAt) })}</div>
+                    : <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailDeliveryOpen", { name: r.assignedTo.name })}</div>)}
+                  {voided && <div style={{ color: COLORS.charcoalSoft }}>{t(cancelled ? "receiptDetailCancelledAt" : "receiptDetailRefundedAt", { time: when(cancelled ? r.cancelledAt : r.refundedAt), name: (cancelled ? r.cancelledBy : r.refundedBy)?.name || "—" })}</div>}
+                  {voided && Array.isArray(r.returnedAmounts) && r.returnedAmounts.length > 0 && <div style={{ color: COLORS.charcoalSoft }}>{t("returnedViaLabel", { methods: r.returnedAmounts.map((a) => `${t(`payment_${a.method}`)} ${money(a.amount)}`).join(" + ") })}</div>}
+                </div>
+              ))}
+
+              <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
+                <button onClick={() => printSavedReceipt(r)} style={{ flex: 1, minWidth: 110, padding: "10px 0", borderRadius: 8, border: `1px solid ${theme.primary}`, background: "transparent", color: theme.primary, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("printReceipt")}</button>
+                <button onClick={() => printKitchenTicket(kitchenTicketFromReceipt(r))} style={{ flex: 1, minWidth: 110, padding: "10px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("kitchenTicketButton")}</button>
+                <button onClick={() => setReceiptDetailId(null)} style={{ flex: 1, minWidth: 80, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("close")}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {returnDialog && (() => {
         const r = returnDialog.receipt;
