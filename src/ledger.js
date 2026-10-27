@@ -36,6 +36,9 @@ export const PAYMENT_METHODS = [
 export const DIRECT_METHODS = PAYMENT_METHODS.filter((m) => !m.platform);
 export const PLATFORM_METHODS = PAYMENT_METHODS.filter((m) => m.platform);
 export const isPlatformMethod = (id) => PLATFORM_METHODS.some((m) => m.id === id);
+// A restaurant can add its own payment methods in Settings. Their ids start with "x_"; whether one is paid at once or
+// paid later by an app is the restaurant's setting, not something stored on the order.
+export const isCustomMethodId = (id) => typeof id === "string" && /^x_[a-z0-9]+$/.test(id);
 
 export const round2 = (n) => Math.round(n * 100) / 100;
 
@@ -107,8 +110,9 @@ export const cashTimeOf = (r) => (r.tableId === "delivery" && r.deliverySettledA
 export const summarize = (completed) => {
   const methodAmounts = completed.flatMap(receiptMethodAmounts);
   const byMethod = {};
-  PAYMENT_METHODS.forEach((m) => {
-    byMethod[m.id] = methodAmounts.filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0);
+  // The built-in methods always appear (even at 0); any other method found on an order — one the restaurant added — appears too.
+  [...PAYMENT_METHODS.map((m) => m.id), ...new Set(methodAmounts.map((a) => a.method).filter((id) => !PAYMENT_METHODS.some((m) => m.id === id)))].forEach((id) => {
+    byMethod[id] = methodAmounts.filter((a) => a.method === id).reduce((s, a) => s + a.amount, 0);
   });
   const discounted = completed.filter((r) => (r.discountAmount || 0) > 0);
   const unpaid = completed.filter((r) => r.paid === false);
@@ -124,9 +128,10 @@ export const summarize = (completed) => {
 
 // ---- money owed by delivery apps ----
 // For each delivery app: the paid, completed orders sold through it that it has not yet paid the restaurant for,
-// with the amount each one carries for that app, and the total owed. `orders` is any list of receipts.
-export const platformOwed = (orders) =>
-  PLATFORM_METHODS.map((m) => {
+// with the amount each one carries for that app, and the total owed. `orders` is any list of receipts; `apps` is
+// the list of paid-later methods ({ id, label }) — the built-in delivery apps unless the restaurant added more.
+export const platformOwed = (orders, apps = PLATFORM_METHODS) =>
+  apps.map((m) => {
     const list = orders
       .filter((r) => r.status === "completed" && r.paid !== false && !r.platformSettled)
       .map((r) => ({ r, amount: round2(receiptMethodAmounts(r).filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0)) }))
@@ -330,7 +335,7 @@ export function createLedger(data) {
     const nowIso = new Date(nowMs).toISOString();
     const { completed, voided, expenseTotal } = p;
     const dayCompleted = completed;
-    const byMethod = PAYMENT_METHODS.map((m) => ({ id: m.id, total: p.byMethod[m.id] })).filter((m) => m.total > 0);
+    const byMethod = Object.keys(p.byMethod).map((id) => ({ id, total: p.byMethod[id] })).filter((m) => m.total > 0);
     const priceOf = priceMaps();
     const poolFor = (a, b) => {
       const keys = monthKeysInRange(storageMonthOf(a), storageMonthOf(b));

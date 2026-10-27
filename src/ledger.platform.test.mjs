@@ -60,4 +60,25 @@ ok("only the delivery apps are kept out of split payments and electronic reconci
   assert.ok(L.isPlatformMethod("talabat") && !L.isPlatformMethod("cash"));
 });
 
+// A restaurant can add its own methods in Settings (ids start with "x_"): they are summed like any other.
+const custom = [order("6", "x_fawry1", 40), order("7", "x_breadfast", 90), order("8", "x_breadfast", 10, { platformSettled: true })];
+ok("a method the restaurant added appears in the payment-method totals and Close the day, and adds up to revenue", () => {
+  const l = ledgerOf(custom);
+  const p = l.period(day, day);
+  assert.equal(p.byMethod.x_fawry1, 40);
+  assert.equal(p.byMethod.x_breadfast, 100);
+  assert.equal(Object.values(p.byMethod).reduce((s, v) => s + v, 0), p.revenue);
+  const cd = l.closeDay(day, Date.parse("2026-10-21T00:00:00Z"));
+  assert.deepEqual(cd.byMethod.map((m) => [m.id, m.total]), [["x_fawry1", 40], ["x_breadfast", 100]]);
+  assert.equal(cd.drawers[0].cashIn, 0);
+});
+
+ok("an added method that is paid later is owed only when the restaurant says so", () => {
+  const owed = L.platformOwed(custom, [{ id: "x_breadfast", label: "Breadfast" }]);
+  assert.equal(owed.length, 1);
+  assert.equal(owed[0].owed, 90);
+  assert.deepEqual(owed[0].orders.map((x) => x.r.id), ["7"]);
+  assert.ok(L.isCustomMethodId("x_breadfast") && !L.isCustomMethodId("cash") && !L.isCustomMethodId("x_Bad id"));
+});
+
 console.log(`${n} checks passed`);
