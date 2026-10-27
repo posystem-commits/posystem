@@ -965,6 +965,13 @@ const STRINGS = {
     settleDeliveryCash: "Settle up",
     confirm_settleDelivery: "Mark all of {{name}}'s outstanding orders as settled?",
     notice_deliverySettled: "Settled up with {{name}}",
+    paymentSettingsTitle: "Payment methods",
+    paymentSettingsHint: "Choose which payment methods this restaurant offers and what each one is called. Turning one off only hides it for new orders — past orders keep it. Talabat and Elmenus are for orders that come through those apps: the restaurant is paid later, so they are tracked on the Dashboard as money owed.",
+    paymentSettingsOn: "On",
+    paymentSettingsOff: "Off",
+    paymentSettingsAlwaysOn: "Always on",
+    paymentSettingsDeliveryApp: "Delivery app",
+    paymentSettingsLoadFailed: "Couldn't load this setting from the server, so it is locked to avoid overwriting it. Reload the page to try again.",
     platformOwedTitle: "Owed by delivery apps",
     platformOwedSubtitle: "Orders paid through Talabat or Elmenus. The app pays the restaurant later, usually at the end of the month — each order stays here until you mark it received.",
     platformOwedTotal: "Total owed",
@@ -1906,6 +1913,13 @@ const STRINGS = {
     settleDeliveryCash: "تسوية الحساب",
     confirm_settleDelivery: "تحديد كل طلبات {{name}} غير المُسوّاة كمُسوّاة؟",
     notice_deliverySettled: "تمت التسوية مع {{name}}",
+    paymentSettingsTitle: "طرق الدفع",
+    paymentSettingsHint: "اختر طرق الدفع التي يقدّمها المطعم واسم كل منها. إيقاف طريقة يخفيها عن الطلبات الجديدة فقط — الطلبات السابقة تحتفظ بها. طلبات والمنيوس للطلبات القادمة عبر هذه التطبيقات: يدفع التطبيق للمطعم لاحقًا، لذلك تُتابَع في لوحة المعلومات كمبالغ مستحقة.",
+    paymentSettingsOn: "مفعّل",
+    paymentSettingsOff: "متوقف",
+    paymentSettingsAlwaysOn: "مفعّل دائمًا",
+    paymentSettingsDeliveryApp: "تطبيق توصيل",
+    paymentSettingsLoadFailed: "تعذّر تحميل هذا الإعداد من الخادم، لذلك تم قفله لتجنّب الكتابة فوقه. أعد تحميل الصفحة للمحاولة مرة أخرى.",
     platformOwedTitle: "مستحق من تطبيقات التوصيل",
     platformOwedSubtitle: "الطلبات المدفوعة عبر طلبات أو المنيوس. يدفع التطبيق للمطعم لاحقًا، عادةً في نهاية الشهر — يظل كل طلب هنا حتى تحدده كمُستلَم.",
     platformOwedTotal: "إجمالي المستحق",
@@ -2177,7 +2191,7 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app: Talabat and Elmenus. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items).
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items).
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
@@ -2378,6 +2392,22 @@ const fmtStock = (n, unit) => (isCountUnit(unit) && !Number.isInteger(n) ? fmtRe
 // pickers used to) is a day behind for the first hours after local midnight (UTC+2/+3), which made
 // today's date unselectable right when late-night shifts were being reviewed.
 const todayLocalStr = () => localDateStr(new Date());
+
+// Which payment methods a restaurant offers, and what it calls them (Settings > Payment methods). Cash is always
+// on; the delivery apps are off until switched on, so a restaurant that never touches them sees no change.
+const paymentConfigFrom = (raw) => {
+  let parsed = null;
+  try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+  const enabled = {};
+  const names = {};
+  PAYMENT_METHODS.forEach((m) => {
+    if (parsed?.enabled && typeof parsed.enabled[m.id] === "boolean") enabled[m.id] = parsed.enabled[m.id];
+    const nm = parsed?.names && typeof parsed.names[m.id] === "string" ? parsed.names[m.id].trim().slice(0, 24) : "";
+    if (nm) names[m.id] = nm;
+  });
+  return { enabled, names };
+};
+const paymentMethodOn = (cfg, id) => id === "cash" || (cfg && id in cfg.enabled ? !!cfg.enabled[id] : !isPlatformMethod(id));
 const monthLocalKey = () => todayLocalStr().slice(0, 7);
 const formatShortDate = (dateStr, isRtl) =>
   new Date(`${dateStr}T00:00:00Z`).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -2796,6 +2826,9 @@ function POSPrototype({ tenantId }) {
   const [receiptsFilterMode, setReceiptsFilterMode] = useState("month"); // "month" | "day" | "range"
   const [receiptsFilterDay, setReceiptsFilterDay] = useState(null);
   const [receiptsFilterRangeStart, setReceiptsFilterRangeStart] = useState(null);
+  const [paymentConfig, setPaymentConfig] = useState({ enabled: {}, names: {} }); // shared: which payment methods are offered, and their custom names
+  const [paymentConfigLoaded, setPaymentConfigLoaded] = useState(false);
+  const [paymentConfigLoadFailed, setPaymentConfigLoadFailed] = useState(false);
   const [platformOpenKey, setPlatformOpenKey] = useState(null); // Dashboard's "Owed by delivery apps": which app+month row has its orders expanded
   const [riderReportId, setRiderReportId] = useState(null); // Delivery tab's per-employee report: which rider (null = the first one)
   const [riderReportFrom, setRiderReportFrom] = useState(null); // business-day range, YYYY-MM-DD; null = today
@@ -3252,6 +3285,17 @@ function POSPrototype({ tenantId }) {
 
     (async () => {
       try {
+        const result = await getSharedWithRetry(storage, "payment-methods-config");
+        setPaymentConfig(paymentConfigFrom(result?.value));
+      } catch (e) {
+        setPaymentConfigLoadFailed(true);
+      } finally {
+        setPaymentConfigLoaded(true);
+      }
+    })();
+
+    (async () => {
+      try {
         const result = await getSharedWithRetry(storage, "ui-theme-config");
         const parsed = result?.value ? JSON.parse(result.value) : null;
         if (parsed?.theme === "light" || parsed?.theme === "dark") setUiTheme(parsed.theme);
@@ -3633,6 +3677,14 @@ function POSPrototype({ tenantId }) {
     );
   }, [deliveryFeeRetentionMode, deliveryFeeRetentionPercent, deliveryFeeRetentionFixed, deliveryShareConfigLoaded, deliveryShareConfigLoadFailed]);
   useEffect(() => {
+    if (!paymentConfigLoaded || paymentConfigLoadFailed) return;
+    syncSet("payment-methods-config", JSON.stringify(paymentConfig), true, t("syncLabelSettings"));
+  }, [paymentConfig, paymentConfigLoaded, paymentConfigLoadFailed]);
+  // A method switched off while a ticket still had it selected falls back to cash.
+  useEffect(() => {
+    if (paymentConfigLoaded && paymentMethod !== "split" && !paymentMethodOn(paymentConfig, paymentMethod)) setPaymentMethod("cash");
+  }, [paymentConfig, paymentConfigLoaded, paymentMethod]);
+  useEffect(() => {
     if (!uiThemeLoaded || uiThemeLoadFailed) return;
     syncSet("ui-theme-config", JSON.stringify({ theme: uiTheme }), true, t("syncLabelSettings"));
   }, [uiTheme, uiThemeLoaded, uiThemeLoadFailed]);
@@ -3829,10 +3881,14 @@ function POSPrototype({ tenantId }) {
   // interpolation. This covers app chrome only — menu items, categories, and ingredient/stock
   // names are the restaurant's own data and are never run through this.
   const t = (key, vars) => {
+    // A name the restaurant gave a payment method in Settings replaces the built-in one everywhere it is shown.
+    if (key.startsWith("payment_") && paymentConfig.names[key.slice(8)]) return paymentConfig.names[key.slice(8)];
     const template = (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.en[key] || key;
     if (!vars) return template;
     return template.replace(/\{\{(\w+)\}\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : ""));
   };
+  const enabledMethods = PAYMENT_METHODS.filter((m) => paymentMethodOn(paymentConfig, m.id));
+  const enabledDirectMethods = DIRECT_METHODS.filter((m) => paymentMethodOn(paymentConfig, m.id));
   // Simple two-way pluralizer for the small set of countable UI strings ("N items", etc.).
   const tCount = (baseKey, n, vars) => t(n === 1 ? baseKey : `${baseKey}_plural`, { n, ...vars });
   const isRtl = lang === "ar";
@@ -9201,7 +9257,7 @@ function POSPrototype({ tenantId }) {
             )}
 
             <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>
-              {PAYMENT_METHODS.map((m) => (
+              {enabledMethods.map((m) => (
                 <button key={m.id} onClick={() => { setPaymentMethod(m.id); if (isPlatformMethod(m.id)) setPaidNow(true); }} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === m.id ? theme.secondary : "var(--border)"}`, background: paymentMethod === m.id ? "#3A2E22" : "transparent", color: paymentMethod === m.id ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
                   {t(`payment_${m.id}`)}
                 </button>
@@ -9216,7 +9272,7 @@ function POSPrototype({ tenantId }) {
               const splitRemaining = Math.round((total - splitEntered) * 100) / 100;
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: 10 }}>
-                  {DIRECT_METHODS.map((m) => (
+                  {enabledDirectMethods.map((m) => (
                     <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                       <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t(`payment_${m.id}`)}</span>
                       <input
@@ -10075,7 +10131,7 @@ function POSPrototype({ tenantId }) {
                             <div style={{ marginBottom: 10 }}>
                               <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginBottom: 5 }}>{t("paymentMethodEditLabel")}</div>
                               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                {PAYMENT_METHODS.map((m) => {
+                                {PAYMENT_METHODS.filter((m) => paymentMethodOn(paymentConfig, m.id) || m.id === editPaymentMethod).map((m) => {
                                   const isCurrent = editPaymentMethod === m.id;
                                   return (
                                     <button
@@ -11705,7 +11761,7 @@ function POSPrototype({ tenantId }) {
               <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {DIRECT_METHODS.map((m) => (
+                  {enabledDirectMethods.map((m) => (
                     <button
                       key={m.id}
                       onClick={() => setPayTableModal((p) => ({ ...p, paymentMethod: m.id }))}
@@ -11723,7 +11779,7 @@ function POSPrototype({ tenantId }) {
                 </div>
                 {payTableModal.paymentMethod === "split" && (
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                    {DIRECT_METHODS.map((m) => (
+                    {enabledDirectMethods.map((m) => (
                       <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                         <span style={{ fontSize: 12.5 }}>{t(`payment_${m.id}`)}</span>
                         <input
@@ -12670,6 +12726,51 @@ function POSPrototype({ tenantId }) {
                 </div>
               )}
 
+              {isManager && (
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("paymentSettingsTitle")}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginBottom: 12, lineHeight: 1.5 }}>{t("paymentSettingsHint")}</div>
+                  {paymentConfigLoadFailed && <div style={{ fontSize: 11.5, color: "#E3A79C", marginBottom: 10 }}>{t("paymentSettingsLoadFailed")}</div>}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {PAYMENT_METHODS.map((m) => {
+                      const on = paymentMethodOn(paymentConfig, m.id);
+                      const locked = m.id === "cash" || paymentConfigLoadFailed;
+                      const defaultName = (STRINGS[lang] && STRINGS[lang][`payment_${m.id}`]) || m.label;
+                      return (
+                        <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 12px", flexWrap: "wrap" }}>
+                          <button
+                            disabled={locked}
+                            onClick={() => setPaymentConfig((prev) => ({ ...prev, enabled: { ...prev.enabled, [m.id]: !on } }))}
+                            style={{ width: 64, padding: "6px 0", borderRadius: 999, border: `1px solid ${on ? "#3F5B45" : "var(--border)"}`, background: on ? "#22301F" : "transparent", color: on ? "#9FCB8E" : "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: locked ? "default" : "pointer", opacity: m.id === "cash" ? 0.7 : 1 }}
+                          >
+                            {on ? t("paymentSettingsOn") : t("paymentSettingsOff")}
+                          </button>
+                          <input
+                            type="text"
+                            maxLength={24}
+                            disabled={paymentConfigLoadFailed}
+                            value={paymentConfig.names[m.id] || ""}
+                            placeholder={defaultName}
+                            onChange={(e) => {
+                              const v = e.target.value.slice(0, 24);
+                              setPaymentConfig((prev) => {
+                                const names = { ...prev.names };
+                                if (v.trim()) names[m.id] = v; else delete names[m.id];
+                                return { ...prev, names };
+                              });
+                            }}
+                            className="field"
+                            style={{ flex: 1, minWidth: 140 }}
+                          />
+                          {m.id === "cash" && <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{t("paymentSettingsAlwaysOn")}</span>}
+                          {m.platform && <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{t("paymentSettingsDeliveryApp")}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {isManager && hasFeature("tabAccessControl") && (
                 <div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("tabAccessTitle")}</div>
@@ -12784,6 +12885,7 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
   const [loaded, setLoaded] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false); // the "Request the bill" modal, table QR view only
   const [checkoutMethod, setCheckoutMethod] = useState("cash");
+  const [payConfig, setPayConfig] = useState({ enabled: {}, names: {} }); // the restaurant's Settings > Payment methods
   const [checkoutTab, setCheckoutTab] = useState(null); // { items } | null — this table's confirmed running order, fetched on demand
   const [checkoutUnpaidReceipts, setCheckoutUnpaidReceipts] = useState([]); // receipts staff already saved for this table but haven't collected payment for yet
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -12829,6 +12931,21 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
   const [ccCustomers, setCcCustomers] = useState({});
   const [ccShowSuggestions, setCcShowSuggestions] = useState(false);
   const [ccRecognized, setCcRecognized] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await getSharedWithRetry(storage, "payment-methods-config");
+        if (!cancelled) setPayConfig(paymentConfigFrom(r?.value));
+      } catch (e) {
+        // keeps the defaults: every direct method offered, under its usual name
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [storage]);
 
   useEffect(() => {
     if (!callCenter) return;
@@ -13086,6 +13203,9 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
   };
   const isRtl = lang === "ar";
   const theme = { primary: primaryColor, secondary: secondaryColor, secondaryLight: lighten(secondaryColor, 0.42) };
+  // A name the restaurant gave a payment method in Settings replaces the built-in one.
+  const tBase = t;
+  const tPay = (key, vars) => (key.startsWith("payment_") && payConfig.names[key.slice(8)] ? payConfig.names[key.slice(8)] : tBase(key, vars));
 
   const allItems = useMemo(() => {
     const map = {};
@@ -13309,7 +13429,7 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
                 <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 600, marginBottom: 8 }}>{t("checkoutRequestedTitle")}</div>
                 <div style={{ fontSize: 13, color: COLORS.charcoalSoft, marginBottom: 6, lineHeight: 1.5 }}>{t("checkoutRequestedBody")}</div>
                 <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 22, margin: "14px 0" }}>{money(checkoutTotal)}</div>
-                <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 20 }}>{t(`payment_${checkoutMethod}`)}</div>
+                <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 20 }}>{tPay(`payment_${checkoutMethod}`)}</div>
                 <button onClick={() => setCheckoutOpen(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("orderSentOk")}</button>
               </div>
             ) : (
@@ -13357,13 +13477,13 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
                     <div style={{ marginTop: 16 }}>
                       <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {DIRECT_METHODS.map((m) => (
+                        {DIRECT_METHODS.filter((m) => paymentMethodOn(payConfig, m.id)).map((m) => (
                           <button
                             key={m.id}
                             onClick={() => setCheckoutMethod(m.id)}
                             style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${checkoutMethod === m.id ? theme.secondary : "#DCD5C4"}`, background: checkoutMethod === m.id ? "rgba(176,141,87,0.18)" : "transparent", color: checkoutMethod === m.id ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
                           >
-                            {t(`payment_${m.id}`)}
+                            {tPay(`payment_${m.id}`)}
                           </button>
                         ))}
                       </div>
