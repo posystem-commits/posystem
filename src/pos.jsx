@@ -3868,8 +3868,24 @@ function POSPrototype({ tenantId }) {
     const outgoingKey = activeTableId === null ? "takeaway" : activeTableId;
     const outgoingDraft = { cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
     const incomingKey = nextId === null ? "takeaway" : nextId;
-    const incoming = tableDrafts[incomingKey] || blankDraft();
-    setTableDrafts((prev) => ({ ...prev, [outgoingKey]: outgoingDraft }));
+    let incoming = tableDrafts[incomingKey] || blankDraft();
+    // Takeaway and Delivery are the same order with a different fulfilment — if the cashier flips
+    // between them before confirming, bring the items (and the customer/payment details typed so
+    // far) along instead of leaving them behind on the other tab. Only when the destination is
+    // still empty, so it never overwrites or merges into an order already in progress there. The
+    // delivery fee, zone and assignee stay behind — they only make sense for one of the two.
+    const pickupDeliveryHop = (activeTableId === null && nextId === "delivery") || (activeTableId === "delivery" && nextId === null);
+    const carryOver = pickupDeliveryHop && cart.length > 0 && !(incoming.cart && incoming.cart.length > 0);
+    if (carryOver) {
+      incoming = { ...blankDraft(), cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta };
+      if (nextId === "delivery" && customerAddress) {
+        const addressWords = customerAddress.toLowerCase().split(/[\s,،/]+/).filter(Boolean);
+        const zone = deliveryZones.find((z) => z.label.toLowerCase().split(/[\s,،/]+/).filter(Boolean).some((zw) => addressWords.includes(zw)));
+        if (zone) incoming = { ...incoming, deliveryFee: zone.fee, deliveryZoneLabel: zone.label };
+      }
+    }
+    const leftBehind = carryOver ? blankDraft() : outgoingDraft;
+    setTableDrafts((prev) => ({ ...prev, [outgoingKey]: leftBehind }));
     setCart(incoming.cart);
     setTicketNo(incoming.ticketNo);
     setPaymentMethod(incoming.paymentMethod);
