@@ -960,6 +960,23 @@ const STRINGS = {
     settleDeliveryCash: "Settle up",
     confirm_settleDelivery: "Mark all of {{name}}'s outstanding orders as settled?",
     notice_deliverySettled: "Settled up with {{name}}",
+    riderReportTitle: "Delivery employee report",
+    riderReportSubtitle: "Pick a delivery employee and the dates to see every delivery they took — the client, the address and the order amount, with the delivery fee kept separate — then print it for them.",
+    riderReportEmployee: "Delivery employee",
+    riderReportFrom: "From",
+    riderReportTo: "To",
+    riderReportNoRiders: "No delivery staff yet — add them in the Staff tab and their reports will appear here.",
+    riderReportEmpty: "No completed delivery orders assigned to {{name}} on these dates.",
+    riderReportOrders: "Orders",
+    riderReportOrdersTotal: "Orders total",
+    riderReportFeesTotal: "Delivery fees",
+    riderReportGrandTotal: "Total (orders + fees)",
+    riderReportOrderAmount: "Order amount",
+    riderReportNoName: "No name given",
+    riderReportPrint: "Print report",
+    riderReportSignature: "Delivery employee signature",
+    riderReportReceivedBy: "Received by",
+    riderReportPrintedAt: "Printed {{time}}",
 
     notice_giveCategoryName: "Give the category a name first",
     notice_categoryExists: "A category with that name already exists",
@@ -1872,6 +1889,23 @@ const STRINGS = {
     settleDeliveryCash: "تسوية الحساب",
     confirm_settleDelivery: "تحديد كل طلبات {{name}} غير المُسوّاة كمُسوّاة؟",
     notice_deliverySettled: "تمت التسوية مع {{name}}",
+    riderReportTitle: "تقرير عامل التوصيل",
+    riderReportSubtitle: "اختر عامل التوصيل والتواريخ لترى كل توصيلة قام بها — اسم العميل والعنوان وقيمة الطلب، مع رسوم التوصيل منفصلة — ثم اطبع التقرير له.",
+    riderReportEmployee: "عامل التوصيل",
+    riderReportFrom: "من",
+    riderReportTo: "إلى",
+    riderReportNoRiders: "لا يوجد عمال توصيل بعد — أضفهم من تبويب الموظفين وستظهر تقاريرهم هنا.",
+    riderReportEmpty: "لا توجد طلبات توصيل مكتملة مسندة إلى {{name}} في هذه التواريخ.",
+    riderReportOrders: "الطلبات",
+    riderReportOrdersTotal: "إجمالي الطلبات",
+    riderReportFeesTotal: "رسوم التوصيل",
+    riderReportGrandTotal: "الإجمالي (الطلبات + الرسوم)",
+    riderReportOrderAmount: "قيمة الطلب",
+    riderReportNoName: "بدون اسم",
+    riderReportPrint: "طباعة التقرير",
+    riderReportSignature: "توقيع عامل التوصيل",
+    riderReportReceivedBy: "المستلم",
+    riderReportPrintedAt: "طُبع {{time}}",
 
     notice_giveCategoryName: "يرجى إدخال اسم للقسم أولاً",
     notice_categoryExists: "يوجد بالفعل قسم بهذا الاسم",
@@ -2116,12 +2150,12 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). Switching tables preserves each table's in-progress order separately.
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items).
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
-- **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
+- **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery. At the bottom of the Delivery tab there is also a "Delivery employee report" (shown when staff tracking is included in the package): tap a delivery employee, choose From / To dates (today by default), and it lists every completed delivery assigned to them — client name, phone, address and the order amount, with the delivery fee shown separately — plus the totals; "Print report" prints it for the employee with signature lines. Only orders that were assigned to that employee on the Order screen appear in it.
 - **Website** (manager-only; comes with the Online ordering link feature): turns the online-ordering link into a branded website for the restaurant. A manager picks one of five looks (Classic, Modern, Dark, Bold, Minimal — each sets fonts, shapes and layout together), can override the button and highlight colors (otherwise the brand colors from Settings are used), uploads a cover photo and up to 6 gallery photos, writes a tagline and an "About us" text in English and Arabic, adds an announcement banner, address and social links (Instagram, Facebook, TikTok, WhatsApp, website), chooses which sections show (About, Popular items row, Gallery, Opening hours — the hours and the "Open now / Closed" badge come from Settings → Shift hours) and chooses the language the page opens in. A live phone preview sits next to the controls (a "Preview" button on phones). Everything saves automatically, but customers keep seeing the original ordering page until the "Published" switch is turned on, and it can be switched off again at any time. The tab also lets the manager claim a short web address (for example /r/my-restaurant) to share on social media or print on menus; the original long link keeps working. Orders can't be sent from the preview. In the Menu editor, each dish has an "On your website" section: labels (Popular, New, Spicy, Vegetarian, Chef's pick) and a "Show in the Popular row" checkbox. Dish photos and the short description are what the website shows on each menu card. The website look also applies to table QR menus once published.
 - **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match), add, change or remove the order's discount (no need to delete the order and make a new one — a discount that is added or changed needs a written reason, the total and the service/VAT recalculate right away, a "Total after this edit" line shows the new bill before you save, and the change is recorded in the edit history and in the cash-drawer explanation on Close the day if the order was already paid), and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see totals, outstanding payables, and a by-category breakdown. Like the Dashboard and Receipts, it can be filtered by Month (a month dropdown), a single Day (a calendar), or a custom Range (any start and end date) using the toggle at the top; the totals, payables and category breakdown follow the chosen period.
@@ -2735,6 +2769,9 @@ function POSPrototype({ tenantId }) {
   const [receiptsFilterMode, setReceiptsFilterMode] = useState("month"); // "month" | "day" | "range"
   const [receiptsFilterDay, setReceiptsFilterDay] = useState(null);
   const [receiptsFilterRangeStart, setReceiptsFilterRangeStart] = useState(null);
+  const [riderReportId, setRiderReportId] = useState(null); // Delivery tab's per-employee report: which rider (null = the first one)
+  const [riderReportFrom, setRiderReportFrom] = useState(null); // business-day range, YYYY-MM-DD; null = today
+  const [riderReportTo, setRiderReportTo] = useState(null);
   const [receiptsFilterRangeEnd, setReceiptsFilterRangeEnd] = useState(null);
   const [receiptsRangePickerOpen, setReceiptsRangePickerOpen] = useState(false);
   const [receiptsRangePickingEnd, setReceiptsRangePickingEnd] = useState(false);
@@ -4477,6 +4514,15 @@ function POSPrototype({ tenantId }) {
     storageKeys.forEach((mk) => ensureMonthLoaded(mk));
     reportingKeys.forEach((mk) => ensureExpenseMonthLoaded(mk));
   }, [dashboardMode, dashboardRangeStart, dashboardRangeEnd]);
+  // Delivery tab's employee report: fetch every month its dates touch (plus one either side, for
+  // the same business-date spillover as the Dashboard).
+  useEffect(() => {
+    if (view !== "delivery") return;
+    const end = riderReportTo || todayLocalStr();
+    const start = riderReportFrom || end;
+    const [s, e] = start <= end ? [start, end] : [end, start];
+    storageMonthKeysFor(monthKeysInRange(s, e)).forEach((mk) => ensureMonthLoaded(mk));
+  }, [view, riderReportFrom, riderReportTo]);
 
   // Tracks connectivity and retries failed writes automatically once back online. Restaurant-wide
   // data now lives in a real tenant-scoped Postgres table via lib/tenantStorage.js (see
@@ -5843,6 +5889,69 @@ function POSPrototype({ tenantId }) {
   const receiptsListRevenue = receiptsListSummary.revenue;
   const receiptsListUnpaid = receiptsListSummary.unpaid.orders;
   const receiptsListUnpaidTotal = receiptsListSummary.unpaid.total;
+
+  // Delivery tab: one delivery employee's completed deliveries for a run of business days. The order
+  // amount is everything the client was charged except the delivery fee, which is listed beside it.
+  const riderReportRiders = dutyRoster.filter((p) => p.role === "delivery");
+  const riderReportRider = riderReportRiders.find((p) => p.id === riderReportId) || riderReportRiders[0] || null;
+  const riderReportEndRaw = riderReportTo || todayLocalStr();
+  const riderReportStartRaw = riderReportFrom || riderReportEndRaw;
+  const [riderReportFirstDay, riderReportLastDay] = riderReportStartRaw <= riderReportEndRaw ? [riderReportStartRaw, riderReportEndRaw] : [riderReportEndRaw, riderReportStartRaw];
+  const riderReportPool = ledger.ordersInDays(riderReportFirstDay, riderReportLastDay); // null until the months have loaded
+  const riderReportRows = (riderReportPool && riderReportRider
+    ? riderReportPool.filter((r) => r.status === "completed" && r.tableId === "delivery" && r.assignedTo?.id === riderReportRider.id)
+    : []
+  )
+    .sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0))
+    .map((r) => {
+      const fee = Number(r.deliveryFee) || 0;
+      return { r, fee, amount: Math.round((r.total - fee) * 100) / 100 };
+    });
+  const riderReportOrdersTotal = riderReportRows.reduce((s, x) => s + x.amount, 0);
+  const riderReportFeesTotal = riderReportRows.reduce((s, x) => s + x.fee, 0);
+  const riderReportRangeText = riderReportFirstDay === riderReportLastDay ? riderReportFirstDay : `${riderReportFirstDay} → ${riderReportLastDay}`;
+  const printRiderReport = () => {
+    if (!riderReportRider || riderReportRows.length === 0) return;
+    const locale = isRtl ? "ar-EG" : "en-US";
+    const stamp = (iso) => new Date(iso).toLocaleString(locale, riderReportFirstDay === riderReportLastDay
+      ? { hour: "numeric", minute: "2-digit" }
+      : { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+    const summaryRow = (label, value, bold) => `<div class="row" style="font-size:${bold ? 14 : 12}px;${bold ? "font-weight:700;" : ""}margin-top:${bold ? 6 : 3}px;"><span>${escapeHtml(label)}</span><span>${money(value)}</span></div>`;
+    const orderBlocks = riderReportRows
+      .map(({ r, fee, amount }, i) => `
+      <div style="border:1px solid #000;border-radius:5px;padding:6px 8px;margin-top:8px;page-break-inside:avoid;">
+        <div class="row" style="font-size:10.5px;color:#444;"><span>${i + 1} &middot; ${escapeHtml(t("ticketNumber", { n: r.ticketNo }))}</span><span>${escapeHtml(stamp(r.timestamp))}</span></div>
+        <div style="font-size:13px;font-weight:700;margin-top:4px;">${escapeHtml(r.customer?.name || t("riderReportNoName"))}</div>
+        ${r.customer?.phone ? `<div style="font-size:11px;">${escapeHtml(r.customer.phone)}</div>` : ""}
+        ${r.customer?.address ? `<div style="font-size:11px;margin-top:2px;">${escapeHtml(r.customer.address)}</div>` : ""}
+        <div style="border-top:1px dashed #000;margin-top:6px;padding-top:5px;">
+          <div class="row" style="font-size:12px;"><span>${escapeHtml(t("riderReportOrderAmount"))}</span><span style="font-weight:700;">${money(amount)}</span></div>
+          <div class="row" style="font-size:11px;margin-top:2px;"><span>${escapeHtml(t("deliveryFeeLineLabel"))}</span><span>${money(fee)}</span></div>
+        </div>
+      </div>`)
+      .join("");
+    const body = `
+      <div class="center">
+        ${brandHeaderHtml()}
+        <div style="font-size:13px;font-weight:700;letter-spacing:0.5px;margin-top:8px;">${escapeHtml(t("riderReportTitle"))}</div>
+        <div style="font-size:15px;font-weight:700;margin-top:4px;">${escapeHtml(riderReportRider.name)}</div>
+        <div style="font-size:11px;margin-top:2px;">${escapeHtml(riderReportRangeText)}</div>
+      </div>
+      <div class="dashed" style="margin-top:10px;">
+        <div class="row" style="font-size:12px;"><span>${escapeHtml(t("riderReportOrders"))}</span><span>${riderReportRows.length}</span></div>
+        ${summaryRow(t("riderReportOrdersTotal"), riderReportOrdersTotal)}
+        ${summaryRow(t("riderReportFeesTotal"), riderReportFeesTotal)}
+        <div style="border-top:1px solid #000;margin-top:6px;"></div>
+        ${summaryRow(t("riderReportGrandTotal"), riderReportOrdersTotal + riderReportFeesTotal, true)}
+      </div>
+      ${orderBlocks}
+      <div style="margin-top:26px;font-size:11px;">
+        <div style="border-top:1px solid #000;padding-top:3px;">${escapeHtml(t("riderReportSignature"))}</div>
+        <div style="border-top:1px solid #000;padding-top:3px;margin-top:22px;">${escapeHtml(t("riderReportReceivedBy"))}</div>
+      </div>
+      <div class="center" style="font-size:10px;margin-top:14px;color:#444;">${escapeHtml(t("riderReportPrintedAt", { time: new Date().toLocaleString(locale, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) }))}</div>`;
+    printViaHiddenFrame(`${t("riderReportTitle")} — ${riderReportRider.name}`, body, isRtl);
+  };
 
   const availableExpenseMonths = useMemo(() => Array.from(new Set([thisMonthKey(), ...expenseMonthKeys])).sort().reverse(), [expenseMonthKeys]);
   const currentExpenseMonth = selectedExpenseMonth || thisMonthKey();
@@ -11287,6 +11396,80 @@ function POSPrototype({ tenantId }) {
             )}
           </div>
           </>
+          )}
+
+          {hasFeature("teamTracking") && (
+          <div style={{ marginTop: 32 }}>
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("riderReportTitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14 }}>{t("riderReportSubtitle")}</div>
+            {riderReportRiders.length === 0 ? (
+              <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("riderReportNoRiders")}</div>
+            ) : (
+              <>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                  {riderReportRiders.map((p) => {
+                    const on = riderReportRider && riderReportRider.id === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setRiderReportId(p.id)}
+                        style={{ padding: "7px 14px", borderRadius: 999, border: `1px solid ${on ? theme.secondary : "var(--border)"}`, background: on ? "rgba(176,141,87,0.18)" : "transparent", color: on ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: on ? 600 : 400, cursor: "pointer" }}
+                      >
+                        {p.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 14 }}>
+                  <label style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+                    <div style={{ marginBottom: 3 }}>{t("riderReportFrom")}</div>
+                    <input type="date" value={riderReportFirstDay} max={todayLocalStr()} onChange={(e) => setRiderReportFrom(e.target.value || null)} className="field" />
+                  </label>
+                  <label style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+                    <div style={{ marginBottom: 3 }}>{t("riderReportTo")}</div>
+                    <input type="date" value={riderReportLastDay} max={todayLocalStr()} onChange={(e) => setRiderReportTo(e.target.value || null)} className="field" />
+                  </label>
+                  <button
+                    onClick={printRiderReport}
+                    disabled={riderReportRows.length === 0}
+                    style={{ marginLeft: "auto", padding: "9px 18px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: riderReportRows.length === 0 ? "default" : "pointer", opacity: riderReportRows.length === 0 ? 0.45 : 1 }}
+                  >
+                    {t("riderReportPrint")}
+                  </button>
+                </div>
+
+                {riderReportPool === null ? (
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
+                ) : riderReportRows.length === 0 ? (
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("riderReportEmpty", { name: riderReportRider.name })}</div>
+                ) : (
+                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
+                    {riderReportRows.map(({ r, fee, amount }, i) => (
+                      <div key={r.id || `${r.timestamp}-${i}`} style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "12px 16px", borderTop: i === 0 ? "none" : "1px solid var(--border)" }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 2 }}>
+                            {t("ticketNumber", { n: r.ticketNo })} · {new Date(r.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", riderReportFirstDay === riderReportLastDay ? { hour: "numeric", minute: "2-digit" } : { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 600 }}>{r.customer?.name || t("riderReportNoName")}{r.customer?.phone ? <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 12 }}> · {r.customer.phone}</span> : null}</div>
+                          {r.customer?.address && <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{r.customer.address}</div>}
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0, fontFamily: "IBM Plex Mono, monospace" }}>
+                          <div style={{ fontSize: 14, fontWeight: 600 }}>{money(amount)}</div>
+                          <div style={{ fontSize: 11.5, color: theme.secondaryLight, marginTop: 2 }}>+ {money(fee)}</div>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ borderTop: "1px solid var(--border)", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 4, fontSize: 13, background: "rgba(176,141,87,0.07)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("riderReportOrders")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{riderReportRows.length}</span></div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("riderReportOrdersTotal")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(riderReportOrdersTotal)}</span></div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("riderReportFeesTotal")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(riderReportFeesTotal)}</span></div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 14.5, marginTop: 4 }}><span>{t("riderReportGrandTotal")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(riderReportOrdersTotal + riderReportFeesTotal)}</span></div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
           )}
         </div>
       )}
