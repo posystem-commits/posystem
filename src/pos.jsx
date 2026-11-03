@@ -2244,7 +2244,7 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items).
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. There is deliberately no way to print or download a customer receipt before the order is saved: the receipt is printed only after Save order (automatically if the device's auto-print is on, or later with "Print receipt" from the Receipts tab), so every printed ticket has a saved order behind it. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items).
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. When a dish shows as out of stock because of its recipe, the badge on the Order screen names the ingredient that ran out (for example "Out of stock · no honey mustard"), and tapping the dish explains it — restock that ingredient in Stock, or remove it from the dish's recipe, and the dish comes back by itself. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
@@ -2271,7 +2271,7 @@ After a manager's PIN is accepted, they're asked "Clock in for a shift" or "Just
 Each table's QR code, and the general online-ordering link, land on the same customer-facing menu with a table ID (or no table ID, for the general link) in the URL, showing customers a live, view-only menu (items, descriptions, prices — no stock/availability details, by design, for customer privacy) where they can add items and send an order. That order does NOT go straight to the kitchen — it shows up as a "pending order" for staff to review in the Tables view (a badge appears, plus a pill in the header) and must be explicitly Confirmed (which merges it into that table's ticket) or Rejected. This is intentional so staff always have final say before anything hits the kitchen. Once staff taps Confirm, the customer's own device — if that page is still open — automatically shows a "Your order was confirmed and is being prepared!" banner within a few seconds, with no action needed from the customer. Rejecting an order does NOT notify the customer automatically — staff need to let them know some other way.
 
 ## Known limitations — mention these proactively if relevant
-- **Printing and QR codes only fully work once this app is deployed to a real, published URL.** If someone is testing inside Claude's chat preview, "Print receipt" and the QR code links won't function — use the "Download" button instead (downloads a receipt/flyer file they can open and print manually), and know that QR codes will start working once the app is actually deployed/published somewhere with a real public URL.
+- **Printing and QR codes only fully work once this app is deployed to a real, published URL.** If someone is testing inside Claude's chat preview, printing and the QR code links won't function (the QR flyer has a "Download" button that saves a file to open and print manually), and know that QR codes will start working once the app is actually deployed/published somewhere with a real public URL.
 - **Offline behavior**: the staff app keeps working through a lost connection — orders, menu edits, stock changes all still work and are queued to sync automatically once back online (shown via a "changes waiting to sync" indicator in the header). However, nothing survives closing the tab or refreshing while offline. Customer QR ordering is deliberately blocked while offline (no queueing) so no order can exist that the restaurant never sees.
 - **Ticket numbers** are simple ascending numbers (1, 2, 3...) that restart when the business day starts (the shift start set in Settings > Shift hours, e.g. 08:00 — not at midnight), shared across every terminal.
 - **Split bill** divides the total evenly and rounds to the cent for display — with an odd total split many ways, the per-person amounts may not add up to the exact total to the last cent.
@@ -5627,10 +5627,11 @@ function POSPrototype({ tenantId }) {
       whatsappLog: [],
     };
 
-    // Whatever this device prints by itself happens straight away, whatever happens to the save below.
-    autoPrintAfterSave(receipt);
-
     const receiptOk = await appendReceipt(thisMonthKey(), receipt);
+
+    // Nothing prints before the order is recorded, so a printed ticket always has a saved receipt behind it.
+    // (receiptOk only says whether the cloud sync landed; the order is already in this device's list and queued.)
+    autoPrintAfterSave(receipt);
 
     let customerOk = true;
     if (customer && customer.phone) {
@@ -5771,88 +5772,6 @@ function POSPrototype({ tenantId }) {
     const nameHtml = `<div style="font-size:16px;font-weight:700;">${escapeHtml(restaurantName)}</div>`;
     if (!logoUrl) return nameHtml;
     return `<img src="${logoUrl}" alt="${escapeHtml(restaurantName)}" style="max-width:130px;max-height:60px;margin:0 auto 6px;display:block;" />${nameHtml}`;
-  };
-
-  const buildOrderReceiptBodyHtml = (ticketNoOverride) => {
-    const displayTicketNo = ticketNoOverride || ticketNo;
-    const rows = cart
-      .map(
-        (item) => `
-      <div class="row" style="font-size:12px;margin-bottom:${item.note ? 0 : 4}px;">
-        <span>${item.qty}&times; ${escapeHtml(item.name)}</span>
-        <span>${money(item.price * item.qty)}</span>
-      </div>
-      ${item.note ? `<div style="font-size:10.5px;color:#555;font-style:italic;margin-bottom:4px;">${escapeHtml(item.note)}</div>` : ""}`
-      )
-      .join("");
-    const customerBlock =
-      customerName || customerPhone || customerAddress
-        ? `<div style="font-size:11px;margin-top:4px;">
-            ${escapeHtml(customerName)}${customerName && customerPhone ? " &middot; " : ""}${escapeHtml(customerPhone)}
-            ${customerAddress ? `<div>${escapeHtml(customerAddress)}</div>` : ""}
-          </div>`
-        : "";
-    const discountRow = discount
-      ? `<div class="row" style="font-size:11px;">
-          <span>${escapeHtml(t("discount"))} ${discount.type === "percent" ? `(${discount.value}%)` : ""}</span>
-          <span>-${money(discAmt)}</span>
-        </div>`
-      : "";
-    const serviceRow = effectiveServicePercent > 0
-      ? `<div class="row" style="font-size:11px;">
-          <span>${escapeHtml(t("serviceCharge"))} (${effectiveServicePercent}%)</span>
-          <span>${money(serviceAmt)}</span>
-        </div>`
-      : "";
-    const vatRow = effectiveVatPercent > 0
-      ? `<div class="row" style="font-size:11px;">
-          <span>${escapeHtml(t("vat"))} (${effectiveVatPercent}%)</span>
-          <span>${money(vatAmt)}</span>
-        </div>`
-      : "";
-    const deliveryFeeRow = deliveryMethod === "delivery" && deliveryFee > 0
-      ? `<div class="row" style="font-size:11px;">
-          <span>${escapeHtml(t("deliveryFeeLineLabel"))}${deliveryZoneLabel ? ` (${escapeHtml(deliveryZoneLabel)})` : ""}</span>
-          <span>${money(deliveryFee)}</span>
-        </div>`
-      : "";
-    const deliveryMethodLine = deliveryMethod
-      ? `<div style="font-size:10.5px;color:#555;margin-top:2px;">${escapeHtml(deliveryMethod === "pickup" ? t("pickupBadge") : t("deliveryBadge", { zone: deliveryZoneLabel }))}</div>`
-      : "";
-    return `
-      <div class="center">
-        ${brandHeaderHtml()}
-        <div style="font-size:11px;">${escapeHtml(tableLabel(activeTableId))}</div>
-        <div style="font-size:11px;">${escapeHtml(t("ticketNumber", { n: displayTicketNo }))}</div>
-        <div style="font-size:11px;">${new Date().toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}</div>
-        ${deliveryMethodLine}
-        ${customerBlock}
-      </div>
-      <div class="dashed">${rows}</div>
-      <div class="dashed">
-        <div class="row" style="font-size:11px;"><span>${escapeHtml(t("subtotal"))}</span><span>${money(subtotal)}</span></div>
-        ${discountRow}
-        ${serviceRow}
-        ${vatRow}
-        ${deliveryFeeRow}
-        <div class="row" style="font-size:14px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("total"))}</span><span>${money(total)}</span></div>
-        ${splitCount > 1 ? `<div class="row" style="font-size:12px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("splitLabel", { n: splitCount }))}</span><span>${escapeHtml(t("eachPays", { amount: money(total / splitCount) }))}</span></div>` : ""}
-        ${paymentMethod === "split"
-          ? allMethods.filter((m) => Number(splitAmounts[m.id]) > 0)
-              .map((m) => `<div style="font-size:11px;margin-top:2px;">${escapeHtml(t("paidVia", { method: t(`payment_${m.id}`) }))} &mdash; ${money(Number(splitAmounts[m.id]) || 0)}</div>`)
-              .join("")
-          : `<div style="font-size:11px;margin-top:4px;">${escapeHtml(t("paidVia", { method: t(`payment_${paymentMethod}`) }))}</div>`}
-      </div>
-      <div class="center" style="font-size:10px;margin-top:14px;">${escapeHtml(t("thankYou"))}</div>`;
-  };
-  const printOrderReceipt = () => {
-    const n = ensureTicketNo();
-    printViaHiddenFrame(t("ticketNumber", { n }), buildOrderReceiptBodyHtml(n), isRtl);
-  };
-  const downloadOrderReceipt = () => {
-    const n = ensureTicketNo();
-    downloadReceiptFile(t("ticketNumber", { n }), buildOrderReceiptBodyHtml(n), isRtl);
-    flashNotice(t("notice_receiptDownloaded"));
   };
 
   // Reprints an already-saved receipt from history — same layout as buildOrderReceiptBodyHtml,
@@ -9418,12 +9337,6 @@ function POSPrototype({ tenantId }) {
               {t("kitchenTicketButton")}
             </button>
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-              <button disabled={cart.length === 0} onClick={printOrderReceipt} title={t("printReceiptTooltip")} style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "var(--border)" : theme.secondary}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : theme.secondaryLight, fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
-                {t("printReceipt")}
-              </button>
-              <button disabled={cart.length === 0} onClick={downloadOrderReceipt} title={t("downloadReceiptTooltip")} style={{ padding: "13px 16px", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "var(--border)" : "var(--border)"}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : "var(--text-muted)", fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
-                {t("download")}
-              </button>
               <button disabled={cart.length === 0 || savingOrder} onClick={saveOrder} className="save-btn" style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: "none", background: cart.length === 0 || savingOrder ? "#4A2C33" : paidNow ? theme.primary : "#8A6A2E", color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: cart.length === 0 || savingOrder ? "not-allowed" : "pointer", opacity: cart.length === 0 || savingOrder ? 0.6 : 1 }}>
                 {savingOrder ? t("saved") : paidNow ? t("saveOrder") : t("saveOrderUnpaid")}
               </button>
