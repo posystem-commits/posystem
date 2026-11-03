@@ -424,12 +424,27 @@ const STRINGS = {
     autoPrintKitchen: "Kitchen ticket (no prices)",
     autoPrintBoth: "Both",
     autoPrintHint: "Applies to this device only. The customer receipt has the prices; the kitchen ticket has dishes, quantities and notes only. Phones and tablets show their print window each time.",
+    drawerTitle: "Cash drawer (this device)",
+    drawerOff: "Off",
+    drawerManual: "Open with F10 or a button",
+    drawerAuto: "Also open after every paid order",
+    drawerHint: "For a drawer plugged into the receipt printer. It needs a small helper program installed once on this computer (Windows). Press F10, or the Open cash drawer button on the Order screen, to open it by hand.",
+    drawerSetup: "Setup: 1) Download the helper below. 2) Double-click it and type the printer's name exactly as Windows shows it. 3) Come back here and tap Check connection. Chrome may ask once to allow this site to connect to devices on your computer — choose Allow.",
+    drawerDownload: "Download the helper (Windows)",
+    drawerTest: "Open the drawer now",
+    drawerCheck: "Check connection",
+    drawerHelperOk: "Helper is running — printer: {{printer}}",
+    drawerHelperMissing: "Helper not found on this computer. Install it first, then check again.",
+    drawerButton: "Open cash drawer (F10)",
+    drawerButtonTooltip: "Opens the cash drawer without a sale",
+    notice_drawerOpened: "Drawer opened",
+    notice_drawerFailed: "Couldn't open the drawer — is the helper running and the printer on? (Settings → Cash drawer)",
     kitchenWhereTitle: "Where the kitchen ticket prints",
     kitchenModeOff: "Off",
     kitchenModeHere: "Print on this device",
     kitchenModeSend: "Send to the kitchen printer",
     kitchenModeStation: "This device is the kitchen printer",
-    kitchenHint_off: "Orders are not printed for the kitchen automatically. You can still print a kitchen ticket by hand from the order screen or the Receipts tab.",
+    kitchenHint_off: "Orders are not printed for the kitchen automatically. You can still print a kitchen ticket by hand from the Receipts tab once an order is saved.",
     kitchenHint_here: "When an order is saved on this device, a kitchen ticket (dishes, quantities and notes — no prices) prints here.",
     kitchenHint_send: "When an order is saved on this device, its kitchen ticket is sent to the device that is set as the kitchen printer, which prints it. Use this on phones, tablets and tills that have no printer.",
     kitchenHint_station: "Connect the kitchen printer to this device and keep the app open. Every kitchen ticket saved on any device prints here within about 10 seconds.",
@@ -1398,12 +1413,27 @@ const STRINGS = {
     autoPrintKitchen: "تذكرة المطبخ (بدون أسعار)",
     autoPrintBoth: "الاثنان",
     autoPrintHint: "يسري على هذا الجهاز فقط. إيصال العميل فيه الأسعار؛ تذكرة المطبخ فيها الأصناف والكميات والملاحظات فقط. الهواتف والأجهزة اللوحية تعرض نافذة الطباعة في كل مرة.",
+    drawerTitle: "درج النقود (هذا الجهاز)",
+    drawerOff: "متوقف",
+    drawerManual: "يفتح بزر F10 أو بزر في الشاشة",
+    drawerAuto: "ويفتح أيضًا بعد كل طلب مدفوع",
+    drawerHint: "للدرج الموصول بطابعة الإيصالات. يحتاج إلى برنامج مساعد صغير يُثبَّت مرة واحدة على هذا الكمبيوتر (ويندوز). اضغط F10 أو زر فتح درج النقود في شاشة الطلب لفتحه يدويًا.",
+    drawerSetup: "الإعداد: ١) نزّل البرنامج المساعد بالأسفل. ٢) اضغط عليه مرتين واكتب اسم الطابعة تمامًا كما يظهر في ويندوز. ٣) ارجع هنا واضغط فحص الاتصال. قد يطلب كروم مرة واحدة السماح لهذا الموقع بالاتصال بالأجهزة على الكمبيوتر — اختر السماح.",
+    drawerDownload: "تنزيل البرنامج المساعد (ويندوز)",
+    drawerTest: "افتح الدرج الآن",
+    drawerCheck: "فحص الاتصال",
+    drawerHelperOk: "البرنامج المساعد يعمل — الطابعة: {{printer}}",
+    drawerHelperMissing: "لم يُعثر على البرنامج المساعد على هذا الكمبيوتر. ثبّته أولًا ثم افحص من جديد.",
+    drawerButton: "فتح درج النقود (F10)",
+    drawerButtonTooltip: "يفتح درج النقود بدون عملية بيع",
+    notice_drawerOpened: "تم فتح الدرج",
+    notice_drawerFailed: "تعذّر فتح الدرج — هل البرنامج المساعد يعمل والطابعة مفتوحة؟ (الإعدادات ← درج النقود)",
     kitchenWhereTitle: "أين تُطبع تذكرة المطبخ",
     kitchenModeOff: "إيقاف",
     kitchenModeHere: "اطبع على هذا الجهاز",
     kitchenModeSend: "أرسل إلى طابعة المطبخ",
     kitchenModeStation: "هذا الجهاز هو طابعة المطبخ",
-    kitchenHint_off: "لا تُطبع الطلبات للمطبخ تلقائيًا. ما زال بإمكانك طباعة تذكرة المطبخ يدويًا من شاشة الطلب أو من تبويب الإيصالات.",
+    kitchenHint_off: "لا تُطبع الطلبات للمطبخ تلقائيًا. ما زال بإمكانك طباعة تذكرة المطبخ يدويًا من تبويب الإيصالات بعد حفظ الطلب.",
     kitchenHint_here: "عند حفظ طلب على هذا الجهاز، تُطبع هنا تذكرة للمطبخ (الأصناف والكميات والملاحظات — بدون أسعار).",
     kitchenHint_send: "عند حفظ طلب على هذا الجهاز، تُرسل تذكرة المطبخ إلى الجهاز المحدد كطابعة المطبخ ليطبعها. استخدمه على الهواتف والأجهزة اللوحية وأجهزة الكاشير التي ليس لها طابعة.",
     kitchenHint_station: "وصّل طابعة المطبخ بهذا الجهاز وأبقِ التطبيق مفتوحًا. كل تذكرة تُحفظ على أي جهاز تُطبع هنا خلال نحو 10 ثوانٍ.",
@@ -2244,7 +2274,7 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. There is deliberately no way to print or download a customer receipt before the order is saved: the receipt is printed only after Save order (automatically if the device's auto-print is on, or later with "Print receipt" from the Receipts tab), so every printed ticket has a saved order behind it. Kitchen tickets (dish names, quantities and notes with NO prices) print only after the order is saved — automatically (see Kitchen printing under Settings) or from the saved receipt in the Receipts tab; there is no kitchen-ticket button on the Order screen before saving. A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items).
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. There is deliberately no way to print or download a customer receipt before the order is saved: the receipt is printed only after Save order (automatically if the device's auto-print is on, or later with "Print receipt" from the Receipts tab), so every printed ticket has a saved order behind it. Kitchen tickets (dish names, quantities and notes with NO prices) print only after the order is saved — automatically (see Kitchen printing under Settings) or from the saved receipt in the Receipts tab; there is no kitchen-ticket button on the Order screen before saving. On a Windows till PC with a cash drawer plugged into the receipt printer, Settings > Cash drawer (per device) can turn on opening the drawer with F10 or an "Open cash drawer" button on the Order screen, and optionally after every paid order; it needs a small free helper program (downloadable from that same card) installed once on that computer, and Chrome may ask once to allow connecting to devices on the computer. A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items).
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. When a dish shows as out of stock because of its recipe, the badge on the Order screen names the ingredient that ran out (for example "Out of stock · no honey mustard"), and tapping the dish explains it — restock that ingredient in Stock, or remove it from the dish's recipe, and the dish comes back by itself. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
@@ -2722,6 +2752,8 @@ const receiptDocument = (title, bodyHtml, autoPrint, rtl) => `<!DOCTYPE html>
 // (unsandboxed) page. It will NOT work inside a sandboxed preview frame (e.g. this chat's
 // preview panel) — browsers block the print dialog there at the sandbox level, and no JS
 // workaround can override that from inside it. Use downloadReceiptFile below for previewing.
+// The small helper program the cash-drawer feature talks to — it runs on the till computer itself (public/drawer-helper).
+const DRAWER_HELPER_URL = "http://127.0.0.1:9187";
 const printViaHiddenFrame = (title, bodyHtml, rtl) => {
   const html = receiptDocument(title, bodyHtml, false, rtl);
   const iframe = document.createElement("iframe");
@@ -3123,6 +3155,9 @@ function POSPrototype({ tenantId }) {
   const kitchenModeRef = useRef("off");
   const [autoPrint, setAutoPrint] = useState("none"); // device-local: none | receipt | kitchen | both — what prints by itself when an order is saved here
   const autoPrintRef = useRef("none");
+  const [drawerMode, setDrawerMode] = useState("off"); // device-local: off | manual | auto — see "cash-drawer" in lib/tenantStorage.js
+  const drawerModeRef = useRef("off");
+  const [drawerHelper, setDrawerHelper] = useState(null); // null = not checked yet | { ok, printer }
   const kitchenPrintedRef = useRef([]); // ids this station has already printed
   const kitchenSinceRef = useRef(0); // only tickets created after the station was switched on are printed
   const kitchenHandlerRef = useRef(() => {}); // always the newest handler, so the poll never uses a stale language/closure
@@ -3641,8 +3676,8 @@ function POSPrototype({ tenantId }) {
   };
   // ---- Kitchen printing (per device) ----
   useEffect(() => {
-    Promise.all([storage.get("kitchen-print-mode"), storage.get("kitchen-print-since"), storage.get("kitchen-printed"), storage.get("auto-print")])
-      .then(([m, since, printed, auto]) => {
+    Promise.all([storage.get("kitchen-print-mode"), storage.get("kitchen-print-since"), storage.get("kitchen-printed"), storage.get("auto-print"), storage.get("cash-drawer")])
+      .then(([m, since, printed, auto, drawer]) => {
         const mode = KITCHEN_MODES.includes(m?.value) ? m.value : "off";
         kitchenModeRef.current = mode;
         setKitchenMode(mode);
@@ -3650,6 +3685,9 @@ function POSPrototype({ tenantId }) {
         const savedAuto = ["none", "receipt", "kitchen", "both"].includes(auto?.value) ? auto.value : mode !== "off" ? "kitchen" : "none";
         autoPrintRef.current = savedAuto;
         setAutoPrint(savedAuto);
+        const savedDrawer = ["off", "manual", "auto"].includes(drawer?.value) ? drawer.value : "off";
+        drawerModeRef.current = savedDrawer;
+        setDrawerMode(savedDrawer);
         kitchenSinceRef.current = Number(since?.value) || 0;
         try {
           const ids = JSON.parse(printed?.value || "[]");
@@ -3694,6 +3732,49 @@ function POSPrototype({ tenantId }) {
     // Kitchen tickets need somewhere to go: print here unless this device already sends them elsewhere or is the printer.
     if ((mode === "kitchen" || mode === "both") && kitchenModeRef.current === "off") changeKitchenMode("here");
   };
+  const checkDrawerHelper = async () => {
+    try {
+      const res = await fetch(`${DRAWER_HELPER_URL}/ping`);
+      const data = await res.json();
+      setDrawerHelper({ ok: !!data.ok, printer: data.printer || "" });
+    } catch (e) {
+      setDrawerHelper({ ok: false, printer: "" });
+    }
+  };
+  // Asks the helper program on this computer to send "open drawer" to the receipt printer the drawer is plugged into.
+  const openCashDrawer = async (quiet) => {
+    try {
+      // text/plain keeps this a "simple" request, so the browser does not need a pre-flight check first.
+      const res = await fetch(`${DRAWER_HELPER_URL}/open`, { method: "POST", headers: { "Content-Type": "text/plain" }, body: "open" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "failed");
+      if (!quiet) flashNotice(t("notice_drawerOpened"));
+    } catch (e) {
+      flashNotice(t("notice_drawerFailed"));
+    }
+  };
+  const openDrawerAfterSettlement = () => {
+    if (drawerModeRef.current === "auto") openCashDrawer(true);
+  };
+  const changeDrawerMode = (mode) => {
+    setDrawerMode(mode);
+    drawerModeRef.current = mode;
+    storage.set("cash-drawer", mode).catch(() => {});
+    if (mode !== "off") checkDrawerHelper();
+  };
+  const openDrawerRef = useRef(() => {});
+  openDrawerRef.current = openCashDrawer;
+  // F10 opens the drawer, as on the old tills — only for someone signed in on shift, and never on a view-only device.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== "F10" || drawerModeRef.current === "off") return;
+      e.preventDefault();
+      if (!currentEmployee || viewingOnly) return;
+      openDrawerRef.current(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [currentEmployee, viewingOnly]);
   const changeKitchenMode = (mode) => {
     setKitchenMode(mode);
     kitchenModeRef.current = mode;
@@ -4343,6 +4424,7 @@ function POSPrototype({ tenantId }) {
     };
 
     await appendReceipt(thisMonthKey(), receipt);
+    if (!isLaterMethod(paymentMethod)) openDrawerAfterSettlement();
     await persistTableTab(tableId, []);
     await clearCheckoutRequest(tableId);
 
@@ -5632,6 +5714,7 @@ function POSPrototype({ tenantId }) {
     // Nothing prints before the order is recorded, so a printed ticket always has a saved receipt behind it.
     // (receiptOk only says whether the cloud sync landed; the order is already in this device's list and queued.)
     autoPrintAfterSave(receipt);
+    if (paidNow && !isLaterMethod(paymentMethod)) openDrawerAfterSettlement();
 
     let customerOk = true;
     if (customer && customer.phone) {
@@ -6560,6 +6643,7 @@ function POSPrototype({ tenantId }) {
       onConfirm: () => {
         const updated = { ...r, paid: true, paidAt: new Date().toISOString() };
         updateReceiptInStorage(r, () => updated);
+        if (!isLaterMethod(r.paymentMethod)) openDrawerAfterSettlement();
         flashNotice(t("notice_orderMarkedPaid", { n: r.ticketNo }));
       },
     });
@@ -9320,6 +9404,11 @@ function POSPrototype({ tenantId }) {
               </div>
             )}
 
+            {drawerMode !== "off" && (
+              <button onClick={() => openCashDrawer(false)} title={t("drawerButtonTooltip")} style={{ width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>
+                {t("drawerButton")}
+              </button>
+            )}
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
               <button disabled={cart.length === 0 || savingOrder} onClick={saveOrder} className="save-btn" style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: "none", background: cart.length === 0 || savingOrder ? "#4A2C33" : paidNow ? theme.primary : "#8A6A2E", color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: cart.length === 0 || savingOrder ? "not-allowed" : "pointer", opacity: cart.length === 0 || savingOrder ? 0.6 : 1 }}>
                 {savingOrder ? t("saved") : paidNow ? t("saveOrder") : t("saveOrderUnpaid")}
@@ -12753,6 +12842,37 @@ function POSPrototype({ tenantId }) {
                   ))}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("autoPrintHint")}</div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("drawerTitle")}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[["off", "drawerOff"], ["manual", "drawerManual"], ["auto", "drawerAuto"]].map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      onClick={() => changeDrawerMode(mode)}
+                      style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${drawerMode === mode ? theme.secondary : "var(--border)"}`, background: drawerMode === mode ? "rgba(176,141,87,0.18)" : "transparent", color: drawerMode === mode ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                    >
+                      {t(label)}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("drawerHint")}</div>
+                {drawerMode !== "off" && (
+                  <>
+                    <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("drawerSetup")}</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+                      <a href="/drawer-helper/POS-Drawer-Helper.bat" download style={{ padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 12.5, textDecoration: "none" }}>{t("drawerDownload")}</a>
+                      <button onClick={checkDrawerHelper} style={{ padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("drawerCheck")}</button>
+                      <button onClick={() => openCashDrawer(false)} style={{ padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("drawerTest")}</button>
+                    </div>
+                    {drawerHelper && (
+                      <div style={{ fontSize: 12, marginTop: 8, color: drawerHelper.ok ? "#9FCB8E" : "#E3A08A" }}>
+                        {drawerHelper.ok ? t("drawerHelperOk", { printer: drawerHelper.printer }) : t("drawerHelperMissing")}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               <div>
