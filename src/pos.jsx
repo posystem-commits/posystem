@@ -2739,7 +2739,7 @@ const receiptDocument = (title, bodyHtml, autoPrint, rtl) => `<!DOCTYPE html>
       @page { margin: 6mm 4mm; }
       * { box-sizing: border-box; }
       html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      body { font-family: ${rtl ? "'Tajawal', Tahoma, 'Segoe UI', Arial, sans-serif" : "'Segoe UI', Tahoma, Arial, Helvetica, sans-serif"}; font-size: 14px; font-weight: 600; line-height: 1.45; font-variant-numeric: tabular-nums; text-rendering: geometricPrecision; color: #000; width: 300px; margin: 0 auto; padding: 12px 6px; }
+      body { font-family: ${rtl ? "'Tajawal', Tahoma, 'Segoe UI', Arial, sans-serif" : "'Segoe UI', Tahoma, Arial, Helvetica, sans-serif"}; font-size: 14px; font-weight: 600; line-height: 1.45; font-variant-numeric: tabular-nums; text-rendering: geometricPrecision; color: #000; width: auto; max-width: 300px; margin: 0 auto; padding: 12px 6px; }
       b, strong { font-weight: 800; }
       .center { text-align: center; }
       .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; page-break-inside: avoid; }
@@ -2752,12 +2752,13 @@ const receiptDocument = (title, bodyHtml, autoPrint, rtl) => `<!DOCTYPE html>
   <body>${printReadable(bodyHtml)}</body>
 </html>`;
 
+// The small helper program the cash-drawer feature talks to — it runs on the till computer itself (public/drawer-helper).
+const DRAWER_HELPER_URL = "http://127.0.0.1:9187";
+
 // Prints via a hidden same-page <iframe>. This works once the app is deployed as a normal
 // (unsandboxed) page. It will NOT work inside a sandboxed preview frame (e.g. this chat's
 // preview panel) — browsers block the print dialog there at the sandbox level, and no JS
 // workaround can override that from inside it. Use downloadReceiptFile below for previewing.
-// The small helper program the cash-drawer feature talks to — it runs on the till computer itself (public/drawer-helper).
-const DRAWER_HELPER_URL = "http://127.0.0.1:9187";
 const printViaHiddenFrame = (title, bodyHtml, rtl) => {
   const html = receiptDocument(title, bodyHtml, false, rtl);
   const iframe = document.createElement("iframe");
