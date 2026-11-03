@@ -10296,29 +10296,12 @@ function POSPrototype({ tenantId }) {
                             {r.deliveryMethod === "delivery" && (deliveryZones.length > 0 || r.deliveryZoneLabel) && (
                               <div style={{ marginBottom: 10 }}>
                                 <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginBottom: 5 }}>{t("deliveryAreaEditLabel")}</div>
-                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                  {[...(r.deliveryZoneLabel && !deliveryZones.some((z) => z.label === r.deliveryZoneLabel) ? [{ id: "__current", label: r.deliveryZoneLabel, fee: r.deliveryFee || 0 }] : []), ...deliveryZones].map((z) => {
-                                    const isCurrent = editZoneLabel === z.label;
-                                    return (
-                                      <button
-                                        key={z.id}
-                                        onClick={() => setEditZoneLabel(z.label)}
-                                        style={{
-                                          fontSize: 11.5,
-                                          padding: "5px 10px",
-                                          borderRadius: 999,
-                                          border: `1px solid ${isCurrent ? theme.secondary : "var(--border)"}`,
-                                          background: isCurrent ? "rgba(176,141,87,0.18)" : "transparent",
-                                          color: isCurrent ? theme.secondaryLight : "var(--text-muted)",
-                                          cursor: "pointer",
-                                          fontWeight: isCurrent ? 600 : 400,
-                                        }}
-                                      >
-                                        {z.label} · {money(z.id === "__current" ? z.fee : z.label === (r.deliveryZoneLabel || "") ? r.deliveryFee || 0 : z.fee)}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
+                                <select value={editZoneLabel} onChange={(e) => setEditZoneLabel(e.target.value)} className="field" style={{ width: "100%" }}>
+                                  {!r.deliveryZoneLabel && <option value="">{t("selectZonePlaceholder")}</option>}
+                                  {[...(r.deliveryZoneLabel && !deliveryZones.some((z) => z.label === r.deliveryZoneLabel) ? [{ id: "__current", label: r.deliveryZoneLabel, fee: r.deliveryFee || 0 }] : []), ...deliveryZones].map((z) => (
+                                    <option key={z.id} value={z.label}>{z.label} — {money(z.label === (r.deliveryZoneLabel || "") ? r.deliveryFee || 0 : z.fee)}</option>
+                                  ))}
+                                </select>
                                 <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 4 }}>{t("deliveryAreaEditHint")}</div>
                                 {editedZoneFor(r) && (() => {
                                   const v = Number(editDraftDiscount.value);
