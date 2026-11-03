@@ -522,6 +522,8 @@ const STRINGS = {
     saveChanges: "Save changes",
     cancelEdit: "Cancel edit",
     paymentMethodEditLabel: "Payment method",
+    deliveryAreaEditLabel: "Delivery area",
+    deliveryAreaEditHint: "Changing the area changes the delivery fee and the order total.",
     paymentMethodEditSplitNote: "Picking a method here replaces the split-payment breakdown with a single method.",
     editReasonLabel: "Reason for edit (optional)",
     discountEditLabel: "Discount",
@@ -1516,6 +1518,8 @@ const STRINGS = {
     saveChanges: "حفظ التغييرات",
     cancelEdit: "إلغاء التعديل",
     paymentMethodEditLabel: "طريقة الدفع",
+    deliveryAreaEditLabel: "منطقة التوصيل",
+    deliveryAreaEditHint: "تغيير المنطقة يغيّر رسوم التوصيل وإجمالي الطلب.",
     paymentMethodEditSplitNote: "اختيار طريقة هنا يستبدل تقسيم الدفع بطريقة واحدة فقط.",
     editReasonLabel: "سبب التعديل (اختياري)",
     discountEditLabel: "الخصم",
@@ -2285,7 +2289,7 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. There is deliberately no way to print or download a customer receipt before the order is saved: the receipt is printed only after Save order (automatically if the device's auto-print is on, or later with "Print receipt" from the Receipts tab), so every printed ticket has a saved order behind it. Kitchen tickets (dish names, quantities and notes with NO prices) print only after the order is saved — automatically (see Kitchen printing under Settings) or from the saved receipt in the Receipts tab; there is no kitchen-ticket button on the Order screen before saving. On a Windows till PC with a cash drawer plugged into the receipt printer, Settings > Cash drawer (per device) can turn on opening the drawer with F10 or an "Open cash drawer" button on the Order screen, and optionally automatically when an order is paid in cash (a split payment counts only if part of it is cash; card, wallet and delivery-app orders leave the drawer shut); it needs a small free helper program (downloadable from that same card) installed once on that computer, and Chrome may ask once to allow connecting to devices on the computer. A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items). Likewise, an order started on Takeaway or Delivery moves to a table when the cashier taps that table, as long as the table has no items of its own yet; going from one table to another never moves items.
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. There is deliberately no way to print or download a customer receipt before the order is saved: the receipt is printed only after Save order (automatically if the device's auto-print is on, or later with "Print receipt" from the Receipts tab), so every printed ticket has a saved order behind it. Kitchen tickets (dish names, quantities and notes with NO prices) print only after the order is saved — automatically (see Kitchen printing under Settings) or from the saved receipt in the Receipts tab; there is no kitchen-ticket button on the Order screen before saving. When editing a saved delivery order in the Receipts tab, the "Delivery area" buttons let staff pick another area; the delivery fee and the order total update to that area's fee and the change is recorded in the edit history. On a Windows till PC with a cash drawer plugged into the receipt printer, Settings > Cash drawer (per device) can turn on opening the drawer with F10 or an "Open cash drawer" button on the Order screen, and optionally automatically when an order is paid in cash (a split payment counts only if part of it is cash; card, wallet and delivery-app orders leave the drawer shut); it needs a small free helper program (downloadable from that same card) installed once on that computer, and Chrome may ask once to allow connecting to devices on the computer. A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items). Likewise, an order started on Takeaway or Delivery moves to a table when the cashier taps that table, as long as the table has no items of its own yet; going from one table to another never moves items.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. When a dish shows as out of stock because of its recipe, the badge on the Order screen names the ingredient that ran out (for example "Out of stock · no honey mustard"), and tapping the dish explains it — restock that ingredient in Stock, or remove it from the dish's recipe, and the dish comes back by itself. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
@@ -2985,6 +2989,7 @@ function POSPrototype({ tenantId }) {
   const [editDraftItems, setEditDraftItems] = useState([]);
   const [editReason, setEditReason] = useState("");
   const [editPaymentMethod, setEditPaymentMethod] = useState(null);
+  const [editZoneLabel, setEditZoneLabel] = useState(""); // the delivery area chosen while a saved delivery order is being edited
   const [editDraftDiscount, setEditDraftDiscount] = useState({ type: "percent", value: "", reason: "" }); // the discount while a saved order is being edited
   const [restockAmounts, setRestockAmounts] = useState({}); // per-ingredient typed bulk-restock amount, keyed by ingredient id
   const [expandedHistoryId, setExpandedHistoryId] = useState(null); // receipt id whose edit-history panel is open, if any
@@ -6697,6 +6702,7 @@ function POSPrototype({ tenantId }) {
     setEditDraftItems(r.items.map((it) => ({ ...it })));
     setEditReason("");
     setEditPaymentMethod(r.paymentMethod || null);
+    setEditZoneLabel(r.deliveryZoneLabel || "");
     setEditDraftDiscount(r.discount ? { type: r.discount.type, value: String(r.discount.value), reason: r.discount.reason || "" } : { type: "percent", value: "", reason: "" });
   };
   const cancelEditReceipt = () => {
@@ -6704,7 +6710,17 @@ function POSPrototype({ tenantId }) {
     setEditDraftItems([]);
     setEditReason("");
     setEditPaymentMethod(null);
+    setEditZoneLabel("");
     setEditDraftDiscount({ type: "percent", value: "", reason: "" });
+  };
+  // The delivery area picked while editing a delivery order, when it differs from the one saved on the order
+  // (null = unchanged). Only the areas currently set up can be picked; the order's own area is never re-priced
+  // just because that area's fee was changed later.
+  const editedZoneFor = (r) =>
+    r.deliveryMethod === "delivery" && editZoneLabel !== (r.deliveryZoneLabel || "") ? deliveryZones.find((z) => z.label === editZoneLabel) || null : null;
+  const editFeeFor = (r) => {
+    const z = editedZoneFor(r);
+    return z ? Number(z.fee) || 0 : r.deliveryFee || 0;
   };
   // What the edited discount boxes mean for this order: the discount to store (null = none), whether the
   // discount itself changed (so it needs a reason and goes in the edit history), or which notice to show.
@@ -6723,13 +6739,13 @@ function POSPrototype({ tenantId }) {
     return { discount: { type: d.type, value: v, reason }, changed: true };
   };
   // The bill for an order after an edit — worked out with THIS order's own service/VAT rates, never today's.
-  const editedBillFor = (r, items, disc) => {
+  const editedBillFor = (r, items, disc, fee = r.deliveryFee || 0) => {
     const newSubtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
     const newDiscAmt = discountAmount(newSubtotal, disc);
     const newNet = newSubtotal - newDiscAmt;
     const newServiceAmt = Math.round(newNet * ((r.serviceRate || 0) / 100) * 100) / 100;
     const newVatAmt = Math.round((newNet + newServiceAmt) * ((r.vatRate || 0) / 100) * 100) / 100;
-    return { subtotal: newSubtotal, discountAmount: newDiscAmt, serviceAmount: newServiceAmt, vatAmount: newVatAmt, total: newNet + newServiceAmt + newVatAmt + (r.deliveryFee || 0) };
+    return { subtotal: newSubtotal, discountAmount: newDiscAmt, serviceAmount: newServiceAmt, vatAmount: newVatAmt, total: newNet + newServiceAmt + newVatAmt + fee };
   };
   const changeEditQty = (index, delta, original) => {
     setEditDraftItems((prev) =>
@@ -6793,10 +6809,16 @@ function POSPrototype({ tenantId }) {
     if (paymentMethodChanged) {
       changes.push({ name: t("paymentMethodEditLabel"), from: t(`payment_${r.paymentMethod}`), to: t(`payment_${editPaymentMethod}`) });
     }
+    const zoneChange = editedZoneFor(r);
+    const newFee = editFeeFor(r);
+    if (zoneChange) {
+      const zoneText = (label, fee) => `${label || "—"} (${money(fee || 0)})`;
+      changes.push({ name: t("deliveryAreaEditLabel"), from: zoneText(r.deliveryZoneLabel, r.deliveryFee), to: zoneText(zoneChange.label, newFee) });
+    }
     const cleaned = finalItems;
     // Recomputed using THIS receipt's own stored rates, not today's live settings — editing an
     // old order shouldn't retroactively apply a VAT/service rate change made since then.
-    const bill = editedBillFor(r, cleaned, discountEdit.discount);
+    const bill = editedBillFor(r, cleaned, discountEdit.discount, newFee);
     const { subtotal: newSubtotal, discountAmount: newDiscAmt, serviceAmount: newServiceAmt, vatAmount: newVatAmt } = bill;
     if (discountEdit.changed) {
       // The discount's own effect on the bill, measured on the new items so a dish change isn't counted twice.
@@ -6845,6 +6867,8 @@ function POSPrototype({ tenantId }) {
       serviceAmount: newServiceAmt,
       vatAmount: newVatAmt,
       total: newTotal,
+      deliveryFee: newFee,
+      deliveryZoneLabel: zoneChange ? zoneChange.label : r.deliveryZoneLabel,
       // Switching away from a split payment to a single method retires the per-method breakdown —
       // there's no sensible way to keep it once it's no longer actually split.
       paymentMethod: editPaymentMethod || r.paymentMethod,
@@ -10262,7 +10286,43 @@ function POSPrototype({ tenantId }) {
                                 <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 4 }}>{t("editDiscountHint")}</div>
                                 {(() => {
                                   const v = Number(editDraftDiscount.value);
-                                  const preview = editedBillFor(r, editDraftItems, v > 0 ? { type: editDraftDiscount.type, value: v } : null);
+                                  const preview = editedBillFor(r, editDraftItems, v > 0 ? { type: editDraftDiscount.type, value: v } : null, editFeeFor(r));
+                                  return Math.abs(preview.total - r.total) >= 0.005 ? (
+                                    <div style={{ fontSize: 11.5, color: theme.secondaryLight, marginTop: 6, fontFamily: "IBM Plex Mono, monospace" }}>{t("editNewTotal", { new: money(preview.total), old: money(r.total) })}</div>
+                                  ) : null;
+                                })()}
+                              </div>
+                            )}
+                            {r.deliveryMethod === "delivery" && (deliveryZones.length > 0 || r.deliveryZoneLabel) && (
+                              <div style={{ marginBottom: 10 }}>
+                                <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginBottom: 5 }}>{t("deliveryAreaEditLabel")}</div>
+                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                  {[...(r.deliveryZoneLabel && !deliveryZones.some((z) => z.label === r.deliveryZoneLabel) ? [{ id: "__current", label: r.deliveryZoneLabel, fee: r.deliveryFee || 0 }] : []), ...deliveryZones].map((z) => {
+                                    const isCurrent = editZoneLabel === z.label;
+                                    return (
+                                      <button
+                                        key={z.id}
+                                        onClick={() => setEditZoneLabel(z.label)}
+                                        style={{
+                                          fontSize: 11.5,
+                                          padding: "5px 10px",
+                                          borderRadius: 999,
+                                          border: `1px solid ${isCurrent ? theme.secondary : "var(--border)"}`,
+                                          background: isCurrent ? "rgba(176,141,87,0.18)" : "transparent",
+                                          color: isCurrent ? theme.secondaryLight : "var(--text-muted)",
+                                          cursor: "pointer",
+                                          fontWeight: isCurrent ? 600 : 400,
+                                        }}
+                                      >
+                                        {z.label} · {money(z.id === "__current" ? z.fee : z.label === (r.deliveryZoneLabel || "") ? r.deliveryFee || 0 : z.fee)}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 4 }}>{t("deliveryAreaEditHint")}</div>
+                                {editedZoneFor(r) && (() => {
+                                  const v = Number(editDraftDiscount.value);
+                                  const preview = editedBillFor(r, editDraftItems, v > 0 ? { type: editDraftDiscount.type, value: v } : null, editFeeFor(r));
                                   return Math.abs(preview.total - r.total) >= 0.005 ? (
                                     <div style={{ fontSize: 11.5, color: theme.secondaryLight, marginTop: 6, fontFamily: "IBM Plex Mono, monospace" }}>{t("editNewTotal", { new: money(preview.total), old: money(r.total) })}</div>
                                   ) : null;
