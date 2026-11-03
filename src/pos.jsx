@@ -438,7 +438,9 @@ const STRINGS = {
     drawerButton: "Open cash drawer (F10)",
     drawerButtonTooltip: "Opens the cash drawer without a sale",
     notice_drawerOpened: "Drawer opened",
-    notice_drawerFailed: "Couldn't open the drawer — is the helper running and the printer on? (Settings → Cash drawer)",
+    notice_drawerFailed: "Can't reach the drawer helper on this computer. Install it from Settings → Cash drawer, make sure it is running, and allow Chrome's \"connect to devices\" prompt.",
+    notice_drawerPrinter: "The helper is running but the printer didn't take the command: {{error}}",
+    notice_drawerNeedSignIn: "Sign in and clock in on this device to use the cash drawer.",
     kitchenWhereTitle: "Where the kitchen ticket prints",
     kitchenModeOff: "Off",
     kitchenModeHere: "Print on this device",
@@ -1427,7 +1429,9 @@ const STRINGS = {
     drawerButton: "فتح درج النقود (F10)",
     drawerButtonTooltip: "يفتح درج النقود بدون عملية بيع",
     notice_drawerOpened: "تم فتح الدرج",
-    notice_drawerFailed: "تعذّر فتح الدرج — هل البرنامج المساعد يعمل والطابعة مفتوحة؟ (الإعدادات ← درج النقود)",
+    notice_drawerFailed: "لا يمكن الوصول إلى البرنامج المساعد للدرج على هذا الكمبيوتر. ثبّته من الإعدادات ← درج النقود، وتأكد أنه يعمل، واسمح بطلب كروم للاتصال بالأجهزة.",
+    notice_drawerPrinter: "البرنامج المساعد يعمل لكن الطابعة لم تقبل الأمر: {{error}}",
+    notice_drawerNeedSignIn: "سجّل الدخول وابدأ ورديتك على هذا الجهاز لاستخدام درج النقود.",
     kitchenWhereTitle: "أين تُطبع تذكرة المطبخ",
     kitchenModeOff: "إيقاف",
     kitchenModeHere: "اطبع على هذا الجهاز",
@@ -3743,15 +3747,20 @@ function POSPrototype({ tenantId }) {
   };
   // Asks the helper program on this computer to send "open drawer" to the receipt printer the drawer is plugged into.
   const openCashDrawer = async (quiet) => {
+    let res;
     try {
       // text/plain keeps this a "simple" request, so the browser does not need a pre-flight check first.
-      const res = await fetch(`${DRAWER_HELPER_URL}/open`, { method: "POST", headers: { "Content-Type": "text/plain" }, body: "open" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || "failed");
-      if (!quiet) flashNotice(t("notice_drawerOpened"));
+      res = await fetch(`${DRAWER_HELPER_URL}/open`, { method: "POST", headers: { "Content-Type": "text/plain" }, body: "open" });
     } catch (e) {
-      flashNotice(t("notice_drawerFailed"));
+      flashNotice(t("notice_drawerFailed"), 9000); // never reached the helper: not installed, not running, or the browser blocked the connection
+      return;
     }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      flashNotice(t("notice_drawerPrinter", { error: data.error || res.status }), 9000); // the helper answered but the printer would not take it
+      return;
+    }
+    if (!quiet) flashNotice(t("notice_drawerOpened"));
   };
   const openDrawerAfterSettlement = () => {
     if (drawerModeRef.current === "auto") openCashDrawer(true);
@@ -3769,7 +3778,10 @@ function POSPrototype({ tenantId }) {
     const onKey = (e) => {
       if (e.key !== "F10" || drawerModeRef.current === "off") return;
       e.preventDefault();
-      if (!currentEmployee || viewingOnly) return;
+      if (!currentEmployee || viewingOnly) {
+        flashNotice(t("notice_drawerNeedSignIn"));
+        return;
+      }
       openDrawerRef.current(false);
     };
     window.addEventListener("keydown", onKey);
@@ -5116,10 +5128,10 @@ function POSPrototype({ tenantId }) {
     return persistExpenseMonth(monthKey, existing.filter((e) => e.id !== expenseId));
   };
 
-  const flashNotice = (text) => {
+  const flashNotice = (text, ms = 2600) => {
     setNotice(text);
     window.clearTimeout(window.__posNoticeTimer);
-    window.__posNoticeTimer = window.setTimeout(() => setNotice(null), 2600);
+    window.__posNoticeTimer = window.setTimeout(() => setNotice(null), ms);
   };
 
   // Copies text to the clipboard reliably even where the modern Clipboard API is blocked — the
