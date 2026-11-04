@@ -418,7 +418,7 @@ export function createLedger(data) {
     // closed (inside shifts AND in the gaps between them), against the final count.
     const first = drawers[0];
     const last = drawers[drawers.length - 1];
-    let dayTotals = { opening: null, cashIn: 0, paidOut: 0, finalCounted: null, expectedEnd: null, gap: null, shiftGaps: 0, residuals: 0, collected: 0, impliedCollection: null };
+    let dayTotals = { opening: null, cashIn: 0, paidOut: 0, returned: 0, finalCounted: null, expectedEnd: null, gap: null, shiftGaps: 0, residuals: 0, collected: 0, impliedCollection: null };
     if (first && last && !first.loading) {
       const lastEnd = last.clockOut || nowIso;
       const src = poolFor(first.clockIn, lastEnd);
@@ -428,6 +428,7 @@ export function createLedger(data) {
           opening: first.opening,
           cashIn: f.cashIn,
           paidOut: f.paidOut,
+          returned: f.cashReturned,
           finalCounted: last.counted,
           expectedEnd: first.opening !== null ? round2(first.opening + f.cashIn - f.paidOut) : null,
           gap: null,
