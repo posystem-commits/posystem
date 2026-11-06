@@ -221,7 +221,7 @@ export function createLedger(data) {
     const completed = all.filter((r) => r.status === "completed");
     const voided = all.filter((r) => r.status === "cancelled" || r.status === "refunded");
     const expenses = expensesInDays(startDay, endDay);
-    return { startDay, endDay, all, completed, voided, ...summarize(completed), voidedTotal: voided.reduce((s, r) => s + r.total, 0), expenses, expenseTotal: expenses.reduce((s, e) => s + e.amount, 0) };
+    return { startDay, endDay, all, completed, voided, ...summarize(completed), voidedTotal: voided.reduce((s, r) => s + r.total, 0), cancelledOrders: voided.filter((r) => r.status === "cancelled"), refundedOrders: voided.filter((r) => r.status === "refunded"), expenses, expenseTotal: expenses.reduce((s, e) => s + e.amount, 0) };
   };
 
   // ---- shifts ----
@@ -443,7 +443,7 @@ export function createLedger(data) {
 
     const outside = dayCompleted.filter((r) => !coverShift(r));
     const unpaid = p.unpaid.orders;
-    return { day, collection: dayCollection, revenue: p.revenue, orders: p.orders, byMethod, discounts: { n: p.discounts.n, total: p.discounts.total }, voided: { n: voided.length, total: p.voidedTotal }, expenseTotal, drawers, dayTotals, outside, unpaid };
+    return { day, collection: dayCollection, revenue: p.revenue, orders: p.orders, byMethod, discounts: { n: p.discounts.n, total: p.discounts.total }, voided: { n: voided.length, total: p.voidedTotal }, cancelled: { n: p.cancelledOrders.length, total: round2(p.cancelledOrders.reduce((s, r) => s + r.total, 0)), orders: p.cancelledOrders }, refunded: { n: p.refundedOrders.length, total: round2(p.refundedOrders.reduce((s, r) => s + r.total, 0)) }, expenseTotal, drawers, dayTotals, outside, unpaid };
   };
 
   return { bizDay, monthsLoaded, ordersInDays, expensesInDays, period, allShifts, shiftDayOf, shiftTotals, employeeTotals, closeDay, cashFlows };

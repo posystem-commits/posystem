@@ -291,6 +291,12 @@ const STRINGS = {
     cdNet: "Net after expenses",
     cdDiscounts: "{{n}} discounted orders ({{amount}})",
     cdVoided: "{{n}} cancelled / refunded ({{amount}})",
+    cdCancelled: "Cancelled orders · {{n}}",
+    cdRefunded: "Refunded orders · {{n}}",
+    cancelReasonTitle: "Reason for cancelling",
+    cancelReasonPlaceholder: "Why is this order being cancelled?",
+    notice_cancelReasonRequired: "Please write the reason for cancelling this order",
+    cancelReasonLabel: "Cancel reason: {{reason}}",
     cdNoShifts: "No shifts were started on this business day.",
     cdOpened: "Opened with",
     cdReceived: "Cash received",
@@ -1291,6 +1297,12 @@ const STRINGS = {
     cdNet: "الصافي بعد المصروفات",
     cdDiscounts: "{{n}} طلبات بخصم ({{amount}})",
     cdVoided: "{{n}} ملغاة / مسترجعة ({{amount}})",
+    cdCancelled: "الطلبات الملغاة · {{n}}",
+    cdRefunded: "الطلبات المُسترجعة · {{n}}",
+    cancelReasonTitle: "سبب الإلغاء",
+    cancelReasonPlaceholder: "لماذا يتم إلغاء هذا الطلب؟",
+    notice_cancelReasonRequired: "اكتب سبب إلغاء هذا الطلب من فضلك",
+    cancelReasonLabel: "سبب الإلغاء: {{reason}}",
     cdNoShifts: "لم تبدأ أي وردية في يوم العمل هذا.",
     cdOpened: "بدأت بـ",
     cdReceived: "النقدية المستلمة",
@@ -2304,7 +2316,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery. At the bottom of the Delivery tab there is also a "Delivery employee report" (shown when staff tracking is included in the package): tap one or more delivery employees (or "Select all") and it lists the orders not yet settled with each of them — client name, phone, address, how it was paid and the order amount, with the delivery fee shown separately. For each employee it also shows the cash they collected, minus their share of the delivery fees, which gives what they owe the restaurant (or what the restaurant owes them) — the same figures as the Delivery cash reconciliation in the Shift tab, and it empties once you settle up there. "Print report" prints one page per selected employee with signature lines. Only orders assigned to that employee on the Order screen appear in it. After an order is saved, anyone signed in (not only managers) can change who it is assigned to with the "Reassign" dropdown on the order in the Receipts tab (when team tracking is included).
 - **Website** (manager-only; comes with the Online ordering link feature): turns the online-ordering link into a branded website for the restaurant. A manager picks one of five looks (Classic, Modern, Dark, Bold, Minimal — each sets fonts, shapes and layout together), can override the button and highlight colors (otherwise the brand colors from Settings are used), uploads a cover photo and up to 6 gallery photos, writes a tagline and an "About us" text in English and Arabic, adds an announcement banner, address and social links (Instagram, Facebook, TikTok, WhatsApp, website), chooses which sections show (About, Popular items row, Gallery, Opening hours — the hours and the "Open now / Closed" badge come from Settings → Shift hours) and chooses the language the page opens in. A live phone preview sits next to the controls (a "Preview" button on phones). Everything saves automatically, but customers keep seeing the original ordering page until the "Published" switch is turned on, and it can be switched off again at any time. The tab also lets the manager claim a short web address (for example /r/my-restaurant) to share on social media or print on menus; the original long link keeps working. Orders can't be sent from the preview. In the Menu editor, each dish has an "On your website" section: labels (Popular, New, Spicy, Vegetarian, Chef's pick) and a "Show in the Popular row" checkbox. Dish photos and the short description are what the website shows on each menu card. The website look also applies to table QR menus once published.
-- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. On the Close the day drawer report (screen and print) each shift and the whole day show the cash handed back for cancelled/refunded orders on its own "Returned orders" line, separate from the "Expenses paid out" line. Editing lets you change each item's quantity (stock adjusts to match) only while the order is still unpaid — once an order is paid its quantities are locked and cannot be changed (the payment method, discount and delivery area can still be edited) — and add, change or remove the order's discount (no need to delete the order and make a new one — a discount that is added or changed needs a written reason, the total and the service/VAT recalculate right away, a "Total after this edit" line shows the new bill before you save, and the change is recorded in the edit history and in the cash-drawer explanation on Close the day if the order was already paid), and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
+- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer (Cancel also requires a written reason, which is saved on the receipt; the Shift report and the Close the day report show how many orders were cancelled and their total value, listing each cancelled order with its reason, and refunded orders separately) — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. On the Close the day drawer report (screen and print) each shift and the whole day show the cash handed back for cancelled/refunded orders on its own "Returned orders" line, separate from the "Expenses paid out" line. Editing lets you change each item's quantity (stock adjusts to match) only while the order is still unpaid — once an order is paid its quantities are locked and cannot be changed (the payment method, discount and delivery area can still be edited) — and add, change or remove the order's discount (no need to delete the order and make a new one — a discount that is added or changed needs a written reason, the total and the service/VAT recalculate right away, a "Total after this edit" line shows the new bill before you save, and the change is recorded in the edit history and in the cash-drawer explanation on Close the day if the order was already paid), and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see totals, outstanding payables, and a by-category breakdown. Like the Dashboard and Receipts, it can be filtered by Month (a month dropdown), a single Day (a calendar), or a custom Range (any start and end date) using the toggle at the top; the totals, payables and category breakdown follow the chosen period.
 - **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history. Managers also see "Import from Excel" and "Export to Excel" buttons on this screen: Export downloads every customer (name, phone, address, number of orders, last order date) as an Excel file; Import takes an .xlsx or .csv sheet with a phone column (name and address optional, columns in any order, English or Arabic headings), shows a preview of who will be added or updated, and only saves after you confirm — customers are matched by phone number (+20, 0 and spacing differences don't matter), a blank cell never erases stored details, order counts are kept, nothing is ever deleted, and a template can be downloaded from the import window.
@@ -6561,13 +6573,19 @@ function POSPrototype({ tenantId }) {
   const openReturnDialog = (r, action) => {
     if (r.status !== "completed") return;
     const isSplit = r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0;
-    setReturnDialog({ receipt: r, action, method: isSplit ? "same" : r.paymentMethod || "cash" });
+    setReturnDialog({ receipt: r, action, method: isSplit ? "same" : r.paymentMethod || "cash", reason: "" });
   };
   const cancelReceipt = (r) => openReturnDialog(r, "cancel");
   const refundReceipt = (r) => openReturnDialog(r, "refund");
   const confirmReturnDialog = () => {
     if (!returnDialog) return;
     const { receipt: r, action, method } = returnDialog;
+    // A cancelled order always needs a written reason, so the closing reports can say why it was cancelled.
+    const reason = (returnDialog.reason || "").trim();
+    if (action === "cancel" && reason.length < 3) {
+      flashNotice(t("notice_cancelReasonRequired"));
+      return;
+    }
     const wasPaid = r.paid !== false;
     const returnedAmounts = !wasPaid
       ? []
@@ -6579,7 +6597,7 @@ function POSPrototype({ tenantId }) {
     setReturnDialog(null);
     if (action === "cancel") {
       r.items.forEach((it) => (it.recipeSnapshot || []).forEach((rec) => updateIngredientStock(rec.ingredientId, rec.qty * it.qty)));
-      updateReceiptInStorage(r, (x) => ({ ...x, status: "cancelled", cancelledAt: at, cancelledBy: by, returnedAmounts }));
+      updateReceiptInStorage(r, (x) => ({ ...x, status: "cancelled", cancelledAt: at, cancelledBy: by, cancelReason: reason, returnedAmounts }));
       flashNotice(t("notice_orderCancelled", { n: r.ticketNo }));
     } else {
       updateReceiptInStorage(r, (x) => ({ ...x, status: "refunded", refundedAt: at, refundedBy: by, returnedAmounts }));
@@ -6919,6 +6937,7 @@ function POSPrototype({ tenantId }) {
   const shiftCancelled = shiftReceipts.filter((r) => r.status === "cancelled");
   const shiftRefunded = shiftReceipts.filter((r) => r.status === "refunded");
   const shiftRefundsTotal = shiftRefunded.reduce((s, r) => s + r.total, 0);
+  const shiftCancelledTotal = shiftCancelled.reduce((s, r) => s + r.total, 0);
   // "Gross" is everything rung up this shift, INCLUDING orders since refunded — a refunded order
   // stops being "completed", so counting only completed orders here and then subtracting refunds
   // again took every refund off twice. Gross minus refunds is therefore exactly the completed
@@ -7174,7 +7193,9 @@ function POSPrototype({ tenantId }) {
         ${row(t("cdOrders"), cd.orders)}
         ${cd.byMethod.map((m) => row(t(`payment_${m.id}`), money(m.total))).join("")}
         ${cd.discounts.n > 0 ? row(t("cdDiscounts", { n: cd.discounts.n, amount: money(cd.discounts.total) }), "") : ""}
-        ${cd.voided.n > 0 ? row(t("cdVoided", { n: cd.voided.n, amount: money(cd.voided.total) }), "") : ""}
+        ${row(t("cdCancelled", { n: cd.cancelled.n }), money(cd.cancelled.total))}
+        ${cd.cancelled.orders.map((r) => `<div style="font-size:11px;margin:0 0 3px;padding-inline-start:8px;">${e(t("ticketHash", { n: r.ticketNo }))} &middot; ${money(r.total)}${r.cancelReason ? ` &middot; ${e(r.cancelReason)}` : ""}</div>`).join("")}
+        ${cd.refunded.n > 0 ? row(t("cdRefunded", { n: cd.refunded.n }), money(cd.refunded.total)) : ""}
         ${row(t("cdExpenses"), money(cd.expenseTotal))}
         ${row(t("cdNet"), money(cd.revenue - cd.expenseTotal), "font-weight:700;")}
       </div>
@@ -7256,8 +7277,9 @@ function POSPrototype({ tenantId }) {
       </div>
       <div class="dashed" style="font-size:12px;">
         <div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t("ordersCompleted"))}</span><span>${shiftCompleted.length}</span></div>
-        <div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t("ordersCancelled"))}</span><span>${shiftCancelled.length}</span></div>
-        <div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t("ordersRefunded"))}</span><span>${shiftRefunded.length}</span></div>
+        <div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t("ordersCancelled"))} &middot; ${shiftCancelled.length}</span><span>${money(shiftCancelledTotal)}</span></div>
+        ${shiftCancelled.map((r) => `<div style="font-size:11px;margin:0 0 3px;padding-inline-start:8px;">${escapeHtml(t("ticketHash", { n: r.ticketNo }))} &middot; ${money(r.total)}${r.cancelReason ? ` &middot; ${escapeHtml(r.cancelReason)}` : ""}</div>`).join("")}
+        <div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t("ordersRefunded"))} &middot; ${shiftRefunded.length}</span><span>${money(shiftRefundsTotal)}</span></div>
       </div>
       <div class="dashed" style="font-size:12px;">${methodRows}</div>
       ${shiftUnpaid.length > 0 ? `
@@ -10198,6 +10220,9 @@ function POSPrototype({ tenantId }) {
                         {r.discount?.reason && (
                           <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("discountReasonLabel", { reason: r.discount.reason })}</div>
                         )}
+                        {cancelled && r.cancelReason && (
+                          <div style={{ fontSize: 11, color: "#E3C98A", marginBottom: 6 }}>{t("cancelReasonLabel", { reason: r.cancelReason })}</div>
+                        )}
                         {voided && Array.isArray(r.returnedAmounts) && r.returnedAmounts.length > 0 && (
                           <div style={{ fontSize: 11, color: "#E3C98A", marginBottom: 6 }}>{t("returnedViaLabel", { methods: r.returnedAmounts.map((a) => `${t(`payment_${a.method}`)} ${money(a.amount)}`).join(" + ") })}</div>
                         )}
@@ -11077,7 +11102,8 @@ function POSPrototype({ tenantId }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "var(--text-muted)" }}>
                     {cd.byMethod.map((m) => <span key={m.id}>{lbl(m.id)} <b style={{ color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace" }}>{money(m.total)}</b></span>)}
                     {cd.discounts.n > 0 && <span>{t("cdDiscounts", { n: cd.discounts.n, amount: money(cd.discounts.total) })}</span>}
-                    {cd.voided.n > 0 && <span>{t("cdVoided", { n: cd.voided.n, amount: money(cd.voided.total) })}</span>}
+                    <span>{t("cdCancelled", { n: cd.cancelled.n })} <b style={{ color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace" }}>{money(cd.cancelled.total)}</b></span>
+                    {cd.refunded.n > 0 && <span>{t("cdRefunded", { n: cd.refunded.n })} <b style={{ color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace" }}>{money(cd.refunded.total)}</b></span>}
                   </div>
                 </div>
 
@@ -11326,7 +11352,7 @@ function POSPrototype({ tenantId }) {
                 )}
                 {shiftCancelled.length > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: shiftRefunded.length > 0 ? 6 : 8, color: "#E3C98A" }}>
-                    <span>{t("cancelledCountNote", { n: shiftCancelled.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>—</span>
+                    <span>{t("cancelledCountNote", { n: shiftCancelled.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(shiftCancelledTotal)}</span>
                   </div>
                 )}
                 {shiftDiscountTotal > 0 && (
@@ -12448,7 +12474,9 @@ function POSPrototype({ tenantId }) {
                         </div>
                       )}
                       {cancelled.length > 0 && (
-                        <div style={{ color: "#E3C98A" }}>{t("cancelledCountNote", { n: cancelled.length })}</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", color: "#E3C98A" }}>
+                          <span>{t("cancelledCountNote", { n: cancelled.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(cancelled.reduce((s, r) => s + r.total, 0))}</span>
+                        </div>
                       )}
                       {discountTotal > 0 && (
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -12636,6 +12664,7 @@ function POSPrototype({ tenantId }) {
                     ? <div style={{ color: "#3F5B45", fontWeight: 600 }}>{t("receiptDetailDeliverySettled", { time: when(r.deliverySettledAt) })}</div>
                     : <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailDeliveryOpen", { name: r.assignedTo.name })}</div>)}
                   {voided && <div style={{ color: COLORS.charcoalSoft }}>{t(cancelled ? "receiptDetailCancelledAt" : "receiptDetailRefundedAt", { time: when(cancelled ? r.cancelledAt : r.refundedAt), name: (cancelled ? r.cancelledBy : r.refundedBy)?.name || "—" })}</div>}
+                  {cancelled && r.cancelReason && <div style={{ color: COLORS.charcoalSoft }}>{t("cancelReasonLabel", { reason: r.cancelReason })}</div>}
                   {voided && Array.isArray(r.returnedAmounts) && r.returnedAmounts.length > 0 && <div style={{ color: COLORS.charcoalSoft }}>{t("returnedViaLabel", { methods: r.returnedAmounts.map((a) => `${t(`payment_${a.method}`)} ${money(a.amount)}`).join(" + ") })}</div>}
                 </div>
               ))}
@@ -12681,6 +12710,19 @@ function POSPrototype({ tenantId }) {
                 </>
               ) : (
                 <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 18, textAlign: "center" }}>{t("returnNothingToReturn")}</div>
+              )}
+              {returnDialog.action === "cancel" && (
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ fontSize: 11.5, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("cancelReasonTitle")}</div>
+                  <input
+                    type="text"
+                    value={returnDialog.reason || ""}
+                    onChange={(e) => setReturnDialog((d) => ({ ...d, reason: e.target.value }))}
+                    placeholder={t("cancelReasonPlaceholder")}
+                    maxLength={160}
+                    style={{ width: "100%", boxSizing: "border-box", fontSize: 13, padding: "9px 10px", borderRadius: 8, border: "1px solid #C9C2B2", background: "#FFFFFF", color: "#111111" }}
+                  />
+                </div>
               )}
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setReturnDialog(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("cancel")}</button>
