@@ -446,5 +446,47 @@ export function createLedger(data) {
     return { day, collection: dayCollection, revenue: p.revenue, orders: p.orders, byMethod, discounts: { n: p.discounts.n, total: p.discounts.total }, voided: { n: voided.length, total: p.voidedTotal }, cancelled: { n: p.cancelledOrders.length, total: round2(p.cancelledOrders.reduce((s, r) => s + r.total, 0)), orders: p.cancelledOrders }, refunded: { n: p.refundedOrders.length, total: round2(p.refundedOrders.reduce((s, r) => s + r.total, 0)) }, expenseTotal, drawers, dayTotals, outside, unpaid };
   };
 
-  return { bizDay, monthsLoaded, ordersInDays, expensesInDays, period, allShifts, shiftDayOf, shiftTotals, employeeTotals, closeDay, cashFlows };
+  // ---- delivery report: day by day, for each delivery agent ----
+  // Every completed delivery order in the period (tableId "delivery"), grouped by the agent it was assigned to and then
+  // by business day. The agent's share of a fee is the one saved when the order was settled (riderFeeShare); for an order
+  // not settled yet it is what the current setting (`shareOf(fee)`) would give. Fees are part of an order's total, so
+  // `orderAmount` is the total without them. Null until the months it needs have loaded.
+  const deliveryReport = (startDay, endDay, shareOf = () => 0) => {
+    const p = period(startDay, endDay);
+    if (!p) return null;
+    const blank = () => ({ orders: 0, orderAmount: 0, fees: 0, riderShare: 0, restaurantShare: 0, cash: 0, settled: 0 });
+    const add = (t, o) => { t.orders += 1; t.orderAmount += o.orderAmount; t.fees += o.fee; t.riderShare += o.share; t.restaurantShare += o.fee - o.share; t.cash += o.cash; if (o.settled) t.settled += 1; };
+    const fix = (t) => ({ ...t, orderAmount: round2(t.orderAmount), fees: round2(t.fees), riderShare: round2(t.riderShare), restaurantShare: round2(t.restaurantShare), cash: round2(t.cash) });
+    const agents = new Map();
+    p.completed.filter((r) => r.tableId === "delivery").forEach((r) => {
+      const fee = Number(r.deliveryFee) || 0;
+      const saved = r.riderFeeShare === undefined || r.riderFeeShare === null ? NaN : Number(r.riderFeeShare);
+      const o = {
+        r,
+        fee,
+        share: r.deliverySettled && Number.isFinite(saved) ? saved : shareOf(fee),
+        orderAmount: round2(r.total - fee),
+        cash: receiptMethodAmounts(r).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0),
+        settled: !!r.deliverySettled,
+      };
+      const id = r.assignedTo?.id || "none";
+      if (!agents.has(id)) agents.set(id, { id, name: r.assignedTo?.name || null, total: blank(), days: new Map() });
+      const a = agents.get(id);
+      const day = bizDay(r.timestamp);
+      if (!a.days.has(day)) a.days.set(day, { day, total: blank(), list: [] });
+      const d = a.days.get(day);
+      add(a.total, o); add(d.total, o); d.list.push(o);
+    });
+    const grand = blank();
+    const list = [...agents.values()]
+      .map((a) => {
+        Object.keys(grand).forEach((k) => { grand[k] += a.total[k]; });
+        const days = [...a.days.values()].sort((x, y) => (x.day < y.day ? -1 : 1)).map((d) => ({ day: d.day, ...fix(d.total), list: d.list.sort((x, y) => (x.r.timestamp < y.r.timestamp ? -1 : 1)) }));
+        return { id: a.id, name: a.name, ...fix(a.total), days };
+      })
+      .sort((x, y) => (x.id === "none") - (y.id === "none") || y.orders - x.orders);
+    return { startDay, endDay, agents: list, totals: fix(grand) };
+  };
+
+  return { bizDay, monthsLoaded, ordersInDays, expensesInDays, period, allShifts, shiftDayOf, shiftTotals, employeeTotals, closeDay, cashFlows, deliveryReport };
 }

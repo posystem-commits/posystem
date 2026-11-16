@@ -841,6 +841,25 @@ const STRINGS = {
     dashboardModeMonth: "Month",
     dashboardModeDay: "Day",
     dashboardModeRange: "Range",
+    dlvRepTitle: "Delivery report — day by day",
+    dlvRepSubtitle: "Every delivery order in the period above, for each delivery agent and each day: the orders, the delivery fees, the agent's share of them and what the restaurant keeps. Tap a day to see its orders.",
+    dlvRepAllAgents: "All agents",
+    dlvRepNoAgent: "No agent assigned",
+    dlvRepEmpty: "No delivery orders in this period.",
+    dlvRepDay: "Day",
+    dlvRepOrders: "Orders",
+    dlvRepOrderAmount: "Order amount",
+    dlvRepFees: "Delivery fees",
+    dlvRepAgentShare: "Agent's share",
+    dlvRepRestShare: "Restaurant's share",
+    dlvRepCash: "Cash collected",
+    dlvRepSettled: "Settled",
+    dlvRepTotal: "Total",
+    dlvRepEstimateNote: "For orders not settled yet the agent's share is worked out from the current delivery-fee setting; it is fixed when you settle with the agent.",
+    dlvRepOpen: "Not settled",
+    dlvRepPrint: "Print report",
+    dlvRepPrinted: "Printed {{time}}",
+    dlvRepPeriod: "Period: {{from}} → {{to}}",
     periodRevenueLabel: "Revenue",
     periodOrdersLabel: "Orders",
     todayRevenue: "Today's revenue",
@@ -1847,6 +1866,25 @@ const STRINGS = {
     dashboardModeMonth: "شهر",
     dashboardModeDay: "يوم",
     dashboardModeRange: "فترة",
+    dlvRepTitle: "تقرير التوصيل — يوم بيوم",
+    dlvRepSubtitle: "كل طلبات التوصيل في الفترة المختارة أعلاه، لكل عامل توصيل ولكل يوم: عدد الطلبات ورسوم التوصيل ونصيب العامل منها وما يحتفظ به المطعم. اضغط على اليوم لترى طلباته.",
+    dlvRepAllAgents: "كل العمال",
+    dlvRepNoAgent: "بدون عامل توصيل",
+    dlvRepEmpty: "لا توجد طلبات توصيل في هذه الفترة.",
+    dlvRepDay: "اليوم",
+    dlvRepOrders: "الطلبات",
+    dlvRepOrderAmount: "قيمة الطلبات",
+    dlvRepFees: "رسوم التوصيل",
+    dlvRepAgentShare: "نصيب العامل",
+    dlvRepRestShare: "نصيب المطعم",
+    dlvRepCash: "النقدية المحصّلة",
+    dlvRepSettled: "تمت التسوية",
+    dlvRepTotal: "الإجمالي",
+    dlvRepEstimateNote: "للطلبات التي لم تتم تسويتها بعد، يُحسب نصيب العامل حسب إعداد رسوم التوصيل الحالي، ويثبت عند التسوية مع العامل.",
+    dlvRepOpen: "لم تتم التسوية",
+    dlvRepPrint: "طباعة التقرير",
+    dlvRepPrinted: "طُبع {{time}}",
+    dlvRepPeriod: "الفترة: {{from}} ← {{to}}",
     periodRevenueLabel: "الإيرادات",
     periodOrdersLabel: "الطلبات",
     todayRevenue: "إيرادات اليوم",
@@ -2318,7 +2356,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Website** (manager-only; comes with the Online ordering link feature): turns the online-ordering link into a branded website for the restaurant. A manager picks one of five looks (Classic, Modern, Dark, Bold, Minimal — each sets fonts, shapes and layout together), can override the button and highlight colors (otherwise the brand colors from Settings are used), uploads a cover photo and up to 6 gallery photos, writes a tagline and an "About us" text in English and Arabic, adds an announcement banner, address and social links (Instagram, Facebook, TikTok, WhatsApp, website), chooses which sections show (About, Popular items row, Gallery, Opening hours — the hours and the "Open now / Closed" badge come from Settings → Shift hours) and chooses the language the page opens in. A live phone preview sits next to the controls (a "Preview" button on phones). Everything saves automatically, but customers keep seeing the original ordering page until the "Published" switch is turned on, and it can be switched off again at any time. The tab also lets the manager claim a short web address (for example /r/my-restaurant) to share on social media or print on menus; the original long link keeps working. Orders can't be sent from the preview. In the Menu editor, each dish has an "On your website" section: labels (Popular, New, Spicy, Vegetarian, Chef's pick) and a "Show in the Popular row" checkbox. Dish photos and the short description are what the website shows on each menu card. The website look also applies to table QR menus once published.
 - **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer (Cancel also requires a written reason, which is saved on the receipt; the Shift report and the Close the day report show how many orders were cancelled and their total value, listing each cancelled order with its reason, and refunded orders separately) — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. On the Close the day drawer report (screen and print) each shift and the whole day show the cash handed back for cancelled/refunded orders on its own "Returned orders" line, separate from the "Expenses paid out" line. Editing lets you change each item's quantity (stock adjusts to match) only while the order is still unpaid — once an order is paid its quantities are locked and cannot be changed (the payment method, discount and delivery area can still be edited) — and add, change or remove the order's discount (no need to delete the order and make a new one — a discount that is added or changed needs a written reason, the total and the service/VAT recalculate right away, a "Total after this edit" line shows the new bill before you save, and the change is recorded in the edit history and in the cash-drawer explanation on Close the day if the order was already paid), and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see totals, outstanding payables, and a by-category breakdown. Like the Dashboard and Receipts, it can be filtered by Month (a month dropdown), a single Day (a calendar), or a custom Range (any start and end date) using the toggle at the top; the totals, payables and category breakdown follow the chosen period.
-- **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
+- **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here. At the bottom of the Dashboard, a "Delivery report — day by day" card lists every delivery order of the chosen period for each delivery agent, one row per day: number of orders, order amount (without the fee), delivery fees, the agent's share of the fees, the restaurant's share, and cash collected. A drop-down picks one agent or all agents, tapping a day opens its individual orders (with the area, payment method and whether each is settled), and "Print report" prints one page per agent. It covers settled and not-yet-settled orders alike; the agent's share of a settled order is the one saved at settlement, and for an unsettled order it follows the current delivery-fee setting. Orders with no agent assigned appear under "No agent assigned".
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history. Managers also see "Import from Excel" and "Export to Excel" buttons on this screen: Export downloads every customer (name, phone, address, number of orders, last order date) as an Excel file; Import takes an .xlsx or .csv sheet with a phone column (name and address optional, columns in any order, English or Arabic headings), shows a preview of who will be added or updated, and only saves after you confirm — customers are matched by phone number (+20, 0 and spacing differences don't matter), a blank cell never erases stored details, order counts are kept, nothing is ever deleted, and a template can be downloaded from the import window.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance; the expected cash only subtracts cash expenses recorded during this shift — ones a previous shift already took out of the drawer are not subtracted again), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count. Below the drawer table there is a "Cash collected at the end of the day" box: type the cash taken out of the drawer at the end of that business day (for restaurants that collect the day's cash around the last count). The last shift's drawer is then checked as should be − collected = counted, so a real shortage shows up and a correct collection shows as matching; until an amount is typed, a last-shift difference is shown as an "≈ collection" in blue (not a shortage) and does not need a note to close the day. Each day is checked on its own — the next day's first count is never compared with the previous day's.
@@ -2994,6 +3032,8 @@ function POSPrototype({ tenantId }) {
   // belongs to the Receipts tab) so picking a month to review receipts doesn't also change what
   // the dashboard is showing, and vice versa.
   const [dashboardMode, setDashboardMode] = useState("month"); // "month" | "day" | "range"
+  const [dlvRepAgent, setDlvRepAgent] = useState("all"); // Dashboard delivery report: "all" or one agent's id
+  const [dlvRepOpenDay, setDlvRepOpenDay] = useState(null); // `${agentId}:${day}` whose orders are expanded
   const [dashboardMonth, setDashboardMonth] = useState(null); // "YYYY-MM", defaults to the current month once known
   const [dashboardDay, setDashboardDay] = useState(null); // "YYYY-MM-DD", defaults to today once known
   const [dashboardRangeStart, setDashboardRangeStart] = useState(null); // "YYYY-MM-DD", defaults to 7 days before the end
@@ -8107,6 +8147,39 @@ function POSPrototype({ tenantId }) {
   };
   const printRiderReport = () => printRiderReportFor(riderReportPrintable);
 
+  // Dashboard: the delivery report for the period being shown — every delivery order, per agent and per day.
+  const dlvRepFull = ledger.deliveryReport(dashboardFirstDay, dashboardLastDay, agentFeeShare);
+  const dlvRepAgents = dlvRepFull ? dlvRepFull.agents : [];
+  const dlvRepShown = dlvRepAgent === "all" ? dlvRepAgents : dlvRepAgents.filter((a) => a.id === dlvRepAgent);
+  const dlvRepName = (a) => a.name || t("dlvRepNoAgent");
+  const printDeliveryReport = () => {
+    if (!dlvRepFull || dlvRepShown.length === 0) return;
+    const locale = isRtl ? "ar-EG" : "en-US";
+    const dayText = (d) => formatShortDate(d, isRtl);
+    const th = (s) => `<th style="text-align:${isRtl ? "right" : "left"};border-bottom:1px solid #000;padding:3px 4px;font-size:10px;">${escapeHtml(s)}</th>`;
+    const td = (s, bold) => `<td style="padding:3px 4px;font-size:11px;${bold ? "font-weight:700;" : ""}">${s}</td>`;
+    const cells = (x) => `${td(String(x.orders), false)}${td(money(x.orderAmount), false)}${td(money(x.fees), false)}${td(money(x.riderShare), false)}${td(money(x.restaurantShare), false)}${td(money(x.cash), false)}`;
+    const head = `<tr>${th(t("dlvRepDay"))}${th(t("dlvRepOrders"))}${th(t("dlvRepOrderAmount"))}${th(t("dlvRepFees"))}${th(t("dlvRepAgentShare"))}${th(t("dlvRepRestShare"))}${th(t("dlvRepCash"))}</tr>`;
+    const body = dlvRepShown
+      .map((a, i) => `
+      <div${i === 0 ? "" : ` style="page-break-before:always;"`}>
+        <div class="center">
+          ${brandHeaderHtml()}
+          <div style="font-size:13px;font-weight:700;margin-top:8px;">${escapeHtml(t("dlvRepTitle"))}</div>
+          <div style="font-size:15px;font-weight:700;margin-top:4px;">${escapeHtml(dlvRepName(a))}</div>
+          <div style="font-size:11px;margin-top:2px;">${escapeHtml(t("dlvRepPeriod", { from: dayText(dlvRepFull.startDay), to: dayText(dlvRepFull.endDay) }))}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+          ${head}
+          ${a.days.map((d) => `<tr>${td(escapeHtml(dayText(d.day)), false)}${cells(d)}</tr>`).join("")}
+          <tr style="border-top:1px solid #000;">${td(escapeHtml(t("dlvRepTotal")), true)}${cells(a)}</tr>
+        </table>
+        <div class="center" style="font-size:10px;margin-top:14px;color:#444;">${escapeHtml(t("dlvRepPrinted", { time: new Date().toLocaleString(locale, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) }))}</div>
+      </div>`)
+      .join("");
+    printViaHiddenFrame(`${t("dlvRepTitle")}`, body, isRtl);
+  };
+
   // Receipts tab: the receipt whose details are open, always read fresh from the loaded months.
   const receiptDetail = receiptDetailId ? Object.values(receiptsByMonth).flat().find((x) => x.id === receiptDetailId) || null : null;
 
@@ -10971,6 +11044,97 @@ function POSPrototype({ tenantId }) {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 18, marginTop: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 6 }}>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 17, fontWeight: 600 }}>{t("dlvRepTitle")}</div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                {dlvRepAgents.length > 1 && (
+                  <select className="field" value={dlvRepAgent} onChange={(e) => { setDlvRepAgent(e.target.value); setDlvRepOpenDay(null); }} style={{ minWidth: 150 }}>
+                    <option value="all">{t("dlvRepAllAgents")}</option>
+                    {dlvRepAgents.map((a) => <option key={a.id} value={a.id}>{dlvRepName(a)}</option>)}
+                  </select>
+                )}
+                {dlvRepShown.length > 0 && (
+                  <button onClick={printDeliveryReport} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 600 }}>{t("dlvRepPrint")}</button>
+                )}
+              </div>
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 14 }}>{t("dlvRepSubtitle")}</div>
+            {dlvRepShown.length === 0 ? (
+              <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("dlvRepEmpty")}</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {dlvRepShown.map((a) => {
+                  const cellStyle = { padding: "8px 10px", fontFamily: "IBM Plex Mono, monospace", fontSize: 12.5, textAlign: isRtl ? "left" : "right", whiteSpace: "nowrap" };
+                  const headStyle = { padding: "8px 10px", fontSize: 10.5, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4, textAlign: isRtl ? "left" : "right", whiteSpace: "nowrap", fontWeight: 500 };
+                  const numCells = (x) => (
+                    <>
+                      <td style={cellStyle}>{x.orders}</td>
+                      <td style={cellStyle}>{money(x.orderAmount)}</td>
+                      <td style={cellStyle}>{money(x.fees)}</td>
+                      <td style={cellStyle}>{money(x.riderShare)}</td>
+                      <td style={cellStyle}>{money(x.restaurantShare)}</td>
+                      <td style={cellStyle}>{money(x.cash)}</td>
+                    </>
+                  );
+                  return (
+                    <div key={a.id} style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 14px", background: "rgba(176,141,87,0.08)" }}>
+                        <span style={{ fontSize: 14, fontWeight: 600 }}>{dlvRepName(a)}</span>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{tCount("orderCount", a.orders)} · {t("dlvRepFees")} <b style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(a.fees)}</b></span>
+                      </div>
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
+                          <thead>
+                            <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                              <th style={{ ...headStyle, textAlign: isRtl ? "right" : "left" }}>{t("dlvRepDay")}</th>
+                              <th style={headStyle}>{t("dlvRepOrders")}</th>
+                              <th style={headStyle}>{t("dlvRepOrderAmount")}</th>
+                              <th style={headStyle}>{t("dlvRepFees")}</th>
+                              <th style={headStyle}>{t("dlvRepAgentShare")}</th>
+                              <th style={headStyle}>{t("dlvRepRestShare")}</th>
+                              <th style={headStyle}>{t("dlvRepCash")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {a.days.map((d) => {
+                              const rowKey = `${a.id}:${d.day}`;
+                              const open = dlvRepOpenDay === rowKey;
+                              return (
+                                <React.Fragment key={rowKey}>
+                                  <tr onClick={() => setDlvRepOpenDay(open ? null : rowKey)} style={{ borderTop: "1px solid var(--border)", cursor: "pointer", background: open ? "rgba(176,141,87,0.06)" : "transparent" }}>
+                                    <td style={{ padding: "8px 10px", fontSize: 12.5, whiteSpace: "nowrap" }}>{open ? "▾" : "▸"} {formatShortDate(d.day, isRtl)}{d.settled < d.orders && <span style={{ fontSize: 10.5, color: "#E3C98A", marginInlineStart: 8 }}>{t("dlvRepOpen")} {d.orders - d.settled}</span>}</td>
+                                    {numCells(d)}
+                                  </tr>
+                                  {open && d.list.map((o) => (
+                                    <tr key={o.r.id} style={{ borderTop: "1px dashed var(--border)", background: "rgba(0,0,0,0.12)" }}>
+                                      <td style={{ padding: "6px 10px 6px 26px", fontSize: 11.5, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{t("ticketNumber", { n: o.r.ticketNo })}{o.r.deliveryZoneLabel ? ` · ${o.r.deliveryZoneLabel}` : ""}{!o.settled ? ` · ${t("dlvRepOpen")}` : ""}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{o.r.paymentMethod === "split" ? t("payment_split") : t(`payment_${o.r.paymentMethod}`)}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.orderAmount)}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.fee)}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.share)}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.fee - o.share)}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.cash)}</td>
+                                    </tr>
+                                  ))}
+                                </React.Fragment>
+                              );
+                            })}
+                            <tr style={{ borderTop: "1px solid var(--border)", fontWeight: 700 }}>
+                              <td style={{ padding: "8px 10px", fontSize: 12.5 }}>{t("dlvRepTotal")}</td>
+                              {numCells(a)}
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{t("dlvRepEstimateNote")}</div>
+              </div>
+            )}
           </div>
           </>
           )}
