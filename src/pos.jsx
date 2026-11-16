@@ -2849,16 +2849,33 @@ const printViaHiddenFrame = (title, bodyHtml, rtl) => {
   iframe.style.border = "0";
   document.body.appendChild(iframe);
 
+  // The print frame takes the keyboard focus so the browser prints it — and while it has it, a key pressed on the till goes
+  // to the frame, not to the app (F10 for the cash drawer then did nothing until someone clicked the page). So the frame
+  // hands F10 on to the app, and the focus goes back to the app as soon as printing is over.
+  const giveFocusBack = () => {
+    try {
+      window.focus();
+    } catch (e) {
+      // ignore
+    }
+  };
   const cleanup = () => {
     if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    giveFocusBack();
   };
   const doPrint = () => {
     try {
+      iframe.contentWindow.addEventListener("keydown", (e) => {
+        if (e.key !== "F10") return;
+        e.preventDefault();
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "F10", repeat: e.repeat, bubbles: true, cancelable: true }));
+      });
       iframe.contentWindow.focus();
       iframe.contentWindow.print();
     } catch (e) {
       console.error("Print failed:", e);
     }
+    giveFocusBack();
     try {
       iframe.contentWindow.addEventListener("afterprint", cleanup);
     } catch (e) {
@@ -3831,14 +3848,33 @@ function POSPrototype({ tenantId }) {
   };
   // Asks the helper program on this computer to send "open drawer" to the receipt printer the drawer is plugged into.
   const openCashDrawer = async (quiet) => {
-    let res;
-    try {
-      // text/plain keeps this a "simple" request, so the browser does not need a pre-flight check first.
-      res = await fetch(`${DRAWER_HELPER_URL}/open`, { method: "POST", headers: { "Content-Type": "text/plain" }, body: "open" });
-    } catch (e) {
+    // One try gives up after 4 seconds (a helper busy with the printer used to leave the key looking dead), and a failed
+    // try is repeated once: opening a drawer that is already open does no harm, a drawer that stays shut does.
+    const tryOnce = async () => {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 4000);
+      try {
+        // text/plain keeps this a "simple" request, so the browser does not need a pre-flight check first.
+        const r = await fetch(`${DRAWER_HELPER_URL}/open`, { method: "POST", headers: { "Content-Type": "text/plain" }, body: "open", signal: ctl.signal });
+        if (r.ok) return r;
+        return { failedResponse: r };
+      } catch (e) {
+        return null;
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+    let res = await tryOnce();
+    if (!res || res.failedResponse) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      const again = await tryOnce();
+      if (again) res = again;
+    }
+    if (!res) {
       flashNotice(t("notice_drawerFailed"), 9000); // never reached the helper: not installed, not running, or the browser blocked the connection
       return;
     }
+    if (res.failedResponse) res = res.failedResponse;
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
       flashNotice(t("notice_drawerPrinter", { error: data.error || res.status }), 9000); // the helper answered but the printer would not take it
@@ -3865,6 +3901,7 @@ function POSPrototype({ tenantId }) {
     const onKey = (e) => {
       if (e.key !== "F10" || drawerModeRef.current === "off") return;
       e.preventDefault();
+      if (e.repeat) return; // holding the key down must not fire the drawer over and over
       if (!currentEmployee || viewingOnly) {
         flashNotice(t("notice_drawerNeedSignIn"));
         return;
