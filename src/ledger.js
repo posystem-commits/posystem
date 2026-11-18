@@ -36,6 +36,9 @@ export const PAYMENT_METHODS = [
 export const DIRECT_METHODS = PAYMENT_METHODS.filter((m) => !m.platform);
 export const PLATFORM_METHODS = PAYMENT_METHODS.filter((m) => m.platform);
 export const isPlatformMethod = (id) => PLATFORM_METHODS.some((m) => m.id === id);
+// A delivery person who is really a delivery app (a roster entry named after it): its orders belong under the app's
+// payment method, not under a rider who hands cash in.
+export const DELIVERY_APP_NAME = /talabat|طلبات|elmenus|المنيوس|jahez|جاهز|mrsool|مرسول|breadfast|careem|كريم|uber ?eats|اوبر|أوبر|glovo|instashop/i;
 // A restaurant can add its own payment methods in Settings. Their ids start with "x_"; whether one is paid at once or
 // paid later by an app is the restaurant's setting, not something stored on the order.
 export const isCustomMethodId = (id) => typeof id === "string" && /^x_[a-z0-9]+$/.test(id);
@@ -233,6 +236,11 @@ export function createLedger(data) {
     return [...logged, ...open].sort((a, b) => a.clockIn.localeCompare(b.clockIn));
   };
   // A shift belongs to the business day that most of it falls in — the day of its midpoint.
+  // Whether a shift's closing count can be compared with the next opening of `day`: it belongs to that day, or it was left
+  // open for more than 24 hours (a missed clock-out) and was finally closed on that day — such a shift's midpoint falls
+  // on some earlier day, which used to hide the handover between it and the next shift.
+  const closedOnDay = (sh, day, nowMs) =>
+    shiftDayOf(sh, nowMs) === day || (!!sh.clockOut && new Date(sh.clockOut).getTime() - new Date(sh.clockIn).getTime() > 24 * 3600 * 1000 && bizDay(sh.clockOut) === day);
   const shiftDayOf = (sh, nowMs) => bizDay(new Date((new Date(sh.clockIn).getTime() + new Date(sh.clockOut || new Date(nowMs).toISOString()).getTime()) / 2).toISOString());
 
   // Receipts a shift's own employee created during it. Null until the months it touches have loaded.
@@ -390,15 +398,39 @@ export function createLedger(data) {
       expenses.filter((e) => e.status === "paid" && e.paymentMethod === "cash" && e.date === day && !insideAnyShift(e.recordedAt || `${e.date}T00:00:00.000Z`)).forEach((e) => {
         events.push({ kind: "looseExpense", what: e.category, amount: -e.amount });
       });
+      // Delivery cash settled during this shift: what riders handed in (and kept) when the shift's person settled them
+      // up. Settlements that look unusual are flagged, and the cash they brought in is offered to the gap explainer —
+      // if that cash never really reached the drawer, it is exactly the kind of shortage a closing count shows.
+      const settledOrders = pool
+        .filter((r) => r.tableId === "delivery" && r.deliverySettled && r.status === "completed" && r.paid !== false && r.deliverySettledAt && inWin(r.deliverySettledAt))
+        .map((r) => {
+          const cash = round2(receiptMethodAmounts(r).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0));
+          const rider = r.assignedTo?.name || null;
+          const orderDay = bizDay(r.timestamp);
+          const flags = [];
+          if (orderDay < day) flags.push("old");
+          if (rider && DELIVERY_APP_NAME.test(rider)) flags.push("app");
+          if (cash === 0) flags.push("noCash");
+          return { n: r.ticketNo, total: r.total, cash, share: Number(r.riderFeeShare) > 0 ? Number(r.riderFeeShare) : 0, rider, orderDay, at: r.deliverySettledAt, flags };
+        })
+        .sort((a, b) => a.at.localeCompare(b.at));
+      const settled = {
+        n: settledOrders.length,
+        cash: round2(settledOrders.reduce((s, o) => s + o.cash, 0)),
+        share: round2(settledOrders.reduce((s, o) => s + o.share, 0)),
+        orders: settledOrders,
+        flagged: settledOrders.filter((o) => o.flags.length > 0),
+      };
+      settled.flagged.filter((o) => o.cash > 0).forEach((o) => events.push({ kind: "settledCash", n: o.n, amount: -o.cash, rider: o.rider, orderDay: o.orderDay, flags: o.flags }));
       const solve = gap !== null && Math.abs(gap) >= 0.01 ? solveGap(gap, events) : null;
-      return { ...sh, ...flows, expected, gap, gapAtClosing, events, solve, collected: dayCollected, impliedCollection };
+      return { ...sh, ...flows, expected, gap, gapAtClosing, events, solve, settled, collected: dayCollected, impliedCollection };
     });
 
     // The cash that moved between one shift's closing count and the next one's opening count — but only within
     // one business day. Cash is often collected when the day ends, so the first shift of a day is deliberately NOT
     // compared with the last shift of the day before.
     drawers.forEach((d) => {
-      const prev = [...shifts].reverse().find((x) => x.clockOut && x.clockOut <= d.clockIn && x.counted !== null && shiftDayOf(x, nowMs) === day);
+      const prev = [...shifts].reverse().find((x) => x.clockOut && x.clockOut <= d.clockIn && x.counted !== null && closedOnDay(x, day, nowMs));
       d.prevName = prev ? prev.name : null;
       d.prevCounted = prev ? prev.counted : null;
       d.prevOut = prev ? prev.clockOut : null;
@@ -418,7 +450,7 @@ export function createLedger(data) {
     // closed (inside shifts AND in the gaps between them), against the final count.
     const first = drawers[0];
     const last = drawers[drawers.length - 1];
-    let dayTotals = { opening: null, cashIn: 0, paidOut: 0, returned: 0, finalCounted: null, expectedEnd: null, gap: null, shiftGaps: 0, residuals: 0, collected: 0, impliedCollection: null };
+    let dayTotals = { opening: null, cashIn: 0, paidOut: 0, returned: 0, expenses: 0, riderPay: 0, finalCounted: null, expectedEnd: null, gap: null, shiftGaps: 0, residuals: 0, collected: 0, impliedCollection: null };
     if (first && last && !first.loading) {
       const lastEnd = last.clockOut || nowIso;
       const src = poolFor(first.clockIn, lastEnd);
@@ -429,6 +461,8 @@ export function createLedger(data) {
           cashIn: f.cashIn,
           paidOut: f.paidOut,
           returned: f.cashReturned,
+          expenses: f.cashExpenses,
+          riderPay: f.riderPay,
           finalCounted: last.counted,
           expectedEnd: first.opening !== null ? round2(first.opening + f.cashIn - f.paidOut) : null,
           gap: null,
@@ -488,5 +522,5 @@ export function createLedger(data) {
     return { startDay, endDay, agents: list, totals: fix(grand) };
   };
 
-  return { bizDay, monthsLoaded, ordersInDays, expensesInDays, period, allShifts, shiftDayOf, shiftTotals, employeeTotals, closeDay, cashFlows, deliveryReport };
+  return { bizDay, monthsLoaded, ordersInDays, expensesInDays, period, allShifts, shiftDayOf, closedOnDay, shiftTotals, employeeTotals, closeDay, cashFlows, deliveryReport };
 }

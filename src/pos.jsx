@@ -304,6 +304,16 @@ const STRINGS = {
     cdPaidOutExpenses: "Expenses paid out",
     cdReturnedOrders: "Returned orders",
     cdReturnedSub: "of which returned orders {{amount}}",
+    cdRiderShareRow: "Delivery agents' share of fees",
+    cdRiderSub: "of which delivery agents' share {{amount}}",
+    cdSettledTitle: "Delivery cash settled during {{name}}'s shift",
+    cdSettledLine: "{{n}} orders settled · cash handed in {{cash}} · agents kept {{share}} of the fees",
+    cdSettledFlagged: "Check these settlements:",
+    cdSettledFlagLine: "#{{n}} · {{rider}} · cash {{cash}} — {{why}}",
+    cdWhyOld: "ordered on {{day}}, long before this shift",
+    cdWhyApp: "assigned to a delivery app as if it were a rider — its cash may never have reached the drawer (use the app's payment method instead)",
+    cdWhyNoCash: "no cash was collected on it (paid by card, wallet or app)",
+    cdItemSettledCash: "Delivery order #{{n}} ({{rider}}: {{why}}) was settled during this shift and counted as {{amount}} cash received. If that cash was never handed over, this explains a shortage of {{amount}}.",
     editItemsLockedHint: "This order is already paid, so its item quantities can no longer be changed.",
     cdPaidOutHint: "Cash handed back to customers + cash expenses + riders' pay kept or paid when delivery is settled",
     riderPayLabel: "Rider pay at delivery settlement",
@@ -1334,6 +1344,16 @@ const STRINGS = {
     cdPaidOutExpenses: "المصروفات المدفوعة",
     cdReturnedOrders: "طلبات مسترجعة",
     cdReturnedSub: "منها طلبات مسترجعة {{amount}}",
+    cdRiderShareRow: "نصيب مندوبي التوصيل من الرسوم",
+    cdRiderSub: "منها نصيب مندوبي التوصيل {{amount}}",
+    cdSettledTitle: "نقدية الدليفري المُسوّاة خلال وردية {{name}}",
+    cdSettledLine: "{{n}} طلبات سُوّيت · النقدية المُسلَّمة {{cash}} · احتفظ المندوبون بـ {{share}} من الرسوم",
+    cdSettledFlagged: "راجع هذه التسويات:",
+    cdSettledFlagLine: "رقم {{n}} · {{rider}} · نقدًا {{cash}} — {{why}}",
+    cdWhyOld: "طُلب يوم {{day}}، قبل هذه الوردية بوقت طويل",
+    cdWhyApp: "مُسنَد لتطبيق توصيل كأنه مندوب — قد لا تكون نقديته وصلت الدرج (استخدم طريقة دفع التطبيق بدلًا من ذلك)",
+    cdWhyNoCash: "لم تُحصَّل عليه نقدية (مدفوع بالبطاقة أو المحفظة أو التطبيق)",
+    cdItemSettledCash: "طلب الدليفري رقم {{n}} ({{rider}}: {{why}}) سُوّي خلال هذه الوردية وحُسب {{amount}} نقدًا مستلمًا. لو لم تُسلَّم هذه النقدية فعلًا، فهذا يفسّر نقصًا قدره {{amount}}.",
     editItemsLockedHint: "هذا الطلب مدفوع بالفعل، لذلك لا يمكن تغيير كميات أصنافه.",
     cdPaidOutHint: "نقدية أُعيدت للعملاء + مصروفات نقدية + أجر العامل المخصوم أو المدفوع عند تسوية الدليفري",
     riderPayLabel: "أجر العامل عند تسوية الدليفري",
@@ -2369,7 +2389,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here. At the bottom of the Dashboard, a "Delivery report — day by day" card lists every delivery order of the chosen period for each delivery agent, one row per day: number of orders, order amount (without the fee), delivery fees, the agent's share of the fees, the restaurant's share, and cash collected. A drop-down picks one agent or all agents, tapping a day opens its individual orders (with the area, payment method and whether each is settled), and "Print report" prints one page per agent. It covers settled and not-yet-settled orders alike; the agent's share of a settled order is the one saved at settlement, and for an unsettled order it follows the current delivery-fee setting. Orders with no agent assigned appear under "No agent assigned".
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history. Managers also see "Import from Excel" and "Export to Excel" buttons on this screen: Export downloads every customer (name, phone, address, number of orders, last order date) as an Excel file; Import takes an .xlsx or .csv sheet with a phone column (name and address optional, columns in any order, English or Arabic headings), shows a preview of who will be added or updated, and only saves after you confirm — customers are matched by phone number (+20, 0 and spacing differences don't matter), a blank cell never erases stored details, order counts are kept, nothing is ever deleted, and a template can be downloaded from the import window.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" first checks for delivery orders that are still with the riders and not settled (the same ones the Delivery cash reconciliation lists): if there are any, a reminder pop-up shows how many unsettled orders there are and what they add up to, and offers "Settle now" (goes to the Shift tab to settle with the riders, then clock out again) or "Close the shift anyway" — it is only a reminder, it never blocks closing. Then "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance; the expected cash only subtracts cash expenses recorded during this shift — ones a previous shift already took out of the drawer are not subtracted again), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
-- **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count. Below the drawer table there is a "Cash collected at the end of the day" box: type the cash taken out of the drawer at the end of that business day (for restaurants that collect the day's cash around the last count). The last shift's drawer is then checked as should be − collected = counted, so a real shortage shows up and a correct collection shows as matching; until an amount is typed, a last-shift difference is shown as an "≈ collection" in blue (not a shortage) and does not need a note to close the day. Each day is checked on its own — the next day's first count is never compared with the previous day's.
+- **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count. Below the drawer table there is a "Cash collected at the end of the day" box: type the cash taken out of the drawer at the end of that business day (for restaurants that collect the day's cash around the last count). The last shift's drawer is then checked as should be − collected = counted, so a real shortage shows up and a correct collection shows as matching; until an amount is typed, a last-shift difference is shown as an "≈ collection" in blue (not a shortage) and does not need a note to close the day. Each day is checked on its own — the next day's first count is never compared with the previous day's (the one exception: a shift that was left open for more than a day by a missed clock-out and finally closed today is compared with the next opening today). On the drawer report (screen and print) the cash paid out is split into separate lines: "Expenses paid out" (cash expenses only), "Delivery agents' share of fees" (what riders kept from the cash they handed in, or were paid, when delivery was settled) and "Returned orders". Below the gaps there is a "Delivery cash settled during this shift" block for each shift in which delivery orders were settled: how many orders, the cash handed in and the fees the agents kept, with a warning list for settlements that look wrong — an order from an earlier day, an order assigned to a delivery app (Talabat, Elmenus...) as if it were a rider, or an order with no cash collected. The cash of a warned settlement is also offered to "Why there is a gap" as a possible cause ("if that cash was never handed over, this explains a shortage of ...").
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Shift numbers in this list are always worked out from the current orders (so an order edited or a pay-later bill that grew after clock-out is reflected) and show the payment-method split; a shift nobody clocked out of is closed automatically the next time that person signs in, and marked "auto-closed". Managers also get a "Day check" card: pick a business day and see every completed order grouped by the shift it was rung up in — plus a "Not in any logged shift" row for orders taken while the person had no shift in the log — adding up to exactly the Dashboard's revenue for that day. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
 - **Settings**: a "Print automatically after saving an order" choice (per device): Nothing (default), Customer receipt (with prices), Kitchen ticket (dishes, quantities and notes — no prices) or Both; it prints the moment an order is saved on that device. Right below it, "Where the kitchen ticket prints" has three options: "Print on this device" (the kitchen ticket prints here); "Send to the kitchen printer" (the ticket is sent to the device set as the kitchen printer — for phones, tablets and tills that have no printer); and "This device is the kitchen printer" (connect the kitchen printer to this device and keep the app open and awake — it prints every ticket saved on any device within about 10 seconds, shows the recent tickets with a "Print again" button, and has a test-ticket button). A kitchen ticket shows the table or takeaway, ticket number, time, each dish with its quantity and notes, delivery/pickup, and no prices; adding items to an existing unpaid invoice prints a ticket with only the added items, marked as an addition. Settings > Print automatically has a "Download the silent-printing setup (Windows)" button: run the file once on the till computer, it makes the receipt printer the default and creates a desktop shortcut that opens the POS in Chrome with no print window; Chrome must be fully closed first and the POS then opened from that shortcut. Browsers always show a print window unless the computer's Chrome/Edge is started with the --kiosk-printing option and the kitchen printer is the default printer; phones and tablets always show their own print window. Also: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
@@ -7146,7 +7166,20 @@ function POSPrototype({ tenantId }) {
     if (e.kind === "discountDown") return t("cdDiscountDown", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), about: e.approx ? t("cdAbout") : "", amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
     if (e.kind === "discountUp") return t("cdDiscountUp", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), about: e.approx ? t("cdAbout") : "", amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
     if (e.kind === "legacyVoid") return t("cdItemLegacyVoid", { n: e.n, amount: money(e.amount), status: t(e.status === "cancelled" ? "cancelledBadge" : "refundedBadge").toLowerCase() });
+    if (e.kind === "settledCash") return t("cdItemSettledCash", { n: e.n, rider: e.rider || "—", why: cdSettleWhy(e), amount: money(Math.abs(e.amount)) });
     return t("cdItemLooseExpense", { what: e.what, amount: money(Math.abs(e.amount)) });
+  };
+  // Why a delivery settlement is flagged on Close the day (e = a flagged settled order: flags, orderDay).
+  const cdSettleWhy = (o) => o.flags.map((f) => t(f === "old" ? "cdWhyOld" : f === "app" ? "cdWhyApp" : "cdWhyNoCash", { day: o.orderDay })).join("; ");
+  // The "delivery cash settled during this shift" lines (title, summary and the flagged orders), for screen and print.
+  const cdSettledLines = (d) => {
+    if (!d.settled || d.settled.n === 0) return [];
+    const lines = [{ strong: true, text: t("cdSettledTitle", { name: d.name }) }, { text: t("cdSettledLine", { n: d.settled.n, cash: money(d.settled.cash), share: money(d.settled.share) }) }];
+    if (d.settled.flagged.length > 0) {
+      lines.push({ text: t("cdSettledFlagged") });
+      d.settled.flagged.forEach((o) => lines.push({ bullet: true, warn: true, text: t("cdSettledFlagLine", { n: o.n, rider: o.rider || "—", cash: money(o.cash), why: cdSettleWhy(o) }) }));
+    }
+    return lines;
   };
   const cdSigned = (n) => `${n >= 0 ? "+" : "-"}${money(Math.abs(n))}`;
   const cdGapLines = (d) => {
@@ -7271,6 +7304,7 @@ function POSPrototype({ tenantId }) {
     const lines = (arr) => arr.map((l) => `<div style="margin-top:4px;${l.strong ? "font-weight:700;" : ""}${l.bullet ? "padding-inline-start:10px;" : ""}">${l.bullet ? "• " : ""}${e(l.text)}</div>`).join("");
     const gapRows = cd.drawers.filter((d) => d.gap !== null && Math.abs(d.gap) >= 0.01).map((d) => `<div style="margin-bottom:8px;">${lines(cdGapLines(d))}</div>`).join("");
     const handoverRows = cd.drawers.map((d) => cdHandoverLines(d)).filter((l) => l.length > 0).map((l) => `<div style="margin-bottom:8px;">${lines(l)}</div>`).join("");
+    const settledRows = cd.drawers.filter((d) => !d.loading).map((d) => cdSettledLines(d)).filter((l) => l.length > 0).map((l) => `<div style="margin-bottom:8px;">${lines(l)}</div>`).join("");
     return `
       <div style="text-align:center;font-weight:700;font-size:16px;">${e(restaurantName)}</div>
       <div style="text-align:center;font-size:13px;">${e(t("cdReportTitle"))} — ${e(dayLabel)}</div>
@@ -7294,7 +7328,8 @@ function POSPrototype({ tenantId }) {
             <div style="font-weight:600;">${e(d.name)} &middot; ${e(new Date(d.clockIn).toLocaleString(loc, tf))} – ${e(d.clockOut ? new Date(d.clockOut).toLocaleString(loc, tf) : t("cdStillOpen"))}</div>
             ${row(t("cdOpened"), d.opening !== null ? money(d.opening) : "—")}
             ${row(t("cdReceived"), money(d.cashIn))}
-            ${row(t("cdPaidOutExpenses"), money(d.paidOut - d.cashReturned))}
+            ${row(t("cdPaidOutExpenses"), money(d.cashExpenses))}
+            ${d.riderPay > 0 ? row(t("cdRiderShareRow"), money(d.riderPay)) : ""}
             ${d.cashReturned > 0 ? row(t("cdReturnedOrders"), money(d.cashReturned)) : ""}
             ${row(t("cdShouldBe"), d.expected !== null ? money(d.expected) : "—")}
             ${row(t("cdCounted"), d.counted !== null ? money(d.counted) : t("cdNotCounted"))}
@@ -7305,7 +7340,8 @@ function POSPrototype({ tenantId }) {
             <div style="font-weight:700;">${e(t("cdWholeDay"))}</div>
             ${row(t("cdOpened"), cd.dayTotals.opening !== null ? money(cd.dayTotals.opening) : "—")}
             ${row(t("cdReceived"), money(cd.dayTotals.cashIn))}
-            ${row(t("cdPaidOutExpenses"), money(cd.dayTotals.paidOut - cd.dayTotals.returned))}
+            ${row(t("cdPaidOutExpenses"), money(cd.dayTotals.expenses))}
+            ${cd.dayTotals.riderPay > 0 ? row(t("cdRiderShareRow"), money(cd.dayTotals.riderPay)) : ""}
             ${cd.dayTotals.returned > 0 ? row(t("cdReturnedOrders"), money(cd.dayTotals.returned)) : ""}
             ${row(t("cdShouldBe"), cd.dayTotals.expectedEnd !== null ? money(cd.dayTotals.expectedEnd) : "—")}
             ${cd.dayTotals.collected > 0 ? row(t("cdCollectedRow"), "-" + money(cd.dayTotals.collected)) : ""}
@@ -7314,6 +7350,7 @@ function POSPrototype({ tenantId }) {
           </div>` : ""}
       </div>
       ${gapRows || handoverRows ? `<div class="dashed" style="font-size:12px;"><div style="font-weight:600;margin-bottom:6px;">${e(t("cdGapsTitle"))}</div>${gapRows}${handoverRows}</div>` : ""}
+      ${settledRows ? `<div class="dashed" style="font-size:12px;">${settledRows}</div>` : ""}
       ${closing && closing.note ? `<div class="dashed" style="font-size:12px;">${e(t("cdClosedNote", { note: closing.note }))}</div>` : ""}`;
   };
 
@@ -7588,8 +7625,8 @@ function POSPrototype({ tenantId }) {
   // collected when a day ends, so it is never compared with the day before's last count.
   const lastCountedToday = () => {
     const today = businessDateForTimestamp(new Date().toISOString(), shiftHoursConfig);
-    const dayOf = (e) => businessDateForTimestamp(new Date((new Date(e.clockIn).getTime() + new Date(e.clockOut).getTime()) / 2).toISOString(), shiftHoursConfig);
-    return [...shiftLog].filter((e) => typeof e.countedCash === "number" && e.clockOut && dayOf(e) === today).sort((a, b) => b.clockOut.localeCompare(a.clockOut))[0] || null;
+    // A shift left open for days and finally closed today counts too (its midpoint is on an earlier day).
+    return [...shiftLog].filter((e) => typeof e.countedCash === "number" && e.clockOut && ledger.closedOnDay(e, today, Date.now())).sort((a, b) => b.clockOut.localeCompare(a.clockOut))[0] || null;
   };
   const doClockIn = async (emp, openingCash = 0) => {
     const now = new Date().toISOString();
@@ -11278,7 +11315,7 @@ function POSPrototype({ tenantId }) {
         const Lines = ({ lines }) => (
           <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>
             {lines.map((l, i) => (
-              <div key={i} style={{ fontWeight: l.strong ? 600 : 400, color: l.strong ? "var(--text-primary)" : "var(--text-muted)", marginTop: i ? 4 : 0, paddingInlineStart: l.bullet ? 14 : 0, position: "relative" }}>
+              <div key={i} style={{ fontWeight: l.strong ? 600 : 400, color: l.warn ? "#E3C98A" : l.strong ? "var(--text-primary)" : "var(--text-muted)", marginTop: i ? 4 : 0, paddingInlineStart: l.bullet ? 14 : 0, position: "relative" }}>
                 {l.bullet && <span style={{ position: "absolute", insetInlineStart: 2 }}>•</span>}
                 {l.text}
               </div>
@@ -11373,6 +11410,7 @@ function POSPrototype({ tenantId }) {
                                 <div style={num}>{money(d.cashIn)}</div>
                                 <div style={num}>
                                   {money(d.paidOut)}
+                                  {d.riderPay > 0 && <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("cdRiderSub", { amount: money(d.riderPay) })}</div>}
                                   {d.cashReturned > 0 && <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("cdReturnedSub", { amount: money(d.cashReturned) })}</div>}
                                 </div>
                                 <div style={num}>
@@ -11396,6 +11434,7 @@ function POSPrototype({ tenantId }) {
                             <div style={{ ...num, fontWeight: 700, ...cellTop }}>{money(cd.dayTotals.cashIn)}</div>
                             <div style={{ ...num, fontWeight: 700, ...cellTop }}>
                               {money(cd.dayTotals.paidOut)}
+                              {cd.dayTotals.riderPay > 0 && <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-faint)" }}>{t("cdRiderSub", { amount: money(cd.dayTotals.riderPay) })}</div>}
                               {cd.dayTotals.returned > 0 && <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-faint)" }}>{t("cdReturnedSub", { amount: money(cd.dayTotals.returned) })}</div>}
                             </div>
                             <div style={{ ...num, fontWeight: 700, ...cellTop }}>
@@ -11464,6 +11503,14 @@ function POSPrototype({ tenantId }) {
                     </div>
                   )}
                 </div>
+
+                {cd.drawers.some((d) => !d.loading && d.settled && d.settled.n > 0) && (
+                  <div style={card}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      {cd.drawers.filter((d) => !d.loading && d.settled && d.settled.n > 0).map((d) => <Lines key={`s_${d.key}`} lines={cdSettledLines(d)} />)}
+                    </div>
+                  </div>
+                )}
 
                 <div style={card}>
                   <div style={h}>{t("cdAlsoCheck")}</div>
