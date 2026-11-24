@@ -162,6 +162,16 @@ const STRINGS = {
     reqAddress: "address",
     reqArea: "delivery area",
     notice_deliveryNeeds: "A delivery order needs: {{fields}}",
+    dashSourceLabel: "Show",
+    dashSourceAll: "All orders",
+    dashSourceRestaurant: "Restaurant only",
+    dashAppPaidTitle: "How customers paid {{app}}",
+    dashAppPaidCash: "Cash",
+    dashAppPaidVisa: "Visa",
+    dashAppPaidNone: "Not specified",
+    appPaidByLabel: "The customer paid {{app}} by",
+    appPaidByCash: "Cash",
+    appPaidByVisa: "Visa",
     customersSearchPlaceholder: "Search by name or phone number",
     customersNoMatch: "No customer matches that search.",
     customersShowingFirst: "Showing the first {{n}} of {{total}} — search to narrow it down.",
@@ -1222,6 +1232,16 @@ const STRINGS = {
     reqAddress: "العنوان",
     reqArea: "منطقة التوصيل",
     notice_deliveryNeeds: "طلب التوصيل يحتاج: {{fields}}",
+    dashSourceLabel: "عرض",
+    dashSourceAll: "كل الطلبات",
+    dashSourceRestaurant: "طلبات المطعم فقط",
+    dashAppPaidTitle: "كيف دفع العملاء لـ {{app}}",
+    dashAppPaidCash: "نقدًا",
+    dashAppPaidVisa: "فيزا",
+    dashAppPaidNone: "غير محدد",
+    appPaidByLabel: "دفع العميل لـ {{app}} بـ",
+    appPaidByCash: "نقدًا",
+    appPaidByVisa: "فيزا",
     customersSearchPlaceholder: "ابحث بالاسم أو رقم الهاتف",
     customersNoMatch: "لا يوجد عميل مطابق للبحث.",
     customersShowingFirst: "يُعرض أول {{n}} من {{total}} — استخدم البحث للتضييق.",
@@ -2426,7 +2446,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Website** (manager-only; comes with the Online ordering link feature): turns the online-ordering link into a branded website for the restaurant. A manager picks one of five looks (Classic, Modern, Dark, Bold, Minimal — each sets fonts, shapes and layout together), can override the button and highlight colors (otherwise the brand colors from Settings are used), uploads a cover photo and up to 6 gallery photos, writes a tagline and an "About us" text in English and Arabic, adds an announcement banner, address and social links (Instagram, Facebook, TikTok, WhatsApp, website), chooses which sections show (About, Popular items row, Gallery, Opening hours — the hours and the "Open now / Closed" badge come from Settings → Shift hours) and chooses the language the page opens in. A live phone preview sits next to the controls (a "Preview" button on phones). Everything saves automatically, but customers keep seeing the original ordering page until the "Published" switch is turned on, and it can be switched off again at any time. The tab also lets the manager claim a short web address (for example /r/my-restaurant) to share on social media or print on menus; the original long link keeps working. Orders can't be sent from the preview. In the Menu editor, each dish has an "On your website" section: labels (Popular, New, Spicy, Vegetarian, Chef's pick) and a "Show in the Popular row" checkbox. Dish photos and the short description are what the website shows on each menu card. The website look also applies to table QR menus once published.
 - **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer (Cancel also requires a written reason, which is saved on the receipt; the Shift report and the Close the day report show how many orders were cancelled and their total value, listing each cancelled order with its reason, and refunded orders separately) — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. On the Close the day drawer report (screen and print) each shift and the whole day show the cash handed back for cancelled/refunded orders on its own "Returned orders" line, separate from the "Expenses paid out" line. Editing lets you change each item's quantity (stock adjusts to match) only while the order is still unpaid — once an order is paid its quantities are locked and cannot be changed (the payment method, discount and delivery area can still be edited) — and add, change or remove the order's discount (no need to delete the order and make a new one — a discount that is added or changed needs a written reason, the total and the service/VAT recalculate right away, a "Total after this edit" line shows the new bill before you save, and the change is recorded in the edit history and in the cash-drawer explanation on Close the day if the order was already paid), and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see totals, outstanding payables, and a by-category breakdown. Like the Dashboard and Receipts, it can be filtered by Month (a month dropdown), a single Day (a calendar), or a custom Range (any start and end date) using the toggle at the top; the totals, payables and category breakdown follow the chosen period.
-- **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here. At the bottom of the Dashboard, a "Delivery report — day by day" card lists every delivery order of the chosen period for each delivery agent, one row per day: number of orders, order amount (without the fee), delivery fees, the agent's share of the fees, the restaurant's share, and cash collected. A drop-down picks one agent or all agents, tapping a day opens its individual orders (with the area, payment method and whether each is settled), and "Print report" prints one page per agent. It covers settled and not-yet-settled orders alike; the agent's share of a settled order is the one saved at settlement, and for an unsettled order it follows the current delivery-fee setting. Orders with no agent assigned appear under "No agent assigned".
+- **Dashboard** (manager-only): a "Show" row under the period picker (offered once a delivery app — Talabat or Elmenus — is switched on in Settings > payment methods, or the period has orders paid through one) narrows every figure on the page to All orders, Restaurant only, or one delivery app; with an app or Restaurant only chosen the Expenses and Net profit tiles are hidden (expenses belong to the whole restaurant), and with an app chosen the payment card adds how the customers paid that app (Cash / Visa / Not specified). On the Order screen, when the payment method is Talabat or Elmenus, an optional "The customer paid {app} by: Cash / Visa" choice appears; it is saved on the order and shown in the receipt detail. An order paid through a delivery app never enters the cash drawer — the app owes the restaurant that money (see "Owed by delivery apps"). Revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here. At the bottom of the Dashboard, a "Delivery report — day by day" card lists every delivery order of the chosen period for each delivery agent, one row per day: number of orders, order amount (without the fee), delivery fees, the agent's share of the fees, the restaurant's share, and cash collected. A drop-down picks one agent or all agents, tapping a day opens its individual orders (with the area, payment method and whether each is settled), and "Print report" prints one page per agent. It covers settled and not-yet-settled orders alike; the agent's share of a settled order is the one saved at settlement, and for an unsettled order it follows the current delivery-fee setting. Orders with no agent assigned appear under "No agent assigned".
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically. A search box at the top finds a customer by name or phone number; tapping a customer (or searching until only one is left) opens their full order history from every saved month — date and time, ticket number, delivery area or table, the items, the total and any Unpaid, Cancelled or Refunded mark — with the number of orders and the total spent (cancelled and refunded orders are listed but not counted). Managers also see "Import from Excel" and "Export to Excel" buttons on this screen: Export downloads every customer (name, phone, address, number of orders, last order date) as an Excel file; Import takes an .xlsx or .csv sheet with a phone column (name and address optional, columns in any order, English or Arabic headings), shows a preview of who will be added or updated, and only saves after you confirm — customers are matched by phone number (+20, 0 and spacing differences don't matter), a blank cell never erases stored details, order counts are kept, nothing is ever deleted, and a template can be downloaded from the import window.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" first checks for delivery orders that are still with the riders and not settled (the same ones the Delivery cash reconciliation lists): if there are any, a reminder pop-up shows how many unsettled orders there are and what they add up to, and offers "Settle now" (goes to the Shift tab to settle with the riders, then clock out again) or "Close the shift anyway" — it is only a reminder, it never blocks closing. Then "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance; the expected cash only subtracts cash expenses recorded during this shift — ones a previous shift already took out of the drawer are not subtracted again), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count. Below the drawer table there is a "Cash collected at the end of the day" box: type the cash taken out of the drawer at the end of that business day (for restaurants that collect the day's cash around the last count). The last shift's drawer is then checked as should be − collected = counted, so a real shortage shows up and a correct collection shows as matching; until an amount is typed, a last-shift difference is shown as an "≈ collection" in blue (not a shortage) and does not need a note to close the day. Each day is checked on its own — the next day's first count is never compared with the previous day's (the one exception: a shift that was left open for more than a day by a missed clock-out and finally closed today is compared with the next opening today). On the drawer report (screen and print) the cash paid out is split into separate lines: "Expenses paid out" (cash expenses only), "Delivery agents' share of fees" (what riders kept from the cash they handed in, or were paid, when delivery was settled) and "Returned orders". Below the gaps there is a "Delivery cash settled during this shift" block for each shift in which delivery orders were settled: how many orders, the cash handed in and the fees the agents kept, with a warning list for settlements that look wrong — an order from an earlier day, an order assigned to a delivery app (Talabat, Elmenus...) as if it were a rider, or an order with no cash collected. The cash of a warned settlement is also offered to "Why there is a gap" as a possible cause ("if that cash was never handed over, this explains a shortage of ...").
@@ -3127,6 +3147,8 @@ function POSPrototype({ tenantId }) {
   const [dashboardRangeStart, setDashboardRangeStart] = useState(null); // "YYYY-MM-DD", defaults to 7 days before the end
   const [dashboardRangeEnd, setDashboardRangeEnd] = useState(null); // "YYYY-MM-DD", defaults to today once known
   const [dashboardRangePickerOpen, setDashboardRangePickerOpen] = useState(false);
+  const [dashboardSource, setDashboardSource] = useState("all"); // "all" | "restaurant" | a delivery app's payment-method id (talabat, elmenus, ...): which orders the Dashboard counts
+  const [appPayment, setAppPayment] = useState(""); // "" | "cash" | "visa": how the customer paid the delivery app (only for an order paid through Talabat/Elmenus)
   const [dashboardCategory, setDashboardCategory] = useState(""); // menu category the "Items sold" card is narrowed to ("" = all)
   const [dashboardRangePickingEnd, setDashboardRangePickingEnd] = useState(false); // whether the next calendar click sets the end day (vs. starting a fresh range)
   const [shiftHoursConfig, setShiftHoursConfig] = useState(DEFAULT_SHIFT_HOURS);
@@ -4369,6 +4391,7 @@ function POSPrototype({ tenantId }) {
     // one just from opening an empty table, which is exactly what made the sequence look random.
     ticketNo: null,
     paymentMethod: "cash",
+    appPayment: "",
     paidNow: true,
     splitAmounts: {},
     discount: null,
@@ -4392,7 +4415,7 @@ function POSPrototype({ tenantId }) {
   const switchTable = (nextId, opts = {}) => {
     if (nextId === activeTableId) return;
     const outgoingKey = activeTableId === null ? "takeaway" : activeTableId;
-    const outgoingDraft = { cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
+    const outgoingDraft = { cart, ticketNo, paymentMethod, appPayment, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
     const incomingKey = nextId === null ? "takeaway" : nextId;
     let incoming = tableDrafts[incomingKey] || blankDraft();
     const leavingATable = activeTableId !== null && activeTableId !== "delivery";
@@ -4416,8 +4439,8 @@ function POSPrototype({ tenantId }) {
     const carryOver = (pickupDeliveryHop || toTableHop || forceMove) && cart.length > 0 && !(incoming.cart && incoming.cart.length > 0);
     if (carryOver) {
       incoming = nextId !== null && nextId !== "delivery"
-        ?{ ...blankDraft(), cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone }
-        : { ...blankDraft(), cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta };
+        ? { ...blankDraft(), cart, ticketNo, paymentMethod, appPayment, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone }
+        : { ...blankDraft(), cart, ticketNo, paymentMethod, appPayment, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta };
       if (nextId === "delivery" && customerAddress) {
         const addressWords = customerAddress.toLowerCase().split(/[\s,،/]+/).filter(Boolean);
         const zone = deliveryZones.find((z) => z.label.toLowerCase().split(/[\s,،/]+/).filter(Boolean).some((zw) => addressWords.includes(zw)));
@@ -4429,6 +4452,7 @@ function POSPrototype({ tenantId }) {
     setCart(incoming.cart);
     setTicketNo(incoming.ticketNo);
     setPaymentMethod(incoming.paymentMethod);
+    setAppPayment(incoming.appPayment || "");
     setPaidNow(incoming.paidNow !== false);
     setSplitAmounts(incoming.splitAmounts || {});
     setDiscount(incoming.discount);
@@ -4469,6 +4493,7 @@ function POSPrototype({ tenantId }) {
         setTicketNo(fresh.ticketNo);
         setPaymentMethod(fresh.paymentMethod);
         setPaidNow(fresh.paidNow);
+        setAppPayment(fresh.appPayment || "");
         setSplitAmounts(fresh.splitAmounts);
         setDiscount(fresh.discount);
         setSplitCount(fresh.splitCount);
@@ -4684,6 +4709,7 @@ function POSPrototype({ tenantId }) {
       setAssignedTo(fresh.assignedTo);
       setPaymentMethod(fresh.paymentMethod);
       setPaidNow(fresh.paidNow);
+        setAppPayment(fresh.appPayment || "");
       setSplitAmounts(fresh.splitAmounts);
       setSaved(false);
       setTableDrafts((prev) => ({ ...prev, [tableId]: fresh }));
@@ -4790,6 +4816,7 @@ function POSPrototype({ tenantId }) {
       setCart(incoming.cart);
       setTicketNo(incoming.ticketNo);
       setPaymentMethod(incoming.paymentMethod);
+      setAppPayment(incoming.appPayment || "");
       setPaidNow(incoming.paidNow !== false);
       setSplitAmounts(incoming.splitAmounts || {});
       setDiscount(incoming.discount);
@@ -5960,6 +5987,7 @@ function POSPrototype({ tenantId }) {
       splitCount: splitCount && splitCount > 1 ? splitCount : null,
       paymentMethod,
       splitPayments,
+      appPayment: isPlatformMethod(paymentMethod) && (appPayment === "cash" || appPayment === "visa") ? appPayment : null,
       paid: paidNow || isLaterMethod(paymentMethod), // a delivery-app order is paid as far as the till is concerned; the app owes the restaurant (see platformOwed)
       paidAt: (paidNow || isLaterMethod(paymentMethod)) ? new Date().toISOString() : null,
       customer,
@@ -6017,6 +6045,7 @@ function POSPrototype({ tenantId }) {
       setAssignedTo(fresh.assignedTo);
       setPaymentMethod(fresh.paymentMethod);
       setPaidNow(fresh.paidNow);
+        setAppPayment(fresh.appPayment || "");
       setSplitAmounts(fresh.splitAmounts);
       setCustomerName(fresh.customerName);
       setCustomerPhone(fresh.customerPhone);
@@ -6106,6 +6135,7 @@ function POSPrototype({ tenantId }) {
     setAssignedTo(fresh.assignedTo);
     setPaymentMethod(fresh.paymentMethod);
     setPaidNow(fresh.paidNow);
+        setAppPayment(fresh.appPayment || "");
     setSplitAmounts(fresh.splitAmounts);
     setCustomerName(fresh.customerName);
     setCustomerPhone(fresh.customerPhone);
@@ -6467,13 +6497,28 @@ function POSPrototype({ tenantId }) {
   // footer, Close the day and the Staff tab use.
   const dashboardMonthFirstDay = `${dashboardReportingMonthKeys[0]}-01`;
   const dashboardMonthLastDay = lastDayOfMonth(dashboardReportingMonthKeys[dashboardReportingMonthKeys.length - 1]);
-  const dashboardMonthReceiptsAll = (ledger.ordersInDays(dashboardMonthFirstDay, dashboardMonthLastDay) || []).filter((r) => r.status === "completed");
+  // Which orders the Dashboard counts: all of them, only the restaurant's own, or those paid through one delivery app
+  // (an app's order is never drawer cash — see platformOwed). Expenses belong to the restaurant as a whole, so they and the
+  // net profit are shown only for "all".
+  const dashboardAppIds = allMethods.filter((m) => m.platform).map((m) => m.id);
+  const receiptSourceId = (r) => (dashboardAppIds.includes(r.paymentMethod) ? r.paymentMethod : "restaurant");
+  const dashboardSourceMatch = (r) => dashboardSource === "all" || receiptSourceId(r) === dashboardSource;
+  const dashboardMonthReceiptsAll = (ledger.ordersInDays(dashboardMonthFirstDay, dashboardMonthLastDay) || []).filter((r) => r.status === "completed" && dashboardSourceMatch(r));
   const [dashboardFirstDay, dashboardLastDay] =
     dashboardMode === "day" ? [effectiveDashboardDay, effectiveDashboardDay]
     : dashboardMode === "range" ? [effectiveDashboardRangeStart, effectiveDashboardRangeEnd]
     : [dashboardMonthFirstDay, dashboardMonthLastDay];
   const dashboardPeriod = ledger.period(dashboardFirstDay, dashboardLastDay);
-  const dashboardReceipts = dashboardPeriod ? dashboardPeriod.completed : [];
+  const dashboardReceipts = dashboardPeriod ? dashboardPeriod.completed.filter(dashboardSourceMatch) : [];
+  // The source picker is offered once the restaurant has switched a delivery app on, or has orders from one in this period.
+  const dashboardSourceOffered = dashboardSource !== "all" || allMethods.some((m) => m.platform && paymentMethodOn(paymentConfig, m.id)) || (dashboardPeriod ? dashboardPeriod.completed.some((r) => receiptSourceId(r) !== "restaurant") : false);
+  const dashboardSourceOptions = [{ id: "all", label: t("dashSourceAll") }, { id: "restaurant", label: t("dashSourceRestaurant") }, ...allMethods.filter((m) => m.platform).map((m) => ({ id: m.id, label: t(`payment_${m.id}`) }))];
+  const dashboardAppPayments = (() => {
+    const out = { cash: 0, visa: 0, none: 0 };
+    if (dashboardSource === "all" || dashboardSource === "restaurant") return out;
+    dashboardReceipts.forEach((r) => { out[r.appPayment === "cash" || r.appPayment === "visa" ? r.appPayment : "none"] += r.total; });
+    return out;
+  })();
   const dashboardSummary = summarize(dashboardReceipts);
   const dashboardExpenseTotal = ledger.expensesInDays(dashboardFirstDay, dashboardLastDay).reduce((s, e) => s + e.amount, 0);
 
@@ -6519,7 +6564,7 @@ function POSPrototype({ tenantId }) {
     if (dashboardMode !== "day") return null;
     const prevDayStr = addDaysStr(effectiveDashboardDay, -1);
     const prev = ledger.period(prevDayStr, prevDayStr);
-    return prev ? prev.revenue : 0;
+    return prev ? prev.completed.filter(dashboardSourceMatch).reduce((s, r) => s + r.total, 0) : 0;
   })();
   const periodVsPreviousPct = previousDayRevenue > 0 ? Math.round(((dashboardPeriodRevenue - previousDayRevenue) / previousDayRevenue) * 100) : null;
 
@@ -9757,6 +9802,15 @@ function POSPrototype({ tenantId }) {
               </button>
             </div>
 
+            {isPlatformMethod(paymentMethod) && (
+              <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("appPaidByLabel", { app: t(`payment_${paymentMethod}`) })}</span>
+                {[["cash", t("appPaidByCash")], ["visa", t("appPaidByVisa")]].map(([k, label]) => (
+                  <button key={k} onClick={() => setAppPayment(appPayment === k ? "" : k)} className="pay-pill" style={{ padding: "6px 14px", borderRadius: 7, border: `1px solid ${appPayment === k ? theme.secondary : "var(--border)"}`, background: appPayment === k ? "#3A2E22" : "transparent", color: appPayment === k ? theme.secondaryLight : "var(--text-muted)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>{label}</button>
+                ))}
+              </div>
+            )}
+
             {paymentMethod === "split" && (() => {
               const splitEntered = allDirectMethods.reduce((s, m) => s + (Number(splitAmounts[m.id]) || 0), 0);
               const splitRemaining = Math.round((total - splitEntered) * 100) / 100;
@@ -11112,11 +11166,20 @@ function POSPrototype({ tenantId }) {
             )}
           </div>
 
+          {dashboardSourceOffered && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: -12, marginBottom: 20, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{t("dashSourceLabel")}</span>
+              {dashboardSourceOptions.map((o) => (
+                <button key={o.id} onClick={() => setDashboardSource(o.id)} style={{ padding: "6px 14px", borderRadius: 999, border: `1px solid ${dashboardSource === o.id ? theme.secondary : "var(--border)"}`, background: dashboardSource === o.id ? "rgba(176,141,87,0.18)" : "transparent", color: dashboardSource === o.id ? theme.secondaryLight : "var(--text-muted)", fontSize: 12, fontWeight: dashboardSource === o.id ? 600 : 400, cursor: "pointer" }}>{o.label}</button>
+              ))}
+            </div>
+          )}
+
           {!dashboardMonthDataLoaded ? (
             <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
           ) : (
           <>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(6, 1fr)", gap: 12, marginBottom: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : dashboardSource === "all" ? "repeat(6, 1fr)" : "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
             {[
               {
                 label: t("periodRevenueLabel"),
@@ -11126,13 +11189,15 @@ function POSPrototype({ tenantId }) {
               },
               { label: t("periodOrdersLabel"), value: String(dashboardPeriodOrders) },
               { label: t("avgOrderValueLabel"), value: money(avgOrderValue) },
-              { label: t("expensesLabel"), value: money(dashboardExpenseTotal), accent: dashboardExpenseTotal > 0 ? "#E3A79C" : undefined },
-              {
-                label: t("netProfitLabel"),
-                value: money(netProfit),
-                accent: netProfit >= 0 ? "#9FCB8E" : "#E3A79C",
-                hint: t("netProfitHintDetailed", { revenue: money(dashboardPeriodRevenue), expenses: money(dashboardExpenseTotal) }),
-              },
+              ...(dashboardSource === "all" ? [
+                { label: t("expensesLabel"), value: money(dashboardExpenseTotal), accent: dashboardExpenseTotal > 0 ? "#E3A79C" : undefined },
+                {
+                  label: t("netProfitLabel"),
+                  value: money(netProfit),
+                  accent: netProfit >= 0 ? "#9FCB8E" : "#E3A79C",
+                  hint: t("netProfitHintDetailed", { revenue: money(dashboardPeriodRevenue), expenses: money(dashboardExpenseTotal) }),
+                },
+              ] : []),
               { label: t("discountsGivenLabel"), value: money(dashboardDiscountTotal) },
             ].map((card, i) => (
               <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
@@ -11236,6 +11301,16 @@ function POSPrototype({ tenantId }) {
                   </div>
                 ))}
               </div>
+              {dashboardSource !== "all" && dashboardSource !== "restaurant" && dashboardReceipts.length > 0 && (
+                <div style={{ borderTop: "1px dashed var(--border)", marginTop: 14, paddingTop: 12 }}>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 8 }}>{t("dashAppPaidTitle", { app: t(`payment_${dashboardSource}`) })}</div>
+                  {[["cash", t("dashAppPaidCash")], ["visa", t("dashAppPaidVisa")], ["none", t("dashAppPaidNone")]].filter(([k]) => dashboardAppPayments[k] > 0).map(([k, label]) => (
+                    <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
+                      <span>{label}</span><span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(dashboardAppPayments[k])}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -13125,6 +13200,7 @@ function POSPrototype({ tenantId }) {
                   {later && !voided && (r.platformSettled
                     ? <div style={{ color: "#3F5B45", fontWeight: 600 }}>{t("receiptDetailPlatformReceived", { app: t(`payment_${later.id}`), time: when(r.platformSettledAt) })}</div>
                     : <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailPlatformOwed", { app: t(`payment_${later.id}`) })}</div>)}
+                  {later && r.appPayment && <div style={{ color: "var(--text-muted)" }}>{t("appPaidByLabel", { app: t(`payment_${later.id}`) })} {t(r.appPayment === "cash" ? "appPaidByCash" : "appPaidByVisa")}</div>}
                   {r.tableId === "delivery" && r.assignedTo && !voided && (r.deliverySettled
                     ? <div style={{ color: "#3F5B45", fontWeight: 600 }}>{t("receiptDetailDeliverySettled", { time: when(r.deliverySettledAt) })}</div>
                     : <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailDeliveryOpen", { name: r.assignedTo.name })}</div>)}
