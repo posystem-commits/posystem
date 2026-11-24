@@ -159,7 +159,15 @@ export const cashFlows = (pool, expensePool, inWin) => {
     const cash = receiptMethodAmounts(r).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
     if (cash > 0) who[r.servedBy?.name || "—"] = (who[r.servedBy?.name || "—"] || 0) + cash;
   });
-  return { cashIn, cashReturned, cashExpenses, riderPay, paidOut: cashReturned + cashExpenses + riderPay, who };
+  // A delivery app (Talabat, Elmenus, a price list's app) that pays the restaurant IN CASH puts that cash in the drawer of
+  // the shift in which the orders were marked received. (Paid by visa or another method, it never touches the drawer.)
+  const appCashOrders = pool.filter((r) => r.platformSettled && r.platformSettledMethod === "cash" && r.status === "completed" && r.paid !== false && r.platformSettledAt && inWin(r.platformSettledAt));
+  const appCash = round2(appCashOrders.reduce((s, r) => s + r.total, 0));
+  appCashOrders.forEach((r) => {
+    const name = r.platformSettledBy?.name || "—";
+    who[name] = (who[name] || 0) + r.total;
+  });
+  return { cashIn: cashIn + appCash, appCash, cashReturned, cashExpenses, riderPay, paidOut: cashReturned + cashExpenses + riderPay, who };
 };
 
 // Finds the set of recorded events whose combined effect best accounts for a gap.

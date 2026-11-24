@@ -31,4 +31,16 @@ ok("each app owes the restaurant what was sold through it", () => {
   assert.equal(owed[listId], 300);
   assert.equal(owed.elmenus, 0);
 });
+ok("an app paying in cash puts that cash in the drawer of the shift it is marked received in; visa does not", () => {
+  const settle = (id, how) => ({ platformSettled: true, platformSettledAt: "2026-10-20T14:00:00.000Z", platformSettledBy: { id: "A", name: "A" }, platformSettledMethod: how });
+  const rs = [order("1", "cash", 100), order("2", "talabat", 200, settle("2", "cash")), order("3", listId, 300, settle("3", "visa"))];
+  const led = L.createLedger({ receiptsByMonth: { "2026-09": [], "2026-10": rs, "2026-11": [] }, expensesByMonth: {}, shiftLog: [{ id: "s", employeeId: "A", employeeName: "A", clockIn: "2026-10-20T08:00:00.000Z", clockOut: "2026-10-20T18:00:00.000Z", openingCash: 50, openingCounted: true, countedCash: 350 }], openShifts: {}, shiftHours, menu: {}, labels: { methodByLabel: {}, isPayLabel: () => false } });
+  const d = led.closeDay("2026-10-20", Date.parse("2026-10-21T00:00:00Z")).drawers[0];
+  assert.equal(d.cashIn, 300, "100 own cash + 200 Talabat paid in cash");
+  assert.equal(d.appCash, 200);
+  assert.equal(d.expected, 350);
+  assert.equal(d.gap, 0);
+  const outside = led.closeDay("2026-10-20", Date.parse("2026-10-21T00:00:00Z")).drawers[0];
+  assert.equal(outside.who.A, 300);
+});
 console.log(`${n} checks passed`);
