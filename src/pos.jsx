@@ -180,6 +180,10 @@ const STRINGS = {
     confirm_markOrderPaid: "Mark order #{{n}} as paid?",
     notice_orderMarkedPaid: "Order #{{n}} marked as paid",
     notice_orderMovedToTable: "The order moved to {{table}}",
+    moveOrderTitle: "Switch to {{to}}?",
+    moveOrderBody: "{{from}} has {{n}} item(s) in its order. Move them to {{to}}, or keep them on {{from}} and start a separate order on {{to}}?",
+    moveOrderMove: "Move the items to {{to}}",
+    moveOrderKeep: "Keep them on {{from}}",
     unpaidSummary: "{{n}} unpaid · {{amount}}",
     unpaidThisShiftLabel: "Unpaid orders from this shift",
     noUnpaidThisShift: "Everything rung up this shift has been paid.",
@@ -1220,6 +1224,10 @@ const STRINGS = {
     confirm_markOrderPaid: "تحديد الطلب رقم #{{n}} كمدفوع؟",
     notice_orderMarkedPaid: "تم تحديد الطلب رقم #{{n}} كمدفوع",
     notice_orderMovedToTable: "انتقل الطلب إلى {{table}}",
+    moveOrderTitle: "التبديل إلى {{to}}؟",
+    moveOrderBody: "في طلب {{from}} عدد {{n}} صنف. هل تنقلها إلى {{to}}، أم تتركها على {{from}} وتبدأ طلبًا منفصلًا على {{to}}؟",
+    moveOrderMove: "انقل الأصناف إلى {{to}}",
+    moveOrderKeep: "أبقِها على {{from}}",
     unpaidSummary: "{{n}} غير مدفوع · {{amount}}",
     unpaidThisShiftLabel: "الطلبات غير المدفوعة من هذه الوردية",
     noUnpaidThisShift: "كل ما تم تسجيله في هذه الوردية تم دفعه.",
@@ -2377,7 +2385,7 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one (each row shows its ticket number, table or delivery, and the date it was created, since ticket numbers restart every day) to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. There is deliberately no way to print or download a customer receipt before the order is saved: the receipt is printed only after Save order (automatically if the device's auto-print is on, or later with "Print receipt" from the Receipts tab), so every printed ticket has a saved order behind it. Kitchen tickets (dish names, quantities and notes with NO prices) print only after the order is saved — automatically (see Kitchen printing under Settings) or from the saved receipt in the Receipts tab; there is no kitchen-ticket button on the Order screen before saving. When editing a saved delivery order in the Receipts tab, the "Delivery area" drop-down list lets staff pick another area; the delivery fee and the order total update to that area's fee and the change is recorded in the edit history. On a Windows till PC with a cash drawer plugged into the receipt printer, Settings > Cash drawer (per device) can turn on opening the drawer with F10 or an "Open cash drawer" button on the Order screen, and optionally automatically when an order is paid in cash (a split payment counts only if part of it is cash; card, wallet and delivery-app orders leave the drawer shut); it needs a small free helper program (downloadable from that same card) installed once on that computer, and Chrome may ask once to allow connecting to devices on the computer. A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items). Likewise, an order started on Takeaway or Delivery moves to a table when the cashier taps that table, as long as the table has no items of its own yet; going from one table to another never moves items.
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one (each row shows its ticket number, table or delivery, and the date it was created, since ticket numbers restart every day) to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. There is deliberately no way to print or download a customer receipt before the order is saved: the receipt is printed only after Save order (automatically if the device's auto-print is on, or later with "Print receipt" from the Receipts tab), so every printed ticket has a saved order behind it. Kitchen tickets (dish names, quantities and notes with NO prices) print only after the order is saved — automatically (see Kitchen printing under Settings) or from the saved receipt in the Receipts tab; there is no kitchen-ticket button on the Order screen before saving. When editing a saved delivery order in the Receipts tab, the "Delivery area" drop-down list lets staff pick another area; the delivery fee and the order total update to that area's fee and the change is recorded in the edit history. On a Windows till PC with a cash drawer plugged into the receipt printer, Settings > Cash drawer (per device) can turn on opening the drawer with F10 or an "Open cash drawer" button on the Order screen, and optionally automatically when an order is paid in cash (a split payment counts only if part of it is cash; card, wallet and delivery-app orders leave the drawer shut); it needs a small free helper program (downloadable from that same card) installed once on that computer, and Chrome may ask once to allow connecting to devices on the computer. A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items). Likewise, an order started on Takeaway or Delivery moves to a table when the cashier taps that table, as long as the table has no items of its own yet; leaving a table that already has items for an empty Takeaway, Delivery or other table pops up a choice: "Move the items" (they follow the cashier and the table is left empty) or "Keep them on the table" (a separate new order starts there); the choice appears only on the order screen switcher, and never when the destination already has its own items.
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. When a dish shows as out of stock because of its recipe, the badge on the Order screen names the ingredient that ran out (for example "Out of stock · no honey mustard"), and tapping the dish explains it — restock that ingredient in Stock, or remove it from the dish's recipe, and the dish comes back by itself. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
@@ -3186,6 +3194,7 @@ function POSPrototype({ tenantId }) {
   const [settleReminderOpen, setSettleReminderOpen] = useState(false); // shown before the closing count when riders still hold unsettled delivery orders
   const [closingCountDraft, setClosingCountDraft] = useState("");
   const [returnDialog, setReturnDialog] = useState(null); // { receipt, action: "cancel" | "refund", method } — which way the money goes back to the customer
+  const [moveOrderPrompt, setMoveOrderPrompt] = useState(null); // { from, to, count } — leaving a table that has items: move them or keep them there?
   const [confirmDialog, setConfirmDialog] = useState(null); // { message, onConfirm } | null — replaces window.confirm, which this preview's sandbox silently blocks
   const [helpChatOpen, setHelpChatOpen] = useState(false);
   const [helpChatMessages, setHelpChatMessages] = useState([]); // [{ role: "user"|"assistant", content: string }]
@@ -4329,12 +4338,22 @@ function POSPrototype({ tenantId }) {
   // for. Stashes the outgoing table's in-progress cart in memory and restores (or starts fresh)
   // the incoming one — so staff can hop between tables without losing anyone's order. These
   // drafts live only for this browser session; they're not persisted to storage.
-  const switchTable = (nextId) => {
+  // opts.offerMove: called from the order screen's switcher — when the cashier leaves a TABLE that already has items for
+  // an empty Takeaway/Delivery/table slot, ask whether the items should move with them or stay on the table.
+  // opts.moveItems: the cashier chose to move them.
+  const switchTable = (nextId, opts = {}) => {
     if (nextId === activeTableId) return;
     const outgoingKey = activeTableId === null ? "takeaway" : activeTableId;
     const outgoingDraft = { cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
     const incomingKey = nextId === null ? "takeaway" : nextId;
     let incoming = tableDrafts[incomingKey] || blankDraft();
+    const leavingATable = activeTableId !== null && activeTableId !== "delivery";
+    const destinationEmpty = !(incoming.cart && incoming.cart.length > 0);
+    if (opts.offerMove && leavingATable && cart.length > 0 && destinationEmpty) {
+      setMoveOrderPrompt({ from: activeTableId, to: nextId, count: cart.length });
+      return;
+    }
+    const forceMove = !!opts.moveItems && cart.length > 0 && destinationEmpty;
     // Takeaway and Delivery are the same order with a different fulfilment — if the cashier flips
     // between them before confirming, bring the items (and the customer/payment details typed so
     // far) along instead of leaving them behind on the other tab. Only when the destination is
@@ -4345,10 +4364,10 @@ function POSPrototype({ tenantId }) {
     // Dine In slot): the items follow the cashier to the table. Only in that direction — hopping from one table
     // to another never moves anything, because tables are separate orders running side by side.
     const toTableHop = (activeTableId === null || activeTableId === "delivery") && nextId !== null && nextId !== "delivery";
-    const carryOver = (pickupDeliveryHop || toTableHop) && cart.length > 0 && !(incoming.cart && incoming.cart.length > 0);
+    const carryOver = (pickupDeliveryHop || toTableHop || forceMove) && cart.length > 0 && !(incoming.cart && incoming.cart.length > 0);
     if (carryOver) {
-      incoming = toTableHop
-        ? { ...blankDraft(), cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone }
+      incoming = nextId !== null && nextId !== "delivery"
+        ?{ ...blankDraft(), cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone }
         : { ...blankDraft(), cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta };
       if (nextId === "delivery" && customerAddress) {
         const addressWords = customerAddress.toLowerCase().split(/[\s,،/]+/).filter(Boolean);
@@ -4381,7 +4400,7 @@ function POSPrototype({ tenantId }) {
     setShowCustomerSuggestions(false);
     setSaved(false);
     setActiveTableId(nextId);
-    if (carryOver && toTableHop) flashNotice(t("notice_orderMovedToTable", { table: tableLabel(nextId) }));
+    if (carryOver && (toTableHop || forceMove)) flashNotice(t("notice_orderMovedToTable", { table: tableLabel(nextId) }));
   };
   // Defense in depth: if a specific numbered table was open when a manager turns the "tables"
   // package feature off (or the admin downgrades the package), don't leave that numbered ticket
@@ -9357,7 +9376,7 @@ function POSPrototype({ tenantId }) {
           <div style={{ width: isCompact ? "100%" : 360, padding: isCompact ? (isMobile ? "0 14px 16px" : "0 20px 20px") : "28px 28px 28px 0", flexShrink: 0, boxSizing: "border-box" }}>
             <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, marginBottom: 2 }}>
               <button
-                onClick={() => switchTable(null)}
+                onClick={() => switchTable(null, { offerMove: true })}
                 style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === null ? theme.secondary : "var(--border)"}`, background: activeTableId === null ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === null ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === null ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap", position: "relative" }}
               >
                 {t("takeawayLabel")}
@@ -9365,7 +9384,7 @@ function POSPrototype({ tenantId }) {
               </button>
               {hasFeature("deliveryZones") && (
                 <button
-                  onClick={() => switchTable("delivery")}
+                  onClick={() => switchTable("delivery", { offerMove: true })}
                   style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === "delivery" ? theme.secondary : "var(--border)"}`, background: activeTableId === "delivery" ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === "delivery" ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === "delivery" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
                 >
                   {t("deliveryLabel")}
@@ -9376,7 +9395,7 @@ function POSPrototype({ tenantId }) {
                 tableIds.map((id) => (
                   <button
                     key={id}
-                    onClick={() => switchTable(id)}
+                    onClick={() => switchTable(id, { offerMove: true })}
                     style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === id ? theme.secondary : "var(--border)"}`, background: activeTableId === id ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === id ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === id ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
                   >
                     {tableLabel(id)}
@@ -9387,7 +9406,7 @@ function POSPrototype({ tenantId }) {
                 // No individual table tracking on this package — just one generic "Dine In"
                 // bucket alongside Takeaway/Delivery, instead of a numbered-table list.
                 <button
-                  onClick={() => switchTable("dine-in")}
+                  onClick={() => switchTable("dine-in", { offerMove: true })}
                   style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === "dine-in" ? theme.secondary : "var(--border)"}`, background: activeTableId === "dine-in" ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === "dine-in" ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === "dine-in" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
                 >
                   {t("dineInLabel")}
@@ -13056,6 +13075,26 @@ function POSPrototype({ tenantId }) {
           </div>
         );
       })()}
+
+      {moveOrderPrompt && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setMoveOrderPrompt(null)}>
+          <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 24, width: "100%", maxWidth: 360, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>{t("moveOrderTitle", { to: tableLabel(moveOrderPrompt.to) })}</div>
+            <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 18 }}>{t("moveOrderBody", { from: tableLabel(moveOrderPrompt.from), to: tableLabel(moveOrderPrompt.to), n: moveOrderPrompt.count })}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                onClick={() => { const p = moveOrderPrompt; setMoveOrderPrompt(null); switchTable(p.to, { moveItems: true }); }}
+                style={{ padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
+              >{t("moveOrderMove", { to: tableLabel(moveOrderPrompt.to) })}</button>
+              <button
+                onClick={() => { const p = moveOrderPrompt; setMoveOrderPrompt(null); switchTable(p.to); }}
+                style={{ padding: "11px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}
+              >{t("moveOrderKeep", { from: tableLabel(moveOrderPrompt.from) })}</button>
+              <button onClick={() => setMoveOrderPrompt(null)} style={{ padding: "8px 0", border: "none", background: "transparent", color: "#7A7468", fontSize: 12.5, cursor: "pointer" }}>{t("cancel")}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmDialog && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setConfirmDialog(null)}>
