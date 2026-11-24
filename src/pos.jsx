@@ -180,6 +180,10 @@ const STRINGS = {
     confirm_markOrderPaid: "Mark order #{{n}} as paid?",
     notice_orderMarkedPaid: "Order #{{n}} marked as paid",
     notice_orderMovedToTable: "The order moved to {{table}}",
+    tableUnpaidInvoice: "Unpaid #{{n}}",
+    tableAddItems: "Add items",
+    addingToInvoiceBanner: "Adding to unpaid invoice #{{n}} ({{table}}, {{total}}) — pick the items, then press the button.",
+    addToThisInvoice: "Add these items to #{{n}}",
     moveOrderTitle: "Switch to {{to}}?",
     moveOrderBody: "{{from}} has {{n}} item(s) in its order. Move them to {{to}}, or keep them on {{from}} and start a separate order on {{to}}?",
     moveOrderMove: "Move the items to {{to}}",
@@ -1224,6 +1228,10 @@ const STRINGS = {
     confirm_markOrderPaid: "تحديد الطلب رقم #{{n}} كمدفوع؟",
     notice_orderMarkedPaid: "تم تحديد الطلب رقم #{{n}} كمدفوع",
     notice_orderMovedToTable: "انتقل الطلب إلى {{table}}",
+    tableUnpaidInvoice: "غير مدفوعة رقم {{n}}",
+    tableAddItems: "إضافة أصناف",
+    addingToInvoiceBanner: "إضافة إلى الفاتورة غير المدفوعة رقم {{n}} ({{table}}، {{total}}) — اختر الأصناف ثم اضغط الزر.",
+    addToThisInvoice: "أضف هذه الأصناف إلى رقم {{n}}",
     moveOrderTitle: "التبديل إلى {{to}}؟",
     moveOrderBody: "في طلب {{from}} عدد {{n}} صنف. هل تنقلها إلى {{to}}، أم تتركها على {{from}} وتبدأ طلبًا منفصلًا على {{to}}؟",
     moveOrderMove: "انقل الأصناف إلى {{to}}",
@@ -2389,7 +2397,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. When a dish shows as out of stock because of its recipe, the badge on the Order screen names the ingredient that ran out (for example "Out of stock · no honey mustard"), and tapping the dish explains it — restock that ingredient in Stock, or remove it from the dish's recipe, and the dish comes back by itself. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
-- **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
+- **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket or a saved unpaid (pay-later) invoice; each unpaid invoice is listed on the table card with its ticket number, date, items and total, with its own "Mark as paid" button (confirms, then marks that invoice paid) and an "Add items" button (opens the Order screen on that table in an "adding to unpaid invoice" mode: pick the items, then press "Add these items to #N" to merge them into that invoice instead of saving a new one; Cancel leaves that mode), and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
 - **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery. At the bottom of the Delivery tab there is also a "Delivery employee report" (shown when staff tracking is included in the package): tap one or more delivery employees (or "Select all") and it lists the orders not yet settled with each of them — client name, phone, address, how it was paid and the order amount, with the delivery fee shown separately. For each employee it also shows the cash they collected, minus their share of the delivery fees, which gives what they owe the restaurant (or what the restaurant owes them) — the same figures as the Delivery cash reconciliation in the Shift tab, and it empties once you settle up there. "Print report" prints one page per selected employee with signature lines. Only orders assigned to that employee on the Order screen appear in it. After an order is saved, anyone signed in (not only managers) can change who it is assigned to with the "Reassign" dropdown on the order in the Receipts tab (when team tracking is included).
 - **Website** (manager-only; comes with the Online ordering link feature): turns the online-ordering link into a branded website for the restaurant. A manager picks one of five looks (Classic, Modern, Dark, Bold, Minimal — each sets fonts, shapes and layout together), can override the button and highlight colors (otherwise the brand colors from Settings are used), uploads a cover photo and up to 6 gallery photos, writes a tagline and an "About us" text in English and Arabic, adds an announcement banner, address and social links (Instagram, Facebook, TikTok, WhatsApp, website), chooses which sections show (About, Popular items row, Gallery, Opening hours — the hours and the "Open now / Closed" badge come from Settings → Shift hours) and chooses the language the page opens in. A live phone preview sits next to the controls (a "Preview" button on phones). Everything saves automatically, but customers keep seeing the original ordering page until the "Published" switch is turned on, and it can be switched off again at any time. The tab also lets the manager claim a short web address (for example /r/my-restaurant) to share on social media or print on menus; the original long link keeps working. Orders can't be sent from the preview. In the Menu editor, each dish has an "On your website" section: labels (Popular, New, Spicy, Vegetarian, Chef's pick) and a "Show in the Popular row" checkbox. Dish photos and the short description are what the website shows on each menu card. The website look also applies to table QR menus once published.
 - **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer (Cancel also requires a written reason, which is saved on the receipt; the Shift report and the Close the day report show how many orders were cancelled and their total value, listing each cancelled order with its reason, and refunded orders separately) — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. On the Close the day drawer report (screen and print) each shift and the whole day show the cash handed back for cancelled/refunded orders on its own "Returned orders" line, separate from the "Expenses paid out" line. Editing lets you change each item's quantity (stock adjusts to match) only while the order is still unpaid — once an order is paid its quantities are locked and cannot be changed (the payment method, discount and delivery area can still be edited) — and add, change or remove the order's discount (no need to delete the order and make a new one — a discount that is added or changed needs a written reason, the total and the service/VAT recalculate right away, a "Total after this edit" line shows the new bill before you save, and the change is recorded in the edit history and in the cash-drawer explanation on Close the day if the order was already paid), and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
@@ -3010,6 +3018,7 @@ function POSPrototype({ tenantId }) {
   const [confirmingTablePayment, setConfirmingTablePayment] = useState(false); // same guard as savingOrder, for confirmTablePayment's own button
   const [addToInvoiceOpen, setAddToInvoiceOpen] = useState(false); // picker for merging the current cart into an already-saved unpaid invoice
   const [mergingIntoInvoice, setMergingIntoInvoice] = useState(false);
+  const [addTargetId, setAddTargetId] = useState(null); // receipt id of the unpaid invoice the Order screen is adding items to (set from the Tables tab)
   const [notice, setNotice] = useState(null);
   // Starts optimistic rather than trusting navigator.onLine's initial snapshot — that API is
   // notoriously unreliable inside embedded WebViews (e.g. the Claude mobile app's artifact
@@ -4354,6 +4363,7 @@ function POSPrototype({ tenantId }) {
       return;
     }
     const forceMove = !!opts.moveItems && cart.length > 0 && destinationEmpty;
+    setAddTargetId(null); // leaving this slot ends any "adding to an unpaid invoice" mode
     // Takeaway and Delivery are the same order with a different fulfilment — if the cashier flips
     // between them before confirming, bring the items (and the customer/payment details typed so
     // far) along instead of leaving them behind on the other tab. Only when the destination is
@@ -5978,9 +5988,14 @@ function POSPrototype({ tenantId }) {
   // service/VAT are recomputed using that invoice's own stored rates (same rule saveEditReceipt
   // uses), not today's live settings. Stock is deducted for the newly added items exactly like a
   // normal save, since these are genuinely new items being added to the kitchen's workload.
+  // Every unpaid invoice in the months that are loaded (this month always is) — a table that still owes a bill from
+  // before a month change must keep showing it. `unpaidInvoicesForTable` is what the Tables tab uses to mark a table
+  // occupied and to list its open items.
+  const unpaidInvoicesAll = Object.values(receiptsByMonth).flat().filter((r) => r.status === "completed" && r.paid === false);
+  const unpaidInvoicesForTable = (id) => unpaidInvoicesAll.filter((r) => r.tableId !== null && r.tableId !== undefined && String(r.tableId) === String(id)).sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
   const addCartToUnpaidInvoice = (receiptId) => {
     if (cart.length === 0 || mergingIntoInvoice) return;
-    const target = unpaidInvoicesThisMonth.find((r) => r.id === receiptId);
+    const target = unpaidInvoicesAll.find((r) => r.id === receiptId);
     if (!target) return;
     setMergingIntoInvoice(true);
 
@@ -6042,6 +6057,7 @@ function POSPrototype({ tenantId }) {
     const key = activeTableId === null ? "takeaway" : activeTableId;
     setTableDrafts((prev) => ({ ...prev, [key]: fresh }));
     setAddToInvoiceOpen(false);
+    setAddTargetId(null);
     setMergingIntoInvoice(false);
   };
 
@@ -9530,6 +9546,24 @@ function POSPrototype({ tenantId }) {
               </div>
               )}
 
+              {(() => {
+                const addTarget = addTargetId ? unpaidInvoicesAll.find((r) => r.id === addTargetId) : null;
+                if (!addTarget) return null;
+                return (
+                  <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12, fontFamily: "Inter, sans-serif" }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 8 }}>{t("addingToInvoiceBanner", { n: addTarget.ticketNo, table: tableLabel(activeTableId), total: money(addTarget.total) })}</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        disabled={cart.length === 0 || mergingIntoInvoice}
+                        onClick={() => addCartToUnpaidInvoice(addTarget.id)}
+                        style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: cart.length === 0 || mergingIntoInvoice ? "not-allowed" : "pointer", opacity: cart.length === 0 || mergingIntoInvoice ? 0.5 : 1 }}
+                      >{t("addToThisInvoice", { n: addTarget.ticketNo })}</button>
+                      <button onClick={() => setAddTargetId(null)} style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("cancel")}</button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {cart.length > 0 && unpaidInvoicesThisMonth.length > 0 && (
                 <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
                   <button onClick={() => setAddToInvoiceOpen(true)} style={{ fontSize: 11.5, color: theme.primary, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>{t("addToExistingInvoice")}</button>
@@ -11928,7 +11962,9 @@ function POSPrototype({ tenantId }) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
                 {tableIds.map((id) => {
                   const checkoutReq = checkoutRequestForTable(id);
-                  const occupied = tableItemCount(id) > 0 || !!checkoutReq;
+                  const hasOpenCart = tableItemCount(id) > 0 || !!checkoutReq;
+                  const unpaidHere = unpaidInvoicesForTable(id);
+                  const occupied = hasOpenCart || unpaidHere.length > 0;
                   const isActive = activeTableId === id;
                   const pendingHere = pendingOrdersForTable(id);
                   return (
@@ -11957,6 +11993,19 @@ function POSPrototype({ tenantId }) {
                           {t("billRequestedBadge", { method: t(`payment_${checkoutReq.paymentMethod}`) })}
                         </div>
                       )}
+                      {unpaidHere.map((inv) => (
+                        <div key={inv.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", marginBottom: 8 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                            <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{t("tableUnpaidInvoice", { n: inv.ticketNo })} · {new Date(inv.timestamp).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { day: "numeric", month: "short" })}</span>
+                            <span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(inv.total)}</span>
+                          </div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 6 }}>{inv.items.map((it) => `${it.qty}× ${it.name}`).join(", ")}</div>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <button onClick={() => markReceiptPaid(inv)} style={{ fontSize: 11, padding: "5px 9px", borderRadius: 6, border: "1px solid #8EB8D6", background: "rgba(142,184,214,0.15)", color: "#8EB8D6", cursor: "pointer", fontWeight: 600 }}>{t("markAsPaid")}</button>
+                            <button onClick={() => { switchTable(id); setAddTargetId(inv.id); setView("order"); }} style={{ fontSize: 11, padding: "5px 9px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("tableAddItems")}</button>
+                          </div>
+                        </div>
+                      ))}
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {pendingHere.length > 0 ? (
                           <button
@@ -11973,7 +12022,7 @@ function POSPrototype({ tenantId }) {
                             {t("openTicket")}
                           </button>
                         )}
-                        {occupied && (
+                        {hasOpenCart && (
                           <button
                             onClick={() => openPayTableModal(id)}
                             style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #8EB8D6", background: "rgba(142,184,214,0.15)", color: "#8EB8D6", cursor: "pointer", fontWeight: 600 }}
