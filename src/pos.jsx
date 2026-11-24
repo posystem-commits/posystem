@@ -164,7 +164,13 @@ const STRINGS = {
     notice_deliveryNeeds: "A delivery order needs: {{fields}}",
     appCashLabel: "Cash received from delivery apps",
     platformReceiveTitle: "How did {{app}} pay?",
-    platformReceiveBody: "{{n}} order(s) · {{amount}}. Pick the way {{app}} paid the restaurant.",
+    platformReceiveBody: "Tick the orders {{app}} has paid for, then pick the way it paid the restaurant.",
+    riderSettleTitle: "Settle {{name}}",
+    riderSettleBody: "Tick the orders you are settling now; the rest stay unsettled.",
+    settleSelectedCount: "{{n}} of {{m}} selected",
+    settleSelectAll: "Select all",
+    settleSelectNone: "Clear",
+    settleNowButton: "Settle {{n}} order(s)",
     platformReceiveCashNote: "Cash goes into the drawer of the shift that is open now; the other methods are checked against the statement in the shift report.",
     listPaysVia: "{{list}} orders are paid through {{app}}. Pick how the customer pays {{app}}:",
     profilePaidThrough: "Orders on this list are recorded as paid through {{app}} — never as drawer cash.",
@@ -1240,7 +1246,13 @@ const STRINGS = {
     notice_deliveryNeeds: "طلب التوصيل يحتاج: {{fields}}",
     appCashLabel: "نقدية مستلمة من تطبيقات التوصيل",
     platformReceiveTitle: "كيف دفع {{app}}؟",
-    platformReceiveBody: "{{n}} طلب · {{amount}}. اختر الطريقة التي دفع بها {{app}} للمطعم.",
+    platformReceiveBody: "حدّد الطلبات التي دفع {{app}} ثمنها، ثم اختر طريقة دفعه للمطعم.",
+    riderSettleTitle: "تسوية {{name}}",
+    riderSettleBody: "حدّد الطلبات التي تسوّيها الآن؛ والباقي يبقى بلا تسوية.",
+    settleSelectedCount: "تم تحديد {{n}} من {{m}}",
+    settleSelectAll: "تحديد الكل",
+    settleSelectNone: "مسح",
+    settleNowButton: "تسوية {{n}} طلب",
     platformReceiveCashNote: "النقدية تدخل درج الوردية المفتوحة الآن؛ أما الطرق الأخرى فتُراجع على كشف الحساب في تقرير الوردية.",
     listPaysVia: "طلبات {{list}} تُدفع عبر {{app}}. اختر طريقة دفع العميل لـ {{app}}:",
     profilePaidThrough: "الطلبات على هذه القائمة تُسجَّل كمدفوعة عبر {{app}} — وليست نقدية في الدرج.",
@@ -2449,7 +2461,7 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one (each row shows its ticket number, table or delivery, and the date it was created, since ticket numbers restart every day) to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. There is deliberately no way to print or download a customer receipt before the order is saved: the receipt is printed only after Save order (automatically if the device's auto-print is on, or later with "Print receipt" from the Receipts tab), so every printed ticket has a saved order behind it. Kitchen tickets (dish names, quantities and notes with NO prices) print only after the order is saved — automatically (see Kitchen printing under Settings) or from the saved receipt in the Receipts tab; there is no kitchen-ticket button on the Order screen before saving. When editing a saved delivery order in the Receipts tab, the "Delivery area" drop-down list lets staff pick another area; the delivery fee and the order total update to that area's fee and the change is recorded in the edit history. On a Windows till PC with a cash drawer plugged into the receipt printer, Settings > Cash drawer (per device) can turn on opening the drawer with F10 or an "Open cash drawer" button on the Order screen, and optionally automatically when an order is paid in cash (a split payment counts only if part of it is cash; card, wallet and delivery-app orders leave the drawer shut); it needs a small free helper program (downloadable from that same card) installed once on that computer, and Chrome may ask once to allow connecting to devices on the computer. A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Shift tab under "Owed by delivery apps" (every settlement — riders and delivery apps — is done from the Shift tab), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items). Likewise, an order started on Takeaway or Delivery moves to a table when the cashier taps that table, as long as the table has no items of its own yet; on the Delivery slot the customer block is required: a delivery order cannot be saved until the customer name, phone number and address are filled in and a delivery area (zone) is chosen (a message lists what is missing); leaving a table that already has items for an empty Takeaway, Delivery or other table pops up a choice: "Move the items" (they follow the cashier and the table is left empty) or "Keep them on the table" (a separate new order starts there); the choice appears only on the order screen switcher, and never when the destination already has its own items.
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one (each row shows its ticket number, table or delivery, and the date it was created, since ticket numbers restart every day) to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. There is deliberately no way to print or download a customer receipt before the order is saved: the receipt is printed only after Save order (automatically if the device's auto-print is on, or later with "Print receipt" from the Receipts tab), so every printed ticket has a saved order behind it. Kitchen tickets (dish names, quantities and notes with NO prices) print only after the order is saved — automatically (see Kitchen printing under Settings) or from the saved receipt in the Receipts tab; there is no kitchen-ticket button on the Order screen before saving. When editing a saved delivery order in the Receipts tab, the "Delivery area" drop-down list lets staff pick another area; the delivery fee and the order total update to that area's fee and the change is recorded in the edit history. On a Windows till PC with a cash drawer plugged into the receipt printer, Settings > Cash drawer (per device) can turn on opening the drawer with F10 or an "Open cash drawer" button on the Order screen, and optionally automatically when an order is paid in cash (a split payment counts only if part of it is cash; card, wallet and delivery-app orders leave the drawer shut); it needs a small free helper program (downloadable from that same card) installed once on that computer, and Chrome may ask once to allow connecting to devices on the computer. A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Shift tab under "Owed by delivery apps" (every settlement — riders and delivery apps — is done from the Shift tab), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Pressing "Settle up" (for a delivery employee) or "Mark received" (for a delivery app) opens a pick-list of that person's or app's unsettled orders — one brief line each with a tick box, the order number, date, items and price, with Select all / Clear and a running total (for a rider: cash collected, their share and what they owe or are owed, worked out for the ticked orders only); only the ticked orders are settled and the others stay unsettled. For a delivery app you then pick how it paid (Cash, Visa...). Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items). Likewise, an order started on Takeaway or Delivery moves to a table when the cashier taps that table, as long as the table has no items of its own yet; on the Delivery slot the customer block is required: a delivery order cannot be saved until the customer name, phone number and address are filled in and a delivery area (zone) is chosen (a message lists what is missing); leaving a table that already has items for an empty Takeaway, Delivery or other table pops up a choice: "Move the items" (they follow the cashier and the table is left empty) or "Keep them on the table" (a separate new order starts there); the choice appears only on the order screen switcher, and never when the destination already has its own items.
 - **Price list tabs** (if this restaurant has created any; every price list stands for a delivery app such as Talabat or Elmenus — a list named after Talabat or Elmenus uses that app, any other list gets a payment type of its own named after the list): an order rung up on a price list tab is automatically recorded as paid through that app, never as drawer cash — the app owes the restaurant that money (shown under "Owed by delivery apps" on the Shift tab until marked received; "Mark received" — for one order or a whole month — asks how the app paid the restaurant: Cash, Visa or another method. Cash is added to the drawer of the shift that is open when it is marked received (the shift report shows it as "Cash received from delivery apps" and Close the day counts it in cash received); visa or another method never touches the drawer and is checked against the statement in the shift report; the receipt detail shows when and how it was received). On such a tab the payment buttons mean how the customer pays the app (Cash, Visa, ...): the Order screen says so, split payment and the cash-drawer button are hidden, and the chosen method is saved on the order and shown in its receipt detail. The Dashboard "Show" row can then narrow everything to one app. Details: extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. When a dish shows as out of stock because of its recipe, the badge on the Order screen names the ingredient that ran out (for example "Out of stock · no honey mustard"), and tapping the dish explains it — restock that ingredient in Stock, or remove it from the dish's recipe, and the dish comes back by itself. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
@@ -3168,7 +3180,9 @@ function POSPrototype({ tenantId }) {
   const [dashboardRangeStart, setDashboardRangeStart] = useState(null); // "YYYY-MM-DD", defaults to 7 days before the end
   const [dashboardRangeEnd, setDashboardRangeEnd] = useState(null); // "YYYY-MM-DD", defaults to today once known
   const [dashboardRangePickerOpen, setDashboardRangePickerOpen] = useState(false);
-  const [platformReceiveDlg, setPlatformReceiveDlg] = useState(null); // { app, entries }: asking how a delivery app paid the restaurant
+  const [platformReceiveDlg, setPlatformReceiveDlg] = useState(null); // { appId }: choosing which of a delivery app's orders it has paid, and how
+  const [riderSettleDlg, setRiderSettleDlg] = useState(null); // { riderId }: choosing which of a rider's orders to settle now
+  const [settlePick, setSettlePick] = useState({}); // { [receiptId]: true } the orders ticked in whichever settle dialog is open
   const [dashboardSource, setDashboardSource] = useState("all"); // "all" | "restaurant" | a delivery app's payment-method id (talabat, elmenus, ...): which orders the Dashboard counts
   const [appPayment, setAppPayment] = useState(""); // "" | "cash" | "visa": how the customer paid the delivery app (only for an order paid through Talabat/Elmenus)
   const [dashboardCategory, setDashboardCategory] = useState(""); // menu category the "Items sold" card is narrowed to ("" = all)
@@ -6441,7 +6455,10 @@ function POSPrototype({ tenantId }) {
   // The delivery app has paid: mark these orders received so they stop counting as owed. Re-reads each month
   // first, like every other receipt write, so another terminal's changes are not overwritten.
   // Asks how the app paid (cash, visa, ...) before anything is saved.
-  const markPlatformReceived = (app, entries) => setPlatformReceiveDlg({ app, entries });
+  const markPlatformReceived = (app, entries) => {
+    setSettlePick(Object.fromEntries(entries.map((x) => [x.r.id, true])));
+    setPlatformReceiveDlg({ appId: app.id });
+  };
   // `how` is the method the app paid the restaurant in. Cash goes into the drawer of the shift it is marked received in
   // (see cashFlows); the other methods are checked against the statement in the shift's electronic reconciliation.
   const confirmPlatformReceived = async (app, entries, how) => {
@@ -8338,25 +8355,44 @@ function POSPrototype({ tenantId }) {
   // into their card above) as settled, once the manager has actually collected/paid out the net
   // amount — so they drop out of every future reconciliation instead of double-counting.
   const settleDeliveryCash = (rider) => {
-    setConfirmDialog({
-      message: t("confirm_settleDelivery", { name: rider.name }),
-      onConfirm: async () => {
-        const monthKey = thisMonthKey();
-        // Re-read the month first: writing back this device's cached copy could erase orders another
-        // terminal saved since this one last refreshed.
-        const list = await fetchFreshMonth(monthKey);
-        // What the rider keeps of each order's delivery fee is saved with it: the drawer then receives what they hand
-        // over (cash collected minus their share), or pays out what the restaurant owes them.
-        const settledAt = new Date().toISOString();
-        const updated = list.map((r) =>
-          r.tableId === "delivery" && r.status === "completed" && r.assignedTo?.id === rider.id && r.paid !== false && !r.deliverySettled
-            ? { ...r, deliverySettled: true, deliverySettledAt: settledAt, riderFeeShare: agentFeeShare(r.deliveryFee || 0) }
-            : r
-        );
-        await persistMonth(monthKey, updated);
-        flashNotice(t("notice_deliverySettled", { name: rider.name }));
-      },
-    });
+    setSettlePick(Object.fromEntries(rider.orderList.map((r) => [r.id, true])));
+    setRiderSettleDlg({ riderId: rider.id });
+  };
+  // Settles exactly the orders the cashier ticked (any month they were sold in).
+  const settleDeliveryOrders = async (rider, orders) => {
+    const ids = new Set(orders.map((r) => r.id));
+    const settledAt = new Date().toISOString();
+    for (const monthKey of [...new Set(orders.map((r) => storageMonthOf(r.timestamp)))]) {
+      // Re-read the month first: writing back this device's cached copy could erase orders another
+      // terminal saved since this one last refreshed.
+      const list = await fetchFreshMonth(monthKey);
+      // What the rider keeps of each order's delivery fee is saved with it: the drawer then receives what they hand
+      // over (cash collected minus their share), or pays out what the restaurant owes them.
+      await persistMonth(monthKey, list.map((r) => (ids.has(r.id) && !r.deliverySettled ? { ...r, deliverySettled: true, deliverySettledAt: settledAt, riderFeeShare: agentFeeShare(r.deliveryFee || 0) } : r)));
+    }
+    flashNotice(t("notice_deliverySettled", { name: rider.name }));
+  };
+  // One brief line per order for the settle pick-lists: ticket, date, items, price.
+  const settleOrderRow = (r, amount) => (
+    <label key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 2px", borderTop: "1px solid #E4DECE", cursor: "pointer", textAlign: "start" }}>
+      <input type="checkbox" checked={!!settlePick[r.id]} onChange={(e) => setSettlePick((prev) => ({ ...prev, [r.id]: e.target.checked }))} style={{ width: 18, height: 18, flexShrink: 0 }} />
+      <span style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 12.5, fontWeight: 600, flexShrink: 0 }}>#{r.ticketNo}</span>
+      <span style={{ fontSize: 11, color: "#7A7468", flexShrink: 0 }}>{new Date(r.timestamp).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { day: "numeric", month: "short" })}</span>
+      <span style={{ fontSize: 12, color: "#4A453D", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(r.items || []).map((it) => `${it.qty}× ${it.name}`).join(", ")}</span>
+      <span style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 12.5, flexShrink: 0 }}>{money(amount)}</span>
+    </label>
+  );
+  const settleListControls = (rows) => {
+    const n = rows.filter((r) => settlePick[r.id]).length;
+    return (
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, marginBottom: 4 }}>
+        <span style={{ color: "#7A7468" }}>{t("settleSelectedCount", { n, m: rows.length })}</span>
+        <span style={{ display: "flex", gap: 10 }}>
+          <button onClick={() => setSettlePick(Object.fromEntries(rows.map((r) => [r.id, true])))} style={{ border: "none", background: "none", color: theme.primary, fontSize: 12, cursor: "pointer", padding: 0 }}>{t("settleSelectAll")}</button>
+          <button onClick={() => setSettlePick({})} style={{ border: "none", background: "none", color: theme.primary, fontSize: 12, cursor: "pointer", padding: 0 }}>{t("settleSelectNone")}</button>
+        </span>
+      </div>
+    );
   };
 
   // Delivery tab: the report for one or more delivery employees. It is the Delivery cash reconciliation of the
@@ -13374,25 +13410,67 @@ function POSPrototype({ tenantId }) {
       })()}
 
       {platformReceiveDlg && (() => {
-        const { app, entries } = platformReceiveDlg;
+        const app = platformOwedByApp.find((a) => a.id === platformReceiveDlg.appId);
+        if (!app) return null;
+        const allEntries = app.orders;
+        const entries = allEntries.filter((x) => settlePick[x.r.id]);
         const total = round2(entries.reduce((s, x) => s + x.amount, 0));
         const appName = t(`payment_${app.id}`);
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setPlatformReceiveDlg(null)}>
-            <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 24, width: "100%", maxWidth: 360, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>{t("platformReceiveTitle", { app: appName })}</div>
-              <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>{t("platformReceiveBody", { n: entries.length, app: appName, amount: money(total) })}</div>
+            <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 22, width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("platformReceiveTitle", { app: appName })}</div>
+              <div style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 10, color: "#4A453D" }}>{t("platformReceiveBody", { app: appName })}</div>
+              {settleListControls(allEntries.map((x) => x.r))}
+              <div style={{ marginBottom: 12 }}>{allEntries.map((x) => settleOrderRow(x.r, x.amount))}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: "flex", justifyContent: "space-between" }}><span>{t("settleSelectedCount", { n: entries.length, m: allEntries.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(total)}</span></div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {enabledDirectMethods.map((m) => (
                   <button
                     key={m.id}
+                    disabled={entries.length === 0}
                     onClick={() => { setPlatformReceiveDlg(null); confirmPlatformReceived(app, entries, m.id); }}
-                    style={{ padding: "11px 0", borderRadius: 8, border: m.id === "cash" || m.id === "visa" ? "none" : "1px solid #C9C2B2", background: m.id === "cash" || m.id === "visa" ? theme.primary : "transparent", color: m.id === "cash" || m.id === "visa" ? "#FBF8F2" : COLORS.charcoal, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
+                    style={{ padding: "11px 0", borderRadius: 8, border: m.id === "cash" || m.id === "visa" ? "none" : "1px solid #C9C2B2", background: m.id === "cash" || m.id === "visa" ? theme.primary : "transparent", color: m.id === "cash" || m.id === "visa" ? "#FBF8F2" : COLORS.charcoal, fontSize: 13.5, fontWeight: 600, cursor: entries.length === 0 ? "not-allowed" : "pointer", opacity: entries.length === 0 ? 0.45 : 1 }}
                   >{t(`payment_${m.id}`)}</button>
                 ))}
               </div>
               <div style={{ fontSize: 11.5, color: "#7A7468", lineHeight: 1.5, marginTop: 12 }}>{t("platformReceiveCashNote")}</div>
               <button onClick={() => setPlatformReceiveDlg(null)} style={{ marginTop: 8, padding: "8px 0", border: "none", background: "transparent", color: "#7A7468", fontSize: 12.5, cursor: "pointer" }}>{t("cancel")}</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {riderSettleDlg && (() => {
+        const rider = deliveryReconciliation.find((p) => p.id === riderSettleDlg.riderId);
+        if (!rider) return null;
+        const rows = [...rider.orderList].sort((a, b) => (a.timestamp < b.timestamp ? -1 : 1));
+        const chosen = rows.filter((r) => settlePick[r.id]);
+        const cash = round2(chosen.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((sum, a) => sum + a.amount, 0));
+        const fees = round2(chosen.reduce((sum, r) => sum + agentFeeShare(r.deliveryFee || 0), 0));
+        const net = round2(cash - fees);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setRiderSettleDlg(null)}>
+            <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 22, width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("riderSettleTitle", { name: rider.name })}</div>
+              <div style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 10, color: "#4A453D" }}>{t("riderSettleBody")}</div>
+              {settleListControls(rows)}
+              <div style={{ marginBottom: 12 }}>{rows.map((r) => settleOrderRow(r, r.total))}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12.5, marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationCash")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(cash)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationFees")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(fees)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, borderTop: "1px dashed #C9C2B2", paddingTop: 5, marginTop: 3 }}>
+                  <span>{net < 0 ? t("deliveryReconciliationOwedToAgent") : t("deliveryReconciliationOwed")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(Math.abs(net))}</span>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setRiderSettleDlg(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("cancel")}</button>
+                <button
+                  disabled={chosen.length === 0}
+                  onClick={() => { setRiderSettleDlg(null); settleDeliveryOrders(rider, chosen); }}
+                  style={{ flex: 2, padding: "11px 0", borderRadius: 8, border: "none", background: "#8A6A2E", color: "#FBF8F2", fontSize: 13.5, fontWeight: 600, cursor: chosen.length === 0 ? "not-allowed" : "pointer", opacity: chosen.length === 0 ? 0.45 : 1 }}
+                >{t("settleNowButton", { n: chosen.length })}</button>
+              </div>
             </div>
           </div>
         );
