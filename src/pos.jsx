@@ -162,6 +162,8 @@ const STRINGS = {
     reqAddress: "address",
     reqArea: "delivery area",
     notice_deliveryNeeds: "A delivery order needs: {{fields}}",
+    listPaysVia: "{{list}} orders are paid through {{app}}. Pick how the customer pays {{app}}:",
+    profilePaidThrough: "Orders on this list are recorded as paid through {{app}} — never as drawer cash.",
     dashSourceLabel: "Show",
     dashSourceAll: "All orders",
     dashSourceRestaurant: "Restaurant only",
@@ -1232,6 +1234,8 @@ const STRINGS = {
     reqAddress: "العنوان",
     reqArea: "منطقة التوصيل",
     notice_deliveryNeeds: "طلب التوصيل يحتاج: {{fields}}",
+    listPaysVia: "طلبات {{list}} تُدفع عبر {{app}}. اختر طريقة دفع العميل لـ {{app}}:",
+    profilePaidThrough: "الطلبات على هذه القائمة تُسجَّل كمدفوعة عبر {{app}} — وليست نقدية في الدرج.",
     dashSourceLabel: "عرض",
     dashSourceAll: "كل الطلبات",
     dashSourceRestaurant: "طلبات المطعم فقط",
@@ -2438,7 +2442,7 @@ visible to a manager even on a package that includes them. If someone asks about
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
 - **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one (each row shows its ticket number, table or delivery, and the date it was created, since ticket numbers restart every day) to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. There is deliberately no way to print or download a customer receipt before the order is saved: the receipt is printed only after Save order (automatically if the device's auto-print is on, or later with "Print receipt" from the Receipts tab), so every printed ticket has a saved order behind it. Kitchen tickets (dish names, quantities and notes with NO prices) print only after the order is saved — automatically (see Kitchen printing under Settings) or from the saved receipt in the Receipts tab; there is no kitchen-ticket button on the Order screen before saving. When editing a saved delivery order in the Receipts tab, the "Delivery area" drop-down list lets staff pick another area; the delivery fee and the order total update to that area's fee and the change is recorded in the edit history. On a Windows till PC with a cash drawer plugged into the receipt printer, Settings > Cash drawer (per device) can turn on opening the drawer with F10 or an "Open cash drawer" button on the Order screen, and optionally automatically when an order is paid in cash (a split payment counts only if part of it is cash; card, wallet and delivery-app orders leave the drawer shut); it needs a small free helper program (downloadable from that same card) installed once on that computer, and Chrome may ask once to allow connecting to devices on the computer. A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Dashboard under "Owed by delivery apps" (managers), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items). Likewise, an order started on Takeaway or Delivery moves to a table when the cashier taps that table, as long as the table has no items of its own yet; on the Delivery slot the customer block is required: a delivery order cannot be saved until the customer name, phone number and address are filled in and a delivery area (zone) is chosen (a message lists what is missing); leaving a table that already has items for an empty Takeaway, Delivery or other table pops up a choice: "Move the items" (they follow the cashier and the table is left empty) or "Keep them on the table" (a separate new order starts there); the choice appears only on the order screen switcher, and never when the destination already has its own items.
-- **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
+- **Price list tabs** (if this restaurant has created any; every price list stands for a delivery app such as Talabat or Elmenus — a list named after Talabat or Elmenus uses that app, any other list gets a payment type of its own named after the list): an order rung up on a price list tab is automatically recorded as paid through that app, never as drawer cash — the app owes the restaurant that money (shown under "Owed by delivery apps" until marked received). On such a tab the payment buttons mean how the customer pays the app (Cash, Visa, ...): the Order screen says so, split payment and the cash-drawer button are hidden, and the chosen method is saved on the order and shown in its receipt detail. The Dashboard "Show" row can then narrow everything to one app. Details: extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
 - **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. When a dish shows as out of stock because of its recipe, the badge on the Order screen names the ingredient that ran out (for example "Out of stock · no honey mustard"), and tapping the dish explains it — restock that ingredient in Stock, or remove it from the dish's recipe, and the dish comes back by itself. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
 - **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket or a saved unpaid (pay-later) invoice; each unpaid invoice is listed on the table card with its ticket number, date, items and total, with its own "Mark as paid" button (confirms, then marks that invoice paid) and an "Add items" button (while a table has an unpaid invoice and nothing else open, the "Open ticket" button is hidden — "Add items" replaces it) (opens the Order screen on that table in an "adding to unpaid invoice" mode: pick the items, then press "Add these items to #N" to merge them into that invoice; in this mode the payment choices and the Save button are hidden so the items can only go to that invoice; Cancel leaves that mode), and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
@@ -2446,7 +2450,7 @@ that you don't see it and it may not be included in their current plan — don't
 - **Website** (manager-only; comes with the Online ordering link feature): turns the online-ordering link into a branded website for the restaurant. A manager picks one of five looks (Classic, Modern, Dark, Bold, Minimal — each sets fonts, shapes and layout together), can override the button and highlight colors (otherwise the brand colors from Settings are used), uploads a cover photo and up to 6 gallery photos, writes a tagline and an "About us" text in English and Arabic, adds an announcement banner, address and social links (Instagram, Facebook, TikTok, WhatsApp, website), chooses which sections show (About, Popular items row, Gallery, Opening hours — the hours and the "Open now / Closed" badge come from Settings → Shift hours) and chooses the language the page opens in. A live phone preview sits next to the controls (a "Preview" button on phones). Everything saves automatically, but customers keep seeing the original ordering page until the "Published" switch is turned on, and it can be switched off again at any time. The tab also lets the manager claim a short web address (for example /r/my-restaurant) to share on social media or print on menus; the original long link keeps working. Orders can't be sent from the preview. In the Menu editor, each dish has an "On your website" section: labels (Popular, New, Spicy, Vegetarian, Chef's pick) and a "Show in the Popular row" checkbox. Dish photos and the short description are what the website shows on each menu card. The website look also applies to table QR menus once published.
 - **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer (Cancel also requires a written reason, which is saved on the receipt; the Shift report and the Close the day report show how many orders were cancelled and their total value, listing each cancelled order with its reason, and refunded orders separately) — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. On the Close the day drawer report (screen and print) each shift and the whole day show the cash handed back for cancelled/refunded orders on its own "Returned orders" line, separate from the "Expenses paid out" line. Editing lets you change each item's quantity (stock adjusts to match) only while the order is still unpaid — once an order is paid its quantities are locked and cannot be changed (the payment method, discount and delivery area can still be edited) — and add, change or remove the order's discount (no need to delete the order and make a new one — a discount that is added or changed needs a written reason, the total and the service/VAT recalculate right away, a "Total after this edit" line shows the new bill before you save, and the change is recorded in the edit history and in the cash-drawer explanation on Close the day if the order was already paid), and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see totals, outstanding payables, and a by-category breakdown. Like the Dashboard and Receipts, it can be filtered by Month (a month dropdown), a single Day (a calendar), or a custom Range (any start and end date) using the toggle at the top; the totals, payables and category breakdown follow the chosen period.
-- **Dashboard** (manager-only): a "Show" row under the period picker (offered once a delivery app — Talabat or Elmenus — is switched on in Settings > payment methods, or the period has orders paid through one) narrows every figure on the page to All orders, Restaurant only, or one delivery app; with an app or Restaurant only chosen the Expenses and Net profit tiles are hidden (expenses belong to the whole restaurant), and with an app chosen the payment card adds how the customers paid that app (Cash / Visa / Not specified). On the Order screen, when the payment method is Talabat or Elmenus, an optional "The customer paid {app} by: Cash / Visa" choice appears; it is saved on the order and shown in the receipt detail. An order paid through a delivery app never enters the cash drawer — the app owes the restaurant that money (see "Owed by delivery apps"). Revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here. At the bottom of the Dashboard, a "Delivery report — day by day" card lists every delivery order of the chosen period for each delivery agent, one row per day: number of orders, order amount (without the fee), delivery fees, the agent's share of the fees, the restaurant's share, and cash collected. A drop-down picks one agent or all agents, tapping a day opens its individual orders (with the area, payment method and whether each is settled), and "Print report" prints one page per agent. It covers settled and not-yet-settled orders alike; the agent's share of a settled order is the one saved at settlement, and for an unsettled order it follows the current delivery-fee setting. Orders with no agent assigned appear under "No agent assigned".
+- **Dashboard** (manager-only): a "Show" row under the period picker (offered once the restaurant has a price list, has switched a delivery app on in Settings > payment methods, or the period has orders paid through one) narrows every figure on the page to All orders, Restaurant only, or one delivery app; with an app or Restaurant only chosen the Expenses and Net profit tiles are hidden (expenses belong to the whole restaurant), and with an app chosen the payment card adds how the customers paid that app (Cash / Visa / Not specified). On the Order screen, when the payment method is Talabat or Elmenus, an optional "The customer paid {app} by: Cash / Visa" choice appears; it is saved on the order and shown in the receipt detail. An order paid through a delivery app never enters the cash drawer — the app owes the restaurant that money (see "Owed by delivery apps"). Revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here. At the bottom of the Dashboard, a "Delivery report — day by day" card lists every delivery order of the chosen period for each delivery agent, one row per day: number of orders, order amount (without the fee), delivery fees, the agent's share of the fees, the restaurant's share, and cash collected. A drop-down picks one agent or all agents, tapping a day opens its individual orders (with the area, payment method and whether each is settled), and "Print report" prints one page per agent. It covers settled and not-yet-settled orders alike; the agent's share of a settled order is the one saved at settlement, and for an unsettled order it follows the current delivery-fee setting. Orders with no agent assigned appear under "No agent assigned".
 - **Customers**: anyone whose phone number was entered at checkout is saved here automatically. A search box at the top finds a customer by name or phone number; tapping a customer (or searching until only one is left) opens their full order history from every saved month — date and time, ticket number, delivery area or table, the items, the total and any Unpaid, Cancelled or Refunded mark — with the number of orders and the total spent (cancelled and refunded orders are listed but not counted). Managers also see "Import from Excel" and "Export to Excel" buttons on this screen: Export downloads every customer (name, phone, address, number of orders, last order date) as an Excel file; Import takes an .xlsx or .csv sheet with a phone column (name and address optional, columns in any order, English or Arabic headings), shows a preview of who will be added or updated, and only saves after you confirm — customers are matched by phone number (+20, 0 and spacing differences don't matter), a blank cell never erases stored details, order counts are kept, nothing is ever deleted, and a template can be downloaded from the import window.
 - **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" first checks for delivery orders that are still with the riders and not settled (the same ones the Delivery cash reconciliation lists): if there are any, a reminder pop-up shows how many unsettled orders there are and what they add up to, and offers "Settle now" (goes to the Shift tab to settle with the riders, then clock out again) or "Close the shift anyway" — it is only a reminder, it never blocks closing. Then "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance; the expected cash only subtracts cash expenses recorded during this shift — ones a previous shift already took out of the drawer are not subtracted again), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
 - **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count. Below the drawer table there is a "Cash collected at the end of the day" box: type the cash taken out of the drawer at the end of that business day (for restaurants that collect the day's cash around the last count). The last shift's drawer is then checked as should be − collected = counted, so a real shortage shows up and a correct collection shows as matching; until an amount is typed, a last-shift difference is shown as an "≈ collection" in blue (not a shortage) and does not need a note to close the day. Each day is checked on its own — the next day's first count is never compared with the previous day's (the one exception: a shift that was left open for more than a day by a missed clock-out and finally closed today is compared with the next opening today). On the drawer report (screen and print) the cash paid out is split into separate lines: "Expenses paid out" (cash expenses only), "Delivery agents' share of fees" (what riders kept from the cash they handed in, or were paid, when delivery was settled) and "Returned orders". Below the gaps there is a "Delivery cash settled during this shift" block for each shift in which delivery orders were settled: how many orders, the cash handed in and the fees the agents kept, with a warning list for settlements that look wrong — an order from an earlier day, an order assigned to a delivery app (Talabat, Elmenus...) as if it were a rider, or an order with no cash collected. The cash of a warned settlement is also offered to "Why there is a gap" as a possible cause ("if that cash was never handed over, this explains a shortage of ...").
@@ -2662,6 +2666,15 @@ const paymentConfigFrom = (raw) => {
     if (nm && !isCustomMethodId(id)) names[id] = nm;
   });
   return { enabled, names, custom };
+};
+// Every price list is a delivery app's menu (Talabat, Elmenus, ...): an order rung up on it is paid through that app.
+// A list named after Talabat or Elmenus uses the built-in method of that name (so its orders add up with any others paid
+// through it); any other list gets a payment type of its own, named after the list.
+const profileMethodId = (p) => {
+  const name = String(p?.name || "");
+  if (/talabat|طلبات/i.test(name)) return "talabat";
+  if (/elmenus|el menus|المنيوس|منيوس/i.test(name)) return "elmenus";
+  return `x_l${String(p?.id || "").replace(/[^a-z0-9]/gi, "").toLowerCase()}`;
 };
 const customPaymentOf = (cfg, id) => (cfg?.custom || []).find((c) => c.id === id);
 const paymentMethodOn = (cfg, id) => {
@@ -4245,6 +4258,10 @@ function POSPrototype({ tenantId }) {
     if (key === "order") setActiveMenuProfile(null);
     setView(key);
   };
+  useEffect(() => {
+    if (activeMenuProfile && (paymentMethod === "split" || (paymentMethod !== "cash" && allMethods.some((m) => m.id === paymentMethod && m.platform)))) setPaymentMethod("cash");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMenuProfile, paymentMethod]);
   const openMenuProfileTab = (profileId) => {
     setActiveMenuProfile(profileId);
     setView("order");
@@ -4300,6 +4317,8 @@ function POSPrototype({ tenantId }) {
       const pid = key.slice(8);
       const given = customPaymentOf(paymentConfig, pid)?.name || paymentConfig.names[pid];
       if (given) return given;
+      const listOfMethod = !isPlatformMethod(pid) ? menuProfiles.find((p) => profileMethodId(p) === pid) : null;
+      if (listOfMethod) return listOfMethod.name;
       if (isCustomMethodId(pid)) return (STRINGS[lang] && STRINGS[lang].paymentOther) || "Other";
     }
     const template = (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.en[key] || key;
@@ -4308,10 +4327,13 @@ function POSPrototype({ tenantId }) {
   };
   // Every payment method this restaurant knows: the built-in ones plus those added in Settings (flagged `custom`).
   // `platform` means the money comes later from an app (see platformOwed); the rest are paid at once.
-  const allMethods = [...PAYMENT_METHODS, ...paymentConfig.custom.map((c) => ({ id: c.id, label: c.name, custom: true, platform: c.later }))];
+  const listMethods = menuProfiles
+    .map((p) => ({ id: profileMethodId(p), label: p.name, custom: true, platform: true, fromList: true }))
+    .filter((m, i, all) => !isPlatformMethod(m.id) && all.findIndex((x) => x.id === m.id) === i);
+  const allMethods = [...PAYMENT_METHODS, ...paymentConfig.custom.map((c) => ({ id: c.id, label: c.name, custom: true, platform: c.later })), ...listMethods];
   const allDirectMethods = allMethods.filter((m) => !m.platform);
   const isLaterMethod = (id) => allMethods.some((m) => m.id === id && m.platform);
-  const enabledMethods = allMethods.filter((m) => paymentMethodOn(paymentConfig, m.id));
+  const enabledMethods = allMethods.filter((m) => !m.fromList && paymentMethodOn(paymentConfig, m.id)); // a price list's payment type is never a pill: it comes from the list the order is rung up on
   const enabledDirectMethods = allDirectMethods.filter((m) => paymentMethodOn(paymentConfig, m.id));
   // Simple two-way pluralizer for the small set of countable UI strings ("N items", etc.).
   const tCount = (baseKey, n, vars) => t(n === 1 ? baseKey : `${baseKey}_plural`, { n, ...vars });
@@ -5727,6 +5749,8 @@ function POSPrototype({ tenantId }) {
     return null;
   };
   const activeMenuProfileObj = menuProfiles.find((p) => p.id === activeMenuProfile) || null;
+  // On a price list the chosen payment method is how the customer pays the app, not the till.
+  const listAppMethod = activeMenuProfileObj ? profileMethodId(activeMenuProfileObj) : null;
   // The menu as it should actually be browsed/ordered from right now: unchanged when no profile
   // is active, otherwise the base items with that profile's price overrides applied, plus its
   // own extra items appended into their category. Recipes/stock always come from the base item
@@ -5940,10 +5964,10 @@ function POSPrototype({ tenantId }) {
     setSavingOrder(true);
     const finalTicketNo = ensureTicketNo();
 
-    const splitPayments = paymentMethod === "split"
+    const splitPayments = paymentMethod === "split" && !listAppMethod
       ? allDirectMethods.map((m) => ({ method: m.id, amount: Math.round((Number(splitAmounts[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
       : null;
-    if (paymentMethod === "split") {
+    if (paymentMethod === "split" && !listAppMethod) {
       const splitSum = splitPayments.reduce((s, sp) => s + sp.amount, 0);
       if (splitPayments.length < 2 || Math.abs(splitSum - total) > 0.01) {
         flashNotice(t("notice_splitPaymentMismatch", { amount: money(total) }));
@@ -5985,11 +6009,15 @@ function POSPrototype({ tenantId }) {
       deliveryZoneLabel: deliveryZoneLabel || "",
       total,
       splitCount: splitCount && splitCount > 1 ? splitCount : null,
-      paymentMethod,
+      paymentMethod: listAppMethod || paymentMethod,
       splitPayments,
-      appPayment: isPlatformMethod(paymentMethod) && (appPayment === "cash" || appPayment === "visa") ? appPayment : null,
-      paid: paidNow || isLaterMethod(paymentMethod), // a delivery-app order is paid as far as the till is concerned; the app owes the restaurant (see platformOwed)
-      paidAt: (paidNow || isLaterMethod(paymentMethod)) ? new Date().toISOString() : null,
+      // On a price list: the order is paid through that list's app, and the method the cashier picked is how the customer pays the app.
+      appPayment: listAppMethod
+        ? (allDirectMethods.some((m) => m.id === paymentMethod) ? paymentMethod : "cash")
+        : isPlatformMethod(paymentMethod) && allDirectMethods.some((m) => m.id === appPayment) ? appPayment : null,
+      priceList: activeMenuProfileObj ? { id: activeMenuProfileObj.id, name: activeMenuProfileObj.name } : null,
+      paid: paidNow || isLaterMethod(listAppMethod || paymentMethod), // a delivery-app order is paid as far as the till is concerned; the app owes the restaurant (see platformOwed)
+      paidAt: (paidNow || isLaterMethod(listAppMethod || paymentMethod)) ? new Date().toISOString() : null,
       customer,
       eta: orderEta.trim(),
       status: "completed",
@@ -6002,7 +6030,7 @@ function POSPrototype({ tenantId }) {
     // Nothing prints before the order is recorded, so a printed ticket always has a saved receipt behind it.
     // (receiptOk only says whether the cloud sync landed; the order is already in this device's list and queued.)
     autoPrintAfterSave(receipt);
-    if (paidNow) openDrawerAfterSettlement(receipt);
+    if (paidNow && !listAppMethod) openDrawerAfterSettlement(receipt);
 
     let customerOk = true;
     if (customer && customer.phone) {
@@ -6511,12 +6539,12 @@ function POSPrototype({ tenantId }) {
   const dashboardPeriod = ledger.period(dashboardFirstDay, dashboardLastDay);
   const dashboardReceipts = dashboardPeriod ? dashboardPeriod.completed.filter(dashboardSourceMatch) : [];
   // The source picker is offered once the restaurant has switched a delivery app on, or has orders from one in this period.
-  const dashboardSourceOffered = dashboardSource !== "all" || allMethods.some((m) => m.platform && paymentMethodOn(paymentConfig, m.id)) || (dashboardPeriod ? dashboardPeriod.completed.some((r) => receiptSourceId(r) !== "restaurant") : false);
+  const dashboardSourceOffered = dashboardSource !== "all" || menuProfiles.length > 0 || allMethods.some((m) => m.platform && paymentMethodOn(paymentConfig, m.id)) || (dashboardPeriod ? dashboardPeriod.completed.some((r) => receiptSourceId(r) !== "restaurant") : false);
   const dashboardSourceOptions = [{ id: "all", label: t("dashSourceAll") }, { id: "restaurant", label: t("dashSourceRestaurant") }, ...allMethods.filter((m) => m.platform).map((m) => ({ id: m.id, label: t(`payment_${m.id}`) }))];
   const dashboardAppPayments = (() => {
-    const out = { cash: 0, visa: 0, none: 0 };
+    const out = {};
     if (dashboardSource === "all" || dashboardSource === "restaurant") return out;
-    dashboardReceipts.forEach((r) => { out[r.appPayment === "cash" || r.appPayment === "visa" ? r.appPayment : "none"] += r.total; });
+    dashboardReceipts.forEach((r) => { const k = r.appPayment || "none"; out[k] = round2((out[k] || 0) + r.total); });
     return out;
   })();
   const dashboardSummary = summarize(dashboardReceipts);
@@ -9791,18 +9819,21 @@ function POSPrototype({ tenantId }) {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>
-              {enabledMethods.map((m) => (
+            {listAppMethod && (
+              <div style={{ marginTop: 14, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("listPaysVia", { list: activeMenuProfileObj.name, app: t(`payment_${listAppMethod}`) })}</div>
+            )}
+            <div style={{ display: "flex", gap: 6, marginTop: listAppMethod ? 6 : 14, flexWrap: "wrap" }}>
+              {enabledMethods.filter((m) => !listAppMethod || !m.platform).map((m) => (
                 <button key={m.id} onClick={() => { setPaymentMethod(m.id); if (isLaterMethod(m.id)) setPaidNow(true); }} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === m.id ? theme.secondary : "var(--border)"}`, background: paymentMethod === m.id ? "#3A2E22" : "transparent", color: paymentMethod === m.id ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
                   {t(`payment_${m.id}`)}
                 </button>
               ))}
-              <button onClick={() => { setPaymentMethod("split"); setPaidNow(true); }} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === "split" ? theme.secondary : "var(--border)"}`, background: paymentMethod === "split" ? "#3A2E22" : "transparent", color: paymentMethod === "split" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
+              {!listAppMethod && <button onClick={() => { setPaymentMethod("split"); setPaidNow(true); }} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === "split" ? theme.secondary : "var(--border)"}`, background: paymentMethod === "split" ? "#3A2E22" : "transparent", color: paymentMethod === "split" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
                 {t("splitPaymentOption")}
-              </button>
+              </button>}
             </div>
 
-            {isPlatformMethod(paymentMethod) && (
+            {!listAppMethod && isPlatformMethod(paymentMethod) && (
               <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("appPaidByLabel", { app: t(`payment_${paymentMethod}`) })}</span>
                 {[["cash", t("appPaidByCash")], ["visa", t("appPaidByVisa")]].map(([k, label]) => (
@@ -9836,7 +9867,7 @@ function POSPrototype({ tenantId }) {
               );
             })()}
 
-            {paymentMethod !== "split" && !isLaterMethod(paymentMethod) && (
+            {!listAppMethod && paymentMethod !== "split" && !isLaterMethod(paymentMethod) && (
               <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                 <button onClick={() => setPaidNow(true)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${paidNow ? "#3F5B45" : "var(--border)"}`, background: paidNow ? "#22301F" : "transparent", color: paidNow ? "#9FCB8E" : "var(--text-muted)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
                   {t("paidNowOption")}
@@ -9847,14 +9878,14 @@ function POSPrototype({ tenantId }) {
               </div>
             )}
 
-            {drawerMode !== "off" && (
+            {drawerMode !== "off" && !listAppMethod && (
               <button onClick={() => openCashDrawer(false)} title={t("drawerButtonTooltip")} style={{ width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>
                 {t("drawerButton")}
               </button>
             )}
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
               <button disabled={cart.length === 0 || savingOrder} onClick={saveOrder} className="save-btn" style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: "none", background: cart.length === 0 || savingOrder ? "#4A2C33" : paidNow ? theme.primary : "#8A6A2E", color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: cart.length === 0 || savingOrder ? "not-allowed" : "pointer", opacity: cart.length === 0 || savingOrder ? 0.6 : 1 }}>
-                {savingOrder ? t("saved") : paidNow ? t("saveOrder") : t("saveOrderUnpaid")}
+                {savingOrder ? t("saved") : paidNow || listAppMethod ? t("saveOrder") : t("saveOrderUnpaid")}
               </button>
             </div>
             </>)}
@@ -9987,6 +10018,8 @@ function POSPrototype({ tenantId }) {
                       <button onClick={() => deleteMenuProfile(p)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
                     </div>
                   </div>
+
+                  <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 8 }}>{t("profilePaidThrough", { app: t(`payment_${profileMethodId(p)}`) })}</div>
 
                   {managingProfileId === p.id && (
                     <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
@@ -10696,7 +10729,7 @@ function POSPrototype({ tenantId }) {
                             <div style={{ marginBottom: 10 }}>
                               <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginBottom: 5 }}>{t("paymentMethodEditLabel")}</div>
                               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                {allMethods.filter((m) => paymentMethodOn(paymentConfig, m.id) || m.id === editPaymentMethod).map((m) => {
+                                {allMethods.filter((m) => (!m.fromList && paymentMethodOn(paymentConfig, m.id)) || m.id === editPaymentMethod).map((m) => {
                                   const isCurrent = editPaymentMethod === m.id;
                                   return (
                                     <button
@@ -11304,7 +11337,7 @@ function POSPrototype({ tenantId }) {
               {dashboardSource !== "all" && dashboardSource !== "restaurant" && dashboardReceipts.length > 0 && (
                 <div style={{ borderTop: "1px dashed var(--border)", marginTop: 14, paddingTop: 12 }}>
                   <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 8 }}>{t("dashAppPaidTitle", { app: t(`payment_${dashboardSource}`) })}</div>
-                  {[["cash", t("dashAppPaidCash")], ["visa", t("dashAppPaidVisa")], ["none", t("dashAppPaidNone")]].filter(([k]) => dashboardAppPayments[k] > 0).map(([k, label]) => (
+                  {Object.entries(dashboardAppPayments).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, k === "none" ? t("dashAppPaidNone") : t(`payment_${k}`)]).map(([k, label]) => (
                     <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
                       <span>{label}</span><span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(dashboardAppPayments[k])}</span>
                     </div>
@@ -13200,7 +13233,7 @@ function POSPrototype({ tenantId }) {
                   {later && !voided && (r.platformSettled
                     ? <div style={{ color: "#3F5B45", fontWeight: 600 }}>{t("receiptDetailPlatformReceived", { app: t(`payment_${later.id}`), time: when(r.platformSettledAt) })}</div>
                     : <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailPlatformOwed", { app: t(`payment_${later.id}`) })}</div>)}
-                  {later && r.appPayment && <div style={{ color: "var(--text-muted)" }}>{t("appPaidByLabel", { app: t(`payment_${later.id}`) })} {t(r.appPayment === "cash" ? "appPaidByCash" : "appPaidByVisa")}</div>}
+                  {later && r.appPayment && <div style={{ color: "var(--text-muted)" }}>{t("appPaidByLabel", { app: t(`payment_${later.id}`) })} {t(`payment_${r.appPayment}`)}</div>}
                   {r.tableId === "delivery" && r.assignedTo && !voided && (r.deliverySettled
                     ? <div style={{ color: "#3F5B45", fontWeight: 600 }}>{t("receiptDetailDeliverySettled", { time: when(r.deliverySettledAt) })}</div>
                     : <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailDeliveryOpen", { name: r.assignedTo.name })}</div>)}
@@ -13709,7 +13742,7 @@ function POSPrototype({ tenantId }) {
                   <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginBottom: 12, lineHeight: 1.5 }}>{t("paymentSettingsHint")}</div>
                   {paymentConfigLoadFailed && <div style={{ fontSize: 11.5, color: "#E3A79C", marginBottom: 10 }}>{t("paymentSettingsLoadFailed")}</div>}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {allMethods.map((m) => {
+                    {allMethods.filter((m) => !m.fromList).map((m) => {
                       const on = paymentMethodOn(paymentConfig, m.id);
                       const locked = m.id === "cash" || paymentConfigLoadFailed;
                       const defaultName = m.custom ? m.label : (STRINGS[lang] && STRINGS[lang][`payment_${m.id}`]) || m.label;
