@@ -3373,6 +3373,19 @@ function POSPrototype({ tenantId }) {
   const showRenewalNotice =
     tenantStatus?.status === "active" && [7, 3, 1].includes(tenantStatus.days_remaining) && !renewalNoticeDismissed;
 
+  // Expenses tab: the months that have expenses saved, for its month picker (it used to list only the current month
+  // until an expense was added in this session).
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await storage.list("expenses:", false);
+        const months = (result?.keys || []).map((k) => k.replace("expenses:", "")).filter((k) => /^\d{4}-\d{2}$/.test(k));
+        if (months.length > 0) setExpenseMonthKeys((prev) => Array.from(new Set([...prev, ...months])).sort().reverse());
+      } catch (e) {
+        // the picker just keeps offering the current month
+      }
+    })();
+  }, [storage]);
   useEffect(() => {
     (async () => {
       try {
