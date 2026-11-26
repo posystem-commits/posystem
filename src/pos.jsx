@@ -8473,10 +8473,18 @@ function POSPrototype({ tenantId }) {
     if (!dlvRepFull || dlvRepShown.length === 0) return;
     const locale = isRtl ? "ar-EG" : "en-US";
     const dayText = (d) => formatShortDate(d, isRtl);
-    const th = (s) => `<th style="text-align:${isRtl ? "right" : "left"};border-bottom:1px solid #000;padding:3px 4px;font-size:10px;">${escapeHtml(s)}</th>`;
-    const td = (s, bold) => `<td style="padding:3px 4px;font-size:11px;${bold ? "font-weight:700;" : ""}">${s}</td>`;
-    const cells = (x) => `${td(String(x.orders), false)}${td(money(x.orderAmount), false)}${td(money(x.fees), false)}${td(money(x.riderShare), false)}${td(money(x.restaurantShare), false)}${td(money(x.cash), false)}`;
-    const head = `<tr>${th(t("dlvRepDay"))}${th(t("dlvRepOrders"))}${th(t("dlvRepOrderAmount"))}${th(t("dlvRepFees"))}${th(t("dlvRepAgentShare"))}${th(t("dlvRepRestShare"))}${th(t("dlvRepCash"))}</tr>`;
+    // Receipt paper is narrow, so every day is a small stacked block (label on one side, amount on the other)
+    // instead of the seven-column table of the screen, which the printer cut off at the edge.
+    const line = (label, value, opts = {}) => `<div class="row" style="font-size:${opts.size || 11.5}px;${opts.bold ? "font-weight:700;" : ""}margin-top:${opts.top ?? 2}px;"><span>${escapeHtml(label)}</span><span>${value}</span></div>`;
+    const block = (title, x, isTotal) => `
+        <div style="${isTotal ? "border-top:2px solid #000;margin-top:12px;padding-top:6px;" : "border-top:1px dashed #000;margin-top:8px;padding-top:6px;"}page-break-inside:avoid;">
+          <div class="row" style="font-size:${isTotal ? 13 : 12}px;font-weight:700;"><span>${escapeHtml(title)}</span><span>${escapeHtml(t("dlvRepOrders"))}: ${x.orders}</span></div>
+          ${line(t("dlvRepOrderAmount"), money(x.orderAmount))}
+          ${line(t("dlvRepFees"), money(x.fees))}
+          ${line(t("dlvRepAgentShare"), money(x.riderShare))}
+          ${line(t("dlvRepRestShare"), money(x.restaurantShare))}
+          ${line(t("dlvRepCash"), money(x.cash), { bold: true, size: 12.5, top: 3 })}
+        </div>`;
     const body = dlvRepShown
       .map((a, i) => `
       <div${i === 0 ? "" : ` style="page-break-before:always;"`}>
@@ -8486,11 +8494,10 @@ function POSPrototype({ tenantId }) {
           <div style="font-size:15px;font-weight:700;margin-top:4px;">${escapeHtml(dlvRepName(a))}</div>
           <div style="font-size:11px;margin-top:2px;">${escapeHtml(t("dlvRepPeriod", { from: dayText(dlvRepFull.startDay), to: dayText(dlvRepFull.endDay) }))}</div>
         </div>
-        <table style="width:100%;border-collapse:collapse;margin-top:10px;">
-          ${head}
-          ${a.days.map((d) => `<tr>${td(escapeHtml(dayText(d.day)), false)}${cells(d)}</tr>`).join("")}
-          <tr style="border-top:1px solid #000;">${td(escapeHtml(t("dlvRepTotal")), true)}${cells(a)}</tr>
-        </table>
+        <div style="margin-top:6px;">
+          ${a.days.map((d) => block(dayText(d.day), d, false)).join("")}
+          ${block(t("dlvRepTotal"), a, true)}
+        </div>
         <div class="center" style="font-size:10px;margin-top:14px;color:#444;">${escapeHtml(t("dlvRepPrinted", { time: new Date().toLocaleString(locale, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) }))}</div>
       </div>`)
       .join("");
