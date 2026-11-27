@@ -52,6 +52,8 @@ jobs:
         if: always()
         run: |
           cd .monitor-state
+          # keep Vercel from trying to build this notes-only branch
+          printf %s '{"git":{"deploymentEnabled":false}}' > vercel.json
           git config user.name "pos-monitor"
           git config user.email "monitor@users.noreply.github.com"
           git add -A
