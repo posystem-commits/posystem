@@ -4,6 +4,7 @@ name = "pos-uptime-watch"
 main = "index.js"
 compatibility_date = "2025-01-01"
 workers_dev = true   # the public address is the Telegram webhook; every route besides the webhook needs a derived password
+preview_urls = false   # no extra public addresses
 
 [triggers]
 crons = ["*/3 * * * *"]
