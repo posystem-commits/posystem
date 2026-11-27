@@ -45,11 +45,29 @@ export function businessChecks({ L, ledger, data, nowMs, cfg, isTest }) {
   // ---- the last few business days ----
   const today = ledger.bizDay(nowIso);
   const days = [0, 1, 2].map((i) => new Date(new Date(`${today}T00:00:00Z`).getTime() - i * 86400000).toISOString().slice(0, 10));
+  // A closing count the NEXT shift contradicts: it opened with exactly what the drawer should have held, so the cash was
+  // there and the count was most likely mistyped (e.g. "1" for 1334). Looked up across a wider window than the days judged.
+  const dayPlus = (day, n) => new Date(new Date(`${day}T00:00:00Z`).getTime() + n * 86400000).toISOString().slice(0, 10);
+  const allDrawers = [dayPlus(days[days.length - 1], -1), ...days, dayPlus(today, 1)]
+    .flatMap((day) => ledger.closeDay(day, nowMs)?.drawers || [])
+    .filter((d, i, all) => all.findIndex((x) => x.key === d.key) === i);
+  const mistypedNext = new Map(); // drawer key -> the shift that opened with the expected amount
+  const handoverExplained = new Set(); // keys of the shifts whose "cash appeared between shifts" is just that mistyped count
+  allDrawers.forEach((d) => {
+    if (d.loading || d.gap === null || d.counted === null || d.expected === undefined || Math.abs(d.gap) < th.shiftGapAmber || !d.clockOut) return;
+    const nx = allDrawers.find((n) => !n.loading && n.prevName === d.name && n.prevOut === d.clockOut);
+    if (nx && Math.abs(nx.opening - d.expected) < th.shiftGapAmber) { mistypedNext.set(d.key, nx); handoverExplained.add(nx.key); }
+  });
   days.forEach((day) => {
     const cd = ledger.closeDay(day, nowMs);
     if (!cd) return;
     cd.drawers.forEach((d) => {
       if (d.loading) return;
+      if (mistypedNext.has(d.key)) {
+        const nx = mistypedNext.get(d.key);
+        out.push(finding({ ...base, code: "COUNT_MISTYPED", key: d.key, severity: "amber", topic: "cash", title: `${d.name}'s closing count of ${money(d.counted)} looks mistyped (${day})`, detail: `The drawer should have held ${money(d.expected)}. ${nx.name}'s next shift opened with ${money(nx.opening)}, which matches that, so the cash was most likely all there. Check the count that was entered.` }));
+        return;
+      }
       // The day's cash is collected around the last shift's count, so that shift looks "short" by what was taken.
       // Once the amount is typed in on Close the day the drawer is checked strictly against it (below). Until then
       // the difference is only an implied collection: not a shortage, but a reminder to type the amount in once the
@@ -61,13 +79,18 @@ export function businessChecks({ L, ledger, data, nowMs, cfg, isTest }) {
         return;
       }
       if (d.gap !== null && Math.abs(d.gap) >= th.shiftGapAmber) {
-        const sev = Math.abs(d.gap) >= th.shiftGapRed ? "red" : "amber";
-        const why = d.solve && d.solve.items.length
+        const onlySettled = !!(d.solve && d.solve.type === "exact" && d.solve.items.length && d.solve.items.every((e) => e.kind === "settledCash"));
+        const sev = onlySettled ? "amber" : Math.abs(d.gap) >= th.shiftGapRed ? "red" : "amber";
+        const longHrs = d.clockIn && d.clockOut ? (new Date(d.clockOut) - new Date(d.clockIn)) / 3600000 : 0;
+        const longNote = longHrs >= th.openShiftHoursRed ? ` This shift lasted ${Math.round(longHrs)} hours and covers more than one day, so the count mixes several days.` : "";
+        const why = onlySettled
+          ? `Delivery cash from earlier orders (${d.solve.items.map((e) => "#" + e.n).join(", ")}) was marked settled into this drawer, but the count did not include it. A record-keeping gap rather than missing money.`
+          : d.solve && d.solve.items.length
           ? d.solve.type === "exact" ? `Recorded changes explain it exactly (${d.solve.items.length}): ${d.solve.items.map((e) => e.kind + (e.n ? ` #${e.n}` : "")).join(", ")}.` : `Recorded changes explain ${money(Math.abs(d.solve.explained))} of it; ${money(Math.abs(d.solve.rest))} is unexplained.`
           : "No recorded cause was found (no edits, cash expenses or returns account for it).";
-        out.push(finding({ ...base, code: "CASH_GAP", key: d.key, severity: sev, topic: "cash", title: `${d.name}'s drawer was ${d.gap < 0 ? "short" : "over"} by ${money(Math.abs(d.gap))} (${day})`, detail: `Counted ${money(d.counted)}, should have been ${money(d.expected)}. ${why}` }));
+        out.push(finding({ ...base, code: "CASH_GAP", key: d.key, severity: sev, topic: "cash", title: `${d.name}'s drawer was ${d.gap < 0 ? "short" : "over"} by ${money(Math.abs(d.gap))} (${day})`, detail: `Counted ${money(d.counted)}, should have been ${money(d.expected)}. ${why}${longNote}` }));
       }
-      if (d.handover !== null && Math.abs(d.handover) >= th.handoverAmber && (!d.between || Math.abs(d.between.residual) >= th.handoverAmber)) {
+      if (!handoverExplained.has(d.key) && d.handover !== null && Math.abs(d.handover) >= th.handoverAmber && (!d.between || Math.abs(d.between.residual) >= th.handoverAmber)) {
         const diff = d.between ? d.between.residual : d.handover;
         if (diff < 0) {
           // Less cash in the drawer at the start than was left at the end: money was taken out in between. For many
@@ -92,6 +115,8 @@ export function businessChecks({ L, ledger, data, nowMs, cfg, isTest }) {
     if (!s.clockOut) return;
     const out_ = new Date(s.clockOut).getTime();
     if (out_ < recentCut) return;
+    const lasted = (out_ - new Date(s.clockIn).getTime()) / 3600000;
+    if (lasted >= th.openShiftHoursRed) out.push(finding({ ...base, code: "LONG_SHIFT", key: s.key, severity: "amber", topic: "cash", title: `${s.name}'s shift lasted ${Math.round(lasted)} hours (${s.clockIn.slice(0, 16)} → ${s.clockOut.slice(0, 16)})`, detail: "It covers more than one day, so the cash of those days is counted together and no single day's drawer can be checked. Clock out at the end of each day." }));
     if (s.auto && out_ > nowMs - 3 * 86400000) out.push(finding({ ...base, code: "AUTO_CLOSED", key: s.key, severity: "amber", topic: "cash", title: `${s.name}'s shift was closed automatically (forgot to clock out)`, detail: "An auto-closed shift has no closing cash count." }));
     else if (s.counted === null && !s.auto && s.clockIn >= cfg.thresholds.countsRequiredFrom) out.push(finding({ ...base, code: "UNCOUNTED_SHIFT", key: s.key, severity: "amber", topic: "cash", title: `${s.name}'s shift ended without a cash count`, detail: `Shift ${s.clockIn.slice(0, 16)} → ${s.clockOut.slice(0, 16)}` }));
   });
