@@ -27,6 +27,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install the one dependency the monitor needs
+        run: npm install --no-save --no-audit --no-fund @supabase/supabase-js@2
+
       - name: Load the monitor's memory
         run: |
           git fetch origin monitor-state 2>/dev/null || true
