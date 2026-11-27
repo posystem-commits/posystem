@@ -1,6 +1,6 @@
-// Minute-by-minute availability watch (Cloudflare Worker, free plan). Read-only: it only loads pages and
+// Availability watch (every 3 minutes) (Cloudflare Worker, free plan). Read-only: it only loads pages and
 // asks the "what changed" endpoint a harmless question about the test restaurant.
-const failuresBeforeAlert = 2; // two bad minutes in a row, so one blip never alerts
+const failuresBeforeAlert = 2; // two bad checks in a row (about 6 minutes), so one blip never alerts
 
 async function probe(env) {
   const checks = [];
@@ -35,7 +35,8 @@ export default {
     ctx.waitUntil((async () => {
       const checks = await probe(env);
       const bad = checks.filter((c) => !c.ok);
-      const st = JSON.parse((await env.STATE.get("status")) || '{"fails":0,"down":false,"since":null}');
+      const raw = (await env.STATE.get("status")) || '{"fails":0,"down":false,"since":null}';
+      const st = JSON.parse(raw);
       if (bad.length) {
         st.fails += 1;
         if (st.fails >= failuresBeforeAlert && !st.down) {
@@ -57,7 +58,9 @@ export default {
         } else if (!slow.length) st.slowAt = null;
         if (env.HEALTHCHECK_URL) await fetch(env.HEALTHCHECK_URL).catch(() => {});
       }
-      await env.STATE.put("status", JSON.stringify(st));
+      // Free-plan storage allows 1,000 writes a day, so only write when something changed.
+      const after = JSON.stringify(st);
+      if (after !== raw) await env.STATE.put("status", after);
     })());
   },
 };

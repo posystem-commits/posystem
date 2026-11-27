@@ -1,4 +1,4 @@
-# Free Cloudflare Worker: every minute it checks that the POS is reachable and answering, and tells the owner
+# Free Cloudflare Worker: every 3 minutes it checks that the POS is reachable and answering, and tells the owner
 # on Telegram if it isn't (and again when it recovers). Separate from Vercel and Supabase.
 name = "pos-uptime-watch"
 main = "index.js"
@@ -6,7 +6,7 @@ compatibility_date = "2025-01-01"
 workers_dev = false   # runs only on its schedule; it needs no public address
 
 [triggers]
-crons = ["* * * * *"]
+crons = ["*/3 * * * *"]
 
 [[kv_namespaces]]
 binding = "STATE"
