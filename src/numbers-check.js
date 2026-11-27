@@ -84,7 +84,7 @@ export function runNumberChecks({ L, ledger, receiptsByMonth, shiftLog, expenses
       const sum = (r.splitPayments || []).reduce((s, p) => s + p.amount, 0);
       if (!eq(sum, r.total)) bad.split.push(`#${r.ticketNo} split ${fmt(sum)} vs total ${fmt(r.total)}`);
     }
-    L.receiptMethodAmounts(r).forEach((a) => { if (!knownMethods.has(a.method)) bad.method.push(`#${r.ticketNo} method "${a.method}"`); });
+    L.receiptMethodAmounts(r).forEach((a) => { if (!knownMethods.has(a.method) && !L.isCustomMethodId(a.method)) bad.method.push(`#${r.ticketNo} method "${a.method}"`); });
     if (r.paid !== false && r.paidAt && r.paidAt < r.timestamp) bad.paidAt.push(`#${r.ticketNo} paid before it was created`);
   });
   check("receipt", "every receipt's total follows from its items, discount, service, VAT and delivery fee", bad.total.length === 0, `${bad.total.length} receipts, e.g. ${bad.total.slice(0, 3).join("; ")}`);

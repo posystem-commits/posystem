@@ -2,10 +2,15 @@
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createTenantStorage } from "@/lib/tenantStorage";
+import { buildAutoPrintSetupBat } from "@/lib/autoPrintSetup";
 import SiteView from "@/src/site/SiteView";
 import StockImportModal from "@/src/stock/StockImport";
+import CustomersImportModal, { exportCustomersFile } from "@/src/customers/CustomersImport";
+import { buildPlan as buildCustomersPlan, applyPlan as applyCustomersPlan } from "@/src/customers/importLogic";
 import { buildTicket as buildKitchenTicket, ticketBodyHtml as kitchenTicketBodyHtml, addToQueue as addToKitchenQueue, parseQueue as parseKitchenQueue, ticketsToPrint as kitchenTicketsToPrint, KITCHEN_MODES } from "@/src/kitchen/kitchenTicket";
 import { buildPlan as buildStockImportPlan } from "@/src/stock/importLogic";
+import { orderCategoriesByMain, mainTabsFor, addSubToMain, removeSubFromMain, removeSubEverywhere, moveMain, cleanMains } from "@/src/menu/mainCategories";
+import { parseQty as parseRecipeQty, fmtRecipeQty, isCountUnit, QUICK_FRACTIONS } from "@/src/recipe/qty";
 // Opened only by the secret gesture on the login screen, so it is fetched only then.
 const SupportLogin = React.lazy(() => import("@/src/support/SupportLogin"));
 import WebsiteSettingsPanel from "@/src/site/WebsiteSettings";
@@ -13,7 +18,13 @@ import { mergeSiteSettings, ITEM_BADGES } from "@/src/site/presets";
 import { makeSiteT } from "@/src/site/siteStrings";
 import {
   PAYMENT_METHODS,
+  DIRECT_METHODS,
+  isPlatformMethod,
+  isCustomMethodId,
+  platformOwed,
   receiptMethodAmounts,
+  receiptMethodOf,
+  profileAppMethodId,
   returnTimeOf,
   returnAmountsOf,
   notHeldByRider,
@@ -108,6 +119,8 @@ const STRINGS = {
     payment_visa: "Visa",
     payment_instapay: "InstaPay",
     payment_wallet: "Wallet",
+    payment_talabat: "Talabat",
+    payment_elmenus: "Elmenus",
     payment_split: "Split payment",
     splitPaymentOption: "Split payment",
     splitRemainingLabel: "Remaining",
@@ -145,7 +158,41 @@ const STRINGS = {
     total: "Total",
     itemCount: "{{n}} item",
     itemCount_plural: "{{n}} items",
-    customerOptional: "Customer (optional)",
+    customerOptional: "Customer (required)",
+    reqName: "customer name",
+    reqPhone: "phone number",
+    reqAddress: "address",
+    reqArea: "delivery area",
+    notice_deliveryNeeds: "A delivery order needs: {{fields}}",
+    appCashLabel: "Cash received from delivery apps",
+    platformReceiveTitle: "How did {{app}} pay?",
+    platformReceiveBody: "Tick the orders {{app}} has paid for, then pick the way it paid the restaurant.",
+    riderSettleTitle: "Settle {{name}}",
+    riderSettleBody: "Tick the orders you are settling now; the rest stay unsettled.",
+    settleSelectedCount: "{{n}} of {{m}} selected",
+    settleSelectAll: "Select all",
+    settleSelectNone: "Clear",
+    settleNowButton: "Settle {{n}} order(s)",
+    platformReceiveCashNote: "Cash goes into the drawer of the shift that is open now; the other methods are checked against the statement in the shift report.",
+    listPaysVia: "{{list}} orders are paid through {{app}}. Pick how the customer pays {{app}}:",
+    profilePaidThrough: "Orders on this list are recorded as paid through {{app}} — never as drawer cash.",
+    dashSourceLabel: "Show",
+    dashSourceAll: "All orders",
+    dashSourceRestaurant: "Restaurant only",
+    dashAppPaidTitle: "How customers paid {{app}}",
+    dashAppPaidCash: "Cash",
+    dashAppPaidVisa: "Visa",
+    dashAppPaidNone: "Not specified",
+    appPaidByLabel: "The customer paid {{app}} by",
+    appPaidByCash: "Cash",
+    appPaidByVisa: "Visa",
+    customersSearchPlaceholder: "Search by name or phone number",
+    customersNoMatch: "No customer matches that search.",
+    customersShowingFirst: "Showing the first {{n}} of {{total}} — search to narrow it down.",
+    custHistorySummary: "{{n}} orders · {{total}} spent · first order {{since}}",
+    custHistoryLoading: "Loading order history…",
+    custHistoryNone: "No orders found for this customer.",
+    custHistoryCountedNote: "Cancelled and refunded orders are listed but not counted.",
     phoneSearchPlaceholder: "Phone number — type to find a returning customer",
     noMatchesNewCustomer: "No matches — this will be a new customer.",
     unnamed: "Unnamed",
@@ -168,6 +215,15 @@ const STRINGS = {
     markOrderPaid: "Mark as paid",
     confirm_markOrderPaid: "Mark order #{{n}} as paid?",
     notice_orderMarkedPaid: "Order #{{n}} marked as paid",
+    notice_orderMovedToTable: "The order moved to {{table}}",
+    tableUnpaidInvoice: "Unpaid #{{n}}",
+    tableAddItems: "Add items",
+    addingToInvoiceBanner: "Adding to unpaid invoice #{{n}} ({{table}}, {{total}}) — pick the items, then press the button.",
+    addToThisInvoice: "Add these items to #{{n}}",
+    moveOrderTitle: "Switch to {{to}}?",
+    moveOrderBody: "{{from}} has {{n}} item(s) in its order. Move them to {{to}}, or keep them on {{from}} and start a separate order on {{to}}?",
+    moveOrderMove: "Move the items to {{to}}",
+    moveOrderKeep: "Keep them on {{from}}",
     unpaidSummary: "{{n}} unpaid · {{amount}}",
     unpaidThisShiftLabel: "Unpaid orders from this shift",
     noUnpaidThisShift: "Everything rung up this shift has been paid.",
@@ -175,6 +231,7 @@ const STRINGS = {
 
     stockNotTracked: "Stock not tracked",
     outOfStock: "Out of stock",
+    outOfStockMissing: "Out of stock · no {{ingredient}}",
     lowLeft: "Low · {{n}} left",
     available: "{{n}} available",
     notEnoughForAnother: "Not enough {{ingredient}} for another {{item}}",
@@ -208,10 +265,44 @@ const STRINGS = {
     removePhoto: "Remove photo",
     photoUploadedHint: "This photo shows everywhere this item appears.",
     suggestedPhotoHint: "No photo yet — showing the dish's initials until you upload one.",
+    profileAddCategoryPlaceholder: "New category for this price list only",
+    profileAddCategory: "Add category",
+    profileOwnCategoryBadge: "this list only",
+    profileDeleteCategory: "Delete category",
+    confirm_deleteProfileCategory: "Delete the category \"{{name}}\" from this price list, together with all of its items? The main menu is not affected.",
+    profileRemoveItem: "Remove from this list",
+    profileRestoreItem: "Restore",
+    profileItemRemovedBadge: "removed from this list",
+    confirm_removeFromProfile: "Remove \"{{name}}\" from this price list? It stays in the main menu and you can restore it here at any time.",
+    notice_profileCategoryAdded: "Category \"{{name}}\" added to this price list",
+    notice_profileCategoryExists: "That category already exists in this price list",
+    mainCategoriesTitle: "Main categories",
+    mainCategoriesSubtitle: "Group your categories under main categories — for example Beef or Chicken. On the Order screen the main categories are the first row of tabs and the categories inside them the second row. A category can sit in more than one main category; categories in none show under \"Other\". With no main category, the Order screen stays exactly as it is.",
+    newMainPlaceholder: "New main category (e.g. Beef)",
+    addMainCategory: "Add main category",
+    mainCategoryOther: "Other",
+    mainAddCategory: "Add a category…",
+    categoryAddToMain: "Add to a main category…",
+    categoryUnderLabel: "Under:",
+    confirm_deleteMainCategory: "Delete the main category \"{{name}}\"? Its categories and dishes stay — they just aren't grouped under it any more.",
+    notice_mainCategoryExists: "A main category with that name already exists",
+    customersImportBtn: "Import from Excel",
+    customersExportBtn: "Export to Excel",
+    notice_customersExported: "{{n}} customers exported",
+    notice_customersExportFailed: "Couldn't create the Excel file — try again",
+    moveCategoryUp: "Move this category earlier in the tabs",
+    moveCategoryDown: "Move this category later in the tabs",
+    recipeQtyHint: "Fractions are fine: 0.5, 1/2, ½ or 1 1/2.",
     priceListsTitle: "Price lists",
     priceListsSubtitle: "Mirror the menu with different pricing for delivery apps, events, or a separate brand — same items and recipes, your prices.",
     newProfileNamePlaceholder: "Price list name (e.g. Talabat)",
     createProfile: "Create price list",
+    profileStartFromLabel: "Start from",
+    profileStartEmpty: "Empty — follows the main menu's prices",
+    profileStartMain: "A copy of the main menu (its prices as they are now)",
+    profileStartCopyOf: "A copy of “{{name}}”",
+    notice_profileCreatedCopy: "Price list \"{{name}}\" created as a copy of {{source}}.",
+    profileCopyMainName: "the main menu",
     noProfilesYet: "No price lists yet — create one to offer different pricing without duplicating your menu.",
     managePrices: "Manage prices",
     closeManage: "Close",
@@ -244,11 +335,32 @@ const STRINGS = {
     cdNet: "Net after expenses",
     cdDiscounts: "{{n}} discounted orders ({{amount}})",
     cdVoided: "{{n}} cancelled / refunded ({{amount}})",
+    cdCancelled: "Cancelled orders · {{n}}",
+    cdRefunded: "Refunded orders · {{n}}",
+    cancelReasonTitle: "Reason for cancelling",
+    cancelReasonPlaceholder: "Why is this order being cancelled?",
+    notice_cancelReasonRequired: "Please write the reason for cancelling this order",
+    cancelReasonLabel: "Cancel reason: {{reason}}",
     cdNoShifts: "No shifts were started on this business day.",
     cdOpened: "Opened with",
     cdReceived: "Cash received",
     cdPaidOut: "Cash paid out",
-    cdPaidOutHint: "Cash handed back to customers + cash expenses",
+    cdPaidOutExpenses: "Expenses paid out",
+    cdReturnedOrders: "Returned orders",
+    cdReturnedSub: "of which returned orders {{amount}}",
+    cdRiderShareRow: "Delivery agents' share of fees",
+    cdRiderSub: "of which delivery agents' share {{amount}}",
+    cdSettledTitle: "Delivery cash settled during {{name}}'s shift",
+    cdSettledLine: "{{n}} orders settled · cash handed in {{cash}} · agents kept {{share}} of the fees",
+    cdSettledFlagged: "Check these settlements:",
+    cdSettledFlagLine: "#{{n}} · {{rider}} · cash {{cash}} — {{why}}",
+    cdWhyOld: "ordered on {{day}}, long before this shift",
+    cdWhyApp: "assigned to a delivery app as if it were a rider — its cash may never have reached the drawer (use the app's payment method instead)",
+    cdWhyNoCash: "no cash was collected on it (paid by card, wallet or app)",
+    cdItemSettledCash: "Delivery order #{{n}} ({{rider}}: {{why}}) was settled during this shift and counted as {{amount}} cash received. If that cash was never handed over, this explains a shortage of {{amount}}.",
+    editItemsLockedHint: "This order is already paid, so its item quantities can no longer be changed.",
+    cdPaidOutHint: "Cash handed back to customers + cash expenses + riders' pay kept or paid when delivery is settled",
+    riderPayLabel: "Rider pay at delivery settlement",
     cdShouldBe: "Should be",
     cdCollectedTitle: "Cash collected at the end of the day",
     cdCollectedHint: "If the day's cash is taken out of the drawer around the last count, type the amount you took. The drawer is then checked as: should be − collected = counted. Leave it empty if nothing was taken.",
@@ -328,6 +440,11 @@ const STRINGS = {
     openingCountPlaceholder: "Total cash counted",
     openingCountStart: "Start shift",
     openingCountPrevious: "The last shift ({{name}}) counted {{amount}} at closing.",
+    settleReminderTitle: "Settle the delivery orders first",
+    settleReminderBody: "These delivery orders are still with the riders and have not been settled. Settle with each rider before you close your shift, or the cash in the drawer will come out short.",
+    settleReminderTotal: "Not settled",
+    settleReminderSettleNow: "Settle now",
+    settleReminderCloseAnyway: "Close the shift anyway",
     closingCountTitle: "Count the cash in the drawer",
     closingCountSubtitle: "Before you clock out, count every note and coin in the drawer and type the total. You can't clock out without it.",
     closingCountConfirm: "Confirm count and clock out",
@@ -372,11 +489,37 @@ const STRINGS = {
     kitchenTicketButton: "Kitchen ticket",
     kitchenTicketTooltip: "Prints the order for the kitchen — dishes, quantities and notes, no prices",
     kitchenSettingTitle: "Kitchen printing",
+    autoPrintTitle: "Print automatically after saving an order",
+    autoPrintNone: "Nothing",
+    autoPrintReceipt: "Customer receipt",
+    autoPrintKitchen: "Kitchen ticket (no prices)",
+    autoPrintBoth: "Both",
+    autoPrintSetupButton: "Download the silent-printing setup (Windows)",
+    autoPrintSetupHint: "Run it once on the till computer. It makes your receipt printer the default and adds a desktop shortcut that opens the POS in Chrome so receipts print straight away with no print window. Close every Chrome window first, then always open the POS from that shortcut.",
+    autoPrintHint: "Applies to this device only. The customer receipt has the prices; the kitchen ticket has dishes, quantities and notes only. Phones and tablets show their print window each time.",
+    drawerTitle: "Cash drawer (this device)",
+    drawerOff: "Off",
+    drawerManual: "Open with F10 or a button",
+    drawerAuto: "Also open automatically for cash orders",
+    drawerHint: "For a drawer plugged into the receipt printer. It needs a small helper program installed once on this computer (Windows). Press F10, or the Open cash drawer button on the Order screen, to open it by hand.",
+    drawerSetup: "Setup: 1) Download the helper below. 2) Double-click it and type the printer's name exactly as Windows shows it. 3) Come back here and tap Check connection. Chrome may ask once to allow this site to connect to devices on your computer — choose Allow.",
+    drawerDownload: "Download the helper (Windows)",
+    drawerTest: "Open the drawer now",
+    drawerCheck: "Check connection",
+    drawerHelperOk: "Helper is running — printer: {{printer}}",
+    drawerHelperMissing: "Helper not found on this computer. Install it first, then check again.",
+    drawerButton: "Open cash drawer (F10)",
+    drawerButtonTooltip: "Opens the cash drawer without a sale",
+    notice_drawerOpened: "Drawer opened",
+    notice_drawerFailed: "Can't reach the drawer helper on this computer. Install it from Settings → Cash drawer, make sure it is running, and allow Chrome's \"connect to devices\" prompt.",
+    notice_drawerPrinter: "The helper is running but the printer didn't take the command: {{error}}",
+    notice_drawerNeedSignIn: "Sign in and clock in on this device to use the cash drawer.",
+    kitchenWhereTitle: "Where the kitchen ticket prints",
     kitchenModeOff: "Off",
     kitchenModeHere: "Print on this device",
     kitchenModeSend: "Send to the kitchen printer",
     kitchenModeStation: "This device is the kitchen printer",
-    kitchenHint_off: "Orders are not printed for the kitchen automatically. You can still print a kitchen ticket by hand from the order screen or the Receipts tab.",
+    kitchenHint_off: "Orders are not printed for the kitchen automatically. You can still print a kitchen ticket by hand from the Receipts tab once an order is saved.",
     kitchenHint_here: "When an order is saved on this device, a kitchen ticket (dishes, quantities and notes — no prices) prints here.",
     kitchenHint_send: "When an order is saved on this device, its kitchen ticket is sent to the device that is set as the kitchen printer, which prints it. Use this on phones, tablets and tills that have no printer.",
     kitchenHint_station: "Connect the kitchen printer to this device and keep the app open. Every kitchen ticket saved on any device prints here within about 10 seconds.",
@@ -448,6 +591,9 @@ const STRINGS = {
     saveChanges: "Save changes",
     cancelEdit: "Cancel edit",
     paymentMethodEditLabel: "Payment method",
+    paymentMethodEditAppNote: "This order was rung up on the {{list}} price list, so it stays paid through {{list}}. How {{list}} pays the restaurant is chosen when it is marked received in the Shift tab.",
+    deliveryAreaEditLabel: "Delivery area",
+    deliveryAreaEditHint: "Changing the area changes the delivery fee and the order total.",
     paymentMethodEditSplitNote: "Picking a method here replaces the split-payment breakdown with a single method.",
     editReasonLabel: "Reason for edit (optional)",
     discountEditLabel: "Discount",
@@ -755,6 +901,25 @@ const STRINGS = {
     dashboardModeMonth: "Month",
     dashboardModeDay: "Day",
     dashboardModeRange: "Range",
+    dlvRepTitle: "Delivery report — day by day",
+    dlvRepSubtitle: "Every delivery order in the period above, for each delivery agent and each day: the orders, the delivery fees, the agent's share of them and what the restaurant keeps. Tap a day to see its orders.",
+    dlvRepAllAgents: "All agents",
+    dlvRepNoAgent: "No agent assigned",
+    dlvRepEmpty: "No delivery orders in this period.",
+    dlvRepDay: "Day",
+    dlvRepOrders: "Orders",
+    dlvRepOrderAmount: "Order amount",
+    dlvRepFees: "Delivery fees",
+    dlvRepAgentShare: "Agent's share",
+    dlvRepRestShare: "Restaurant's share",
+    dlvRepCash: "Cash collected",
+    dlvRepSettled: "Settled",
+    dlvRepTotal: "Total",
+    dlvRepEstimateNote: "For orders not settled yet the agent's share is worked out from the current delivery-fee setting; it is fixed when you settle with the agent.",
+    dlvRepOpen: "Not settled",
+    dlvRepPrint: "Print report",
+    dlvRepPrinted: "Printed {{time}}",
+    dlvRepPeriod: "Period: {{from}} → {{to}}",
     periodRevenueLabel: "Revenue",
     periodOrdersLabel: "Orders",
     todayRevenue: "Today's revenue",
@@ -914,6 +1079,65 @@ const STRINGS = {
     settleDeliveryCash: "Settle up",
     confirm_settleDelivery: "Mark all of {{name}}'s outstanding orders as settled?",
     notice_deliverySettled: "Settled up with {{name}}",
+    receiptDetailTapHint: "Tap to see the full receipt",
+    receiptDetailLink: "Details ›",
+    receiptDetailItems: "Items",
+    receiptDetailCustomer: "Customer",
+    receiptDetailPayment: "Payment",
+    receiptDetailNotPaid: "Not paid yet",
+    receiptDetailPaidAt: "Paid {{time}}",
+    receiptDetailPlatformOwed: "Waiting for {{app}} to pay the restaurant",
+    receiptDetailPlatformReceived: "Received from {{app}} · {{time}}",
+    receiptDetailDeliverySettled: "Delivery settled · {{time}}",
+    receiptDetailDeliveryOpen: "Not yet settled with {{name}}",
+    receiptDetailCancelledAt: "Cancelled {{time}} by {{name}}",
+    receiptDetailRefundedAt: "Refunded {{time}} by {{name}}",
+    paymentSettingsTitle: "Payment methods",
+    paymentSettingsHint: "Choose which payment methods this restaurant offers and what each one is called. Turning one off only hides it for new orders — past orders keep it. Talabat and Elmenus are for orders that come through those apps: the restaurant is paid later, so they are tracked on the Dashboard as money owed.",
+    paymentSettingsAddTitle: "Add a payment method",
+    paymentSettingsNewName: "Name, e.g. Fawry or Bank transfer",
+    paymentSettingsKindNow: "Paid now",
+    paymentSettingsKindNowHint: "The money is received at the time, like a card or a wallet. It can be part of a split payment.",
+    paymentSettingsKindLater: "Paid later by an app",
+    paymentSettingsKindLaterHint: "The app pays the restaurant later. These orders are tracked on the Dashboard as money owed until you mark them received.",
+    paymentSettingsAdd: "Add",
+    paymentSettingsPaidLater: "Paid later",
+    paymentOther: "Other",
+    notice_paymentMethodAdded: "Payment method added: {{name}}",
+    paymentSettingsOn: "On",
+    paymentSettingsOff: "Off",
+    paymentSettingsAlwaysOn: "Always on",
+    paymentSettingsDeliveryApp: "Delivery app",
+    paymentSettingsLoadFailed: "Couldn't load this setting from the server, so it is locked to avoid overwriting it. Reload the page to try again.",
+    platformOwedTitle: "Owed by delivery apps",
+    platformOwedSubtitle: "Orders paid through Talabat or Elmenus. The app pays the restaurant later, usually at the end of the month — each order stays here until you mark it received.",
+    platformOwedTotal: "Total owed",
+    platformOwedLoading: "Loading the last few months…",
+    platformOwedShow: "Show orders",
+    platformOwedHide: "Hide orders",
+    platformMarkReceived: "Mark received",
+    confirm_platformReceived: "Mark {{n}} {{app}} orders ({{amount}}) as received?",
+    notice_platformReceived: "{{app}}: {{n}} orders marked received",
+    platformOwedWindowNote: "Covers the last 4 months.",
+    riderReportTitle: "Delivery employee report",
+    riderReportSubtitle: "Pick one or more delivery employees to see the orders not yet settled with them — client, address and order amount, with the delivery fee kept separate — and what each one owes the restaurant after keeping their share of the fees. These are the same figures as the Delivery cash reconciliation in the Shift tab. Print gives one page per employee.",
+    riderReportPaidWith: "Paid with",
+    riderReportUnsettledNote: "Orders not yet settled",
+    riderReportRiderShare: "Rider's share of the fees",
+    riderReportSelectAll: "Select all",
+    riderReportClear: "Clear",
+    riderReportSelectOne: "Select at least one delivery employee.",
+    riderReportNoRiders: "No delivery staff yet — add them in the Staff tab and their reports will appear here.",
+    riderReportEmpty: "No unsettled delivery orders for {{name}}.",
+    riderReportOrders: "Orders",
+    riderReportOrdersTotal: "Orders total",
+    riderReportFeesTotal: "Delivery fees",
+    riderReportOrderAmount: "Order amount",
+    riderReportNoName: "No name given",
+    riderReportPrint: "Print report",
+    riderReportSignature: "Delivery employee signature",
+    riderReportReceivedBy: "Received by",
+    riderReportPrintedAt: "Printed {{time}}",
 
     notice_giveCategoryName: "Give the category a name first",
     notice_categoryExists: "A category with that name already exists",
@@ -978,6 +1202,8 @@ const STRINGS = {
     payment_visa: "فيزا",
     payment_instapay: "إنستاباي",
     payment_wallet: "محفظة إلكترونية",
+    payment_talabat: "طلبات",
+    payment_elmenus: "المنيوس",
     payment_split: "دفع مقسّم",
     splitPaymentOption: "دفع مقسّم",
     splitRemainingLabel: "المتبقي",
@@ -1015,7 +1241,41 @@ const STRINGS = {
     total: "الإجمالي",
     itemCount: "صنف واحد",
     itemCount_plural: "{{n}} أصناف",
-    customerOptional: "العميل (اختياري)",
+    customerOptional: "العميل (مطلوب)",
+    reqName: "اسم العميل",
+    reqPhone: "رقم الهاتف",
+    reqAddress: "العنوان",
+    reqArea: "منطقة التوصيل",
+    notice_deliveryNeeds: "طلب التوصيل يحتاج: {{fields}}",
+    appCashLabel: "نقدية مستلمة من تطبيقات التوصيل",
+    platformReceiveTitle: "كيف دفع {{app}}؟",
+    platformReceiveBody: "حدّد الطلبات التي دفع {{app}} ثمنها، ثم اختر طريقة دفعه للمطعم.",
+    riderSettleTitle: "تسوية {{name}}",
+    riderSettleBody: "حدّد الطلبات التي تسوّيها الآن؛ والباقي يبقى بلا تسوية.",
+    settleSelectedCount: "تم تحديد {{n}} من {{m}}",
+    settleSelectAll: "تحديد الكل",
+    settleSelectNone: "مسح",
+    settleNowButton: "تسوية {{n}} طلب",
+    platformReceiveCashNote: "النقدية تدخل درج الوردية المفتوحة الآن؛ أما الطرق الأخرى فتُراجع على كشف الحساب في تقرير الوردية.",
+    listPaysVia: "طلبات {{list}} تُدفع عبر {{app}}. اختر طريقة دفع العميل لـ {{app}}:",
+    profilePaidThrough: "الطلبات على هذه القائمة تُسجَّل كمدفوعة عبر {{app}} — وليست نقدية في الدرج.",
+    dashSourceLabel: "عرض",
+    dashSourceAll: "كل الطلبات",
+    dashSourceRestaurant: "طلبات المطعم فقط",
+    dashAppPaidTitle: "كيف دفع العملاء لـ {{app}}",
+    dashAppPaidCash: "نقدًا",
+    dashAppPaidVisa: "فيزا",
+    dashAppPaidNone: "غير محدد",
+    appPaidByLabel: "دفع العميل لـ {{app}} بـ",
+    appPaidByCash: "نقدًا",
+    appPaidByVisa: "فيزا",
+    customersSearchPlaceholder: "ابحث بالاسم أو رقم الهاتف",
+    customersNoMatch: "لا يوجد عميل مطابق للبحث.",
+    customersShowingFirst: "يُعرض أول {{n}} من {{total}} — استخدم البحث للتضييق.",
+    custHistorySummary: "{{n}} طلب · أُنفق {{total}} · أول طلب {{since}}",
+    custHistoryLoading: "جارٍ تحميل سجل الطلبات…",
+    custHistoryNone: "لا توجد طلبات لهذا العميل.",
+    custHistoryCountedNote: "الطلبات الملغاة والمسترجعة تظهر في القائمة لكنها لا تُحتسب.",
     phoneSearchPlaceholder: "رقم الهاتف — اكتبه للبحث عن عميل سابق",
     noMatchesNewCustomer: "لا توجد نتائج — سيُعتبر عميلًا جديدًا.",
     unnamed: "بدون اسم",
@@ -1038,6 +1298,15 @@ const STRINGS = {
     markOrderPaid: "تحديد كمدفوع",
     confirm_markOrderPaid: "تحديد الطلب رقم #{{n}} كمدفوع؟",
     notice_orderMarkedPaid: "تم تحديد الطلب رقم #{{n}} كمدفوع",
+    notice_orderMovedToTable: "انتقل الطلب إلى {{table}}",
+    tableUnpaidInvoice: "غير مدفوعة رقم {{n}}",
+    tableAddItems: "إضافة أصناف",
+    addingToInvoiceBanner: "إضافة إلى الفاتورة غير المدفوعة رقم {{n}} ({{table}}، {{total}}) — اختر الأصناف ثم اضغط الزر.",
+    addToThisInvoice: "أضف هذه الأصناف إلى رقم {{n}}",
+    moveOrderTitle: "التبديل إلى {{to}}؟",
+    moveOrderBody: "في طلب {{from}} عدد {{n}} صنف. هل تنقلها إلى {{to}}، أم تتركها على {{from}} وتبدأ طلبًا منفصلًا على {{to}}؟",
+    moveOrderMove: "انقل الأصناف إلى {{to}}",
+    moveOrderKeep: "أبقِها على {{from}}",
     unpaidSummary: "{{n}} غير مدفوع · {{amount}}",
     unpaidThisShiftLabel: "الطلبات غير المدفوعة من هذه الوردية",
     noUnpaidThisShift: "كل ما تم تسجيله في هذه الوردية تم دفعه.",
@@ -1045,6 +1314,7 @@ const STRINGS = {
 
     stockNotTracked: "المخزون غير متابَع",
     outOfStock: "نفد من المخزون",
+    outOfStockMissing: "نفد من المخزون · لا يوجد {{ingredient}}",
     lowLeft: "منخفض · باقي {{n}}",
     available: "{{n}} متوفر",
     notEnoughForAnother: "لا توجد كمية كافية من {{ingredient}} لإضافة {{item}} أخرى",
@@ -1078,10 +1348,44 @@ const STRINGS = {
     removePhoto: "إزالة الصورة",
     photoUploadedHint: "تظهر هذه الصورة في كل مكان يظهر فيه هذا الصنف.",
     suggestedPhotoHint: "لا توجد صورة بعد — يتم عرض الحروف الأولى للطبق حتى ترفع صورة.",
+    profileAddCategoryPlaceholder: "فئة جديدة لقائمة الأسعار هذه فقط",
+    profileAddCategory: "إضافة فئة",
+    profileOwnCategoryBadge: "هذه القائمة فقط",
+    profileDeleteCategory: "حذف الفئة",
+    confirm_deleteProfileCategory: "حذف الفئة \"{{name}}\" من قائمة الأسعار هذه مع كل أصنافها؟ القائمة الرئيسية لا تتأثر.",
+    profileRemoveItem: "إزالة من هذه القائمة",
+    profileRestoreItem: "استعادة",
+    profileItemRemovedBadge: "أُزيل من هذه القائمة",
+    confirm_removeFromProfile: "إزالة \"{{name}}\" من قائمة الأسعار هذه؟ يبقى في القائمة الرئيسية ويمكنك استعادته هنا في أي وقت.",
+    notice_profileCategoryAdded: "أُضيفت الفئة \"{{name}}\" إلى قائمة الأسعار هذه",
+    notice_profileCategoryExists: "هذه الفئة موجودة بالفعل في قائمة الأسعار هذه",
+    mainCategoriesTitle: "الأقسام الرئيسية",
+    mainCategoriesSubtitle: "اجمع أقسامك تحت أقسام رئيسية — مثل لحم البقر أو الدجاج. في شاشة الطلب تكون الأقسام الرئيسية الصف الأول من التبويبات والأقسام داخلها الصف الثاني. يمكن لقسم أن يكون في أكثر من قسم رئيسي؛ والأقسام التي ليست في أي قسم رئيسي تظهر تحت \"أخرى\". وبدون أقسام رئيسية تبقى شاشة الطلب كما هي.",
+    newMainPlaceholder: "قسم رئيسي جديد (مثال: لحم بقري)",
+    addMainCategory: "إضافة قسم رئيسي",
+    mainCategoryOther: "أخرى",
+    mainAddCategory: "إضافة قسم…",
+    categoryAddToMain: "أضف إلى قسم رئيسي…",
+    categoryUnderLabel: "ضمن:",
+    confirm_deleteMainCategory: "حذف القسم الرئيسي \"{{name}}\"؟ تبقى أقسامه وأطباقه — فقط لم تعد مجمّعة تحته.",
+    notice_mainCategoryExists: "يوجد قسم رئيسي بهذا الاسم بالفعل",
+    customersImportBtn: "استيراد من إكسل",
+    customersExportBtn: "تصدير إلى إكسل",
+    notice_customersExported: "تم تصدير {{n}} عميل",
+    notice_customersExportFailed: "تعذّر إنشاء ملف إكسل — حاول مجددًا",
+    moveCategoryUp: "حرّك هذا القسم للأمام بين التبويبات",
+    moveCategoryDown: "حرّك هذا القسم للخلف بين التبويبات",
+    recipeQtyHint: "الكسور مقبولة: 0.5 أو 1/2 أو ½ أو 1 1/2.",
     priceListsTitle: "قوائم الأسعار",
     priceListsSubtitle: "اعكس نفس القائمة بأسعار مختلفة لتطبيقات التوصيل أو المناسبات أو علامة تجارية أخرى — نفس الأصناف والمكونات، بأسعارك أنت.",
     newProfileNamePlaceholder: "اسم قائمة الأسعار (مثال: طلبات)",
     createProfile: "إنشاء قائمة أسعار",
+    profileStartFromLabel: "ابدأ من",
+    profileStartEmpty: "فارغة — تتبع أسعار القائمة الرئيسية",
+    profileStartMain: "نسخة من القائمة الرئيسية (بأسعارها الحالية)",
+    profileStartCopyOf: "نسخة من \"{{name}}\"",
+    notice_profileCreatedCopy: "تم إنشاء قائمة الأسعار \"{{name}}\" كنسخة من {{source}}.",
+    profileCopyMainName: "القائمة الرئيسية",
     noProfilesYet: "لا توجد قوائم أسعار بعد — أنشئ واحدة لعرض أسعار مختلفة دون تكرار القائمة.",
     managePrices: "إدارة الأسعار",
     closeManage: "إغلاق",
@@ -1114,11 +1418,32 @@ const STRINGS = {
     cdNet: "الصافي بعد المصروفات",
     cdDiscounts: "{{n}} طلبات بخصم ({{amount}})",
     cdVoided: "{{n}} ملغاة / مسترجعة ({{amount}})",
+    cdCancelled: "الطلبات الملغاة · {{n}}",
+    cdRefunded: "الطلبات المُسترجعة · {{n}}",
+    cancelReasonTitle: "سبب الإلغاء",
+    cancelReasonPlaceholder: "لماذا يتم إلغاء هذا الطلب؟",
+    notice_cancelReasonRequired: "اكتب سبب إلغاء هذا الطلب من فضلك",
+    cancelReasonLabel: "سبب الإلغاء: {{reason}}",
     cdNoShifts: "لم تبدأ أي وردية في يوم العمل هذا.",
     cdOpened: "بدأت بـ",
     cdReceived: "النقدية المستلمة",
     cdPaidOut: "النقدية المصروفة",
-    cdPaidOutHint: "نقدية أُعيدت للعملاء + مصروفات نقدية",
+    cdPaidOutExpenses: "المصروفات المدفوعة",
+    cdReturnedOrders: "طلبات مسترجعة",
+    cdReturnedSub: "منها طلبات مسترجعة {{amount}}",
+    cdRiderShareRow: "نصيب مندوبي التوصيل من الرسوم",
+    cdRiderSub: "منها نصيب مندوبي التوصيل {{amount}}",
+    cdSettledTitle: "نقدية الدليفري المُسوّاة خلال وردية {{name}}",
+    cdSettledLine: "{{n}} طلبات سُوّيت · النقدية المُسلَّمة {{cash}} · احتفظ المندوبون بـ {{share}} من الرسوم",
+    cdSettledFlagged: "راجع هذه التسويات:",
+    cdSettledFlagLine: "رقم {{n}} · {{rider}} · نقدًا {{cash}} — {{why}}",
+    cdWhyOld: "طُلب يوم {{day}}، قبل هذه الوردية بوقت طويل",
+    cdWhyApp: "مُسنَد لتطبيق توصيل كأنه مندوب — قد لا تكون نقديته وصلت الدرج (استخدم طريقة دفع التطبيق بدلًا من ذلك)",
+    cdWhyNoCash: "لم تُحصَّل عليه نقدية (مدفوع بالبطاقة أو المحفظة أو التطبيق)",
+    cdItemSettledCash: "طلب الدليفري رقم {{n}} ({{rider}}: {{why}}) سُوّي خلال هذه الوردية وحُسب {{amount}} نقدًا مستلمًا. لو لم تُسلَّم هذه النقدية فعلًا، فهذا يفسّر نقصًا قدره {{amount}}.",
+    editItemsLockedHint: "هذا الطلب مدفوع بالفعل، لذلك لا يمكن تغيير كميات أصنافه.",
+    cdPaidOutHint: "نقدية أُعيدت للعملاء + مصروفات نقدية + أجر العامل المخصوم أو المدفوع عند تسوية الدليفري",
+    riderPayLabel: "أجر العامل عند تسوية الدليفري",
     cdShouldBe: "المفروض",
     cdCollectedTitle: "النقدية المسحوبة في نهاية اليوم",
     cdCollectedHint: "إذا تُسحب نقدية اليوم من الدرج حول آخر جرد، اكتب المبلغ الذي سحبته. عندها يُفحص الدرج هكذا: المفروض − المسحوب = المجرود. اتركه فارغًا إن لم يُسحب شيء.",
@@ -1198,6 +1523,11 @@ const STRINGS = {
     openingCountPlaceholder: "إجمالي النقدية المعدودة",
     openingCountStart: "ابدأ الوردية",
     openingCountPrevious: "آخر وردية ({{name}}) عدّت {{amount}} عند الإغلاق.",
+    settleReminderTitle: "سوِّ طلبات التوصيل أولاً",
+    settleReminderBody: "طلبات التوصيل هذه لا تزال مع عمال التوصيل ولم تتم تسويتها. سوِّ مع كل عامل قبل إنهاء ورديتك، وإلا سيظهر عجز في نقدية الدرج.",
+    settleReminderTotal: "لم تتم تسويتها",
+    settleReminderSettleNow: "سوِّ الآن",
+    settleReminderCloseAnyway: "إنهاء الوردية على أي حال",
     closingCountTitle: "عدّ النقدية في الدرج",
     closingCountSubtitle: "قبل تسجيل الانصراف، عدّ كل الأوراق والعملات في الدرج واكتب الإجمالي. لا يمكنك تسجيل الانصراف بدون ذلك.",
     closingCountConfirm: "تأكيد العد وتسجيل الانصراف",
@@ -1242,11 +1572,37 @@ const STRINGS = {
     kitchenTicketButton: "تذكرة المطبخ",
     kitchenTicketTooltip: "يطبع الطلب للمطبخ — الأصناف والكميات والملاحظات بدون أسعار",
     kitchenSettingTitle: "طباعة المطبخ",
+    autoPrintTitle: "الطباعة التلقائية بعد حفظ الطلب",
+    autoPrintNone: "بدون",
+    autoPrintReceipt: "إيصال العميل",
+    autoPrintKitchen: "تذكرة المطبخ (بدون أسعار)",
+    autoPrintBoth: "الاثنان",
+    autoPrintSetupButton: "تنزيل إعداد الطباعة الصامتة (ويندوز)",
+    autoPrintSetupHint: "شغّله مرة واحدة على كمبيوتر الكاشير. يجعل طابعة الإيصالات هي الافتراضية ويضيف اختصارًا على سطح المكتب يفتح النظام في كروم بحيث تُطبع الإيصالات فورًا بدون نافذة طباعة. أغلق كل نوافذ كروم أولًا، ثم افتح النظام دائمًا من هذا الاختصار.",
+    autoPrintHint: "يسري على هذا الجهاز فقط. إيصال العميل فيه الأسعار؛ تذكرة المطبخ فيها الأصناف والكميات والملاحظات فقط. الهواتف والأجهزة اللوحية تعرض نافذة الطباعة في كل مرة.",
+    drawerTitle: "درج النقود (هذا الجهاز)",
+    drawerOff: "متوقف",
+    drawerManual: "يفتح بزر F10 أو بزر في الشاشة",
+    drawerAuto: "ويفتح تلقائيًا أيضًا للطلبات النقدية",
+    drawerHint: "للدرج الموصول بطابعة الإيصالات. يحتاج إلى برنامج مساعد صغير يُثبَّت مرة واحدة على هذا الكمبيوتر (ويندوز). اضغط F10 أو زر فتح درج النقود في شاشة الطلب لفتحه يدويًا.",
+    drawerSetup: "الإعداد: ١) نزّل البرنامج المساعد بالأسفل. ٢) اضغط عليه مرتين واكتب اسم الطابعة تمامًا كما يظهر في ويندوز. ٣) ارجع هنا واضغط فحص الاتصال. قد يطلب كروم مرة واحدة السماح لهذا الموقع بالاتصال بالأجهزة على الكمبيوتر — اختر السماح.",
+    drawerDownload: "تنزيل البرنامج المساعد (ويندوز)",
+    drawerTest: "افتح الدرج الآن",
+    drawerCheck: "فحص الاتصال",
+    drawerHelperOk: "البرنامج المساعد يعمل — الطابعة: {{printer}}",
+    drawerHelperMissing: "لم يُعثر على البرنامج المساعد على هذا الكمبيوتر. ثبّته أولًا ثم افحص من جديد.",
+    drawerButton: "فتح درج النقود (F10)",
+    drawerButtonTooltip: "يفتح درج النقود بدون عملية بيع",
+    notice_drawerOpened: "تم فتح الدرج",
+    notice_drawerFailed: "لا يمكن الوصول إلى البرنامج المساعد للدرج على هذا الكمبيوتر. ثبّته من الإعدادات ← درج النقود، وتأكد أنه يعمل، واسمح بطلب كروم للاتصال بالأجهزة.",
+    notice_drawerPrinter: "البرنامج المساعد يعمل لكن الطابعة لم تقبل الأمر: {{error}}",
+    notice_drawerNeedSignIn: "سجّل الدخول وابدأ ورديتك على هذا الجهاز لاستخدام درج النقود.",
+    kitchenWhereTitle: "أين تُطبع تذكرة المطبخ",
     kitchenModeOff: "إيقاف",
     kitchenModeHere: "اطبع على هذا الجهاز",
     kitchenModeSend: "أرسل إلى طابعة المطبخ",
     kitchenModeStation: "هذا الجهاز هو طابعة المطبخ",
-    kitchenHint_off: "لا تُطبع الطلبات للمطبخ تلقائيًا. ما زال بإمكانك طباعة تذكرة المطبخ يدويًا من شاشة الطلب أو من تبويب الإيصالات.",
+    kitchenHint_off: "لا تُطبع الطلبات للمطبخ تلقائيًا. ما زال بإمكانك طباعة تذكرة المطبخ يدويًا من تبويب الإيصالات بعد حفظ الطلب.",
     kitchenHint_here: "عند حفظ طلب على هذا الجهاز، تُطبع هنا تذكرة للمطبخ (الأصناف والكميات والملاحظات — بدون أسعار).",
     kitchenHint_send: "عند حفظ طلب على هذا الجهاز، تُرسل تذكرة المطبخ إلى الجهاز المحدد كطابعة المطبخ ليطبعها. استخدمه على الهواتف والأجهزة اللوحية وأجهزة الكاشير التي ليس لها طابعة.",
     kitchenHint_station: "وصّل طابعة المطبخ بهذا الجهاز وأبقِ التطبيق مفتوحًا. كل تذكرة تُحفظ على أي جهاز تُطبع هنا خلال نحو 10 ثوانٍ.",
@@ -1318,6 +1674,9 @@ const STRINGS = {
     saveChanges: "حفظ التغييرات",
     cancelEdit: "إلغاء التعديل",
     paymentMethodEditLabel: "طريقة الدفع",
+    paymentMethodEditAppNote: "هذا الطلب سُجّل على قائمة أسعار {{list}}، لذلك يبقى مدفوعًا عبر {{list}}. أما طريقة دفع {{list}} للمطعم فتُختار عند تسجيل الاستلام في تبويب الوردية.",
+    deliveryAreaEditLabel: "منطقة التوصيل",
+    deliveryAreaEditHint: "تغيير المنطقة يغيّر رسوم التوصيل وإجمالي الطلب.",
     paymentMethodEditSplitNote: "اختيار طريقة هنا يستبدل تقسيم الدفع بطريقة واحدة فقط.",
     editReasonLabel: "سبب التعديل (اختياري)",
     discountEditLabel: "الخصم",
@@ -1625,6 +1984,25 @@ const STRINGS = {
     dashboardModeMonth: "شهر",
     dashboardModeDay: "يوم",
     dashboardModeRange: "فترة",
+    dlvRepTitle: "تقرير التوصيل — يوم بيوم",
+    dlvRepSubtitle: "كل طلبات التوصيل في الفترة المختارة أعلاه، لكل عامل توصيل ولكل يوم: عدد الطلبات ورسوم التوصيل ونصيب العامل منها وما يحتفظ به المطعم. اضغط على اليوم لترى طلباته.",
+    dlvRepAllAgents: "كل العمال",
+    dlvRepNoAgent: "بدون عامل توصيل",
+    dlvRepEmpty: "لا توجد طلبات توصيل في هذه الفترة.",
+    dlvRepDay: "اليوم",
+    dlvRepOrders: "الطلبات",
+    dlvRepOrderAmount: "قيمة الطلبات",
+    dlvRepFees: "رسوم التوصيل",
+    dlvRepAgentShare: "نصيب العامل",
+    dlvRepRestShare: "نصيب المطعم",
+    dlvRepCash: "النقدية المحصّلة",
+    dlvRepSettled: "تمت التسوية",
+    dlvRepTotal: "الإجمالي",
+    dlvRepEstimateNote: "للطلبات التي لم تتم تسويتها بعد، يُحسب نصيب العامل حسب إعداد رسوم التوصيل الحالي، ويثبت عند التسوية مع العامل.",
+    dlvRepOpen: "لم تتم التسوية",
+    dlvRepPrint: "طباعة التقرير",
+    dlvRepPrinted: "طُبع {{time}}",
+    dlvRepPeriod: "الفترة: {{from}} ← {{to}}",
     periodRevenueLabel: "الإيرادات",
     periodOrdersLabel: "الطلبات",
     todayRevenue: "إيرادات اليوم",
@@ -1784,6 +2162,65 @@ const STRINGS = {
     settleDeliveryCash: "تسوية الحساب",
     confirm_settleDelivery: "تحديد كل طلبات {{name}} غير المُسوّاة كمُسوّاة؟",
     notice_deliverySettled: "تمت التسوية مع {{name}}",
+    receiptDetailTapHint: "اضغط لعرض الإيصال كاملًا",
+    receiptDetailLink: "التفاصيل ›",
+    receiptDetailItems: "الأصناف",
+    receiptDetailCustomer: "العميل",
+    receiptDetailPayment: "الدفع",
+    receiptDetailNotPaid: "لم يُدفع بعد",
+    receiptDetailPaidAt: "دُفع {{time}}",
+    receiptDetailPlatformOwed: "بانتظار دفع {{app}} للمطعم",
+    receiptDetailPlatformReceived: "تم الاستلام من {{app}} · {{time}}",
+    receiptDetailDeliverySettled: "تمت تسوية التوصيل · {{time}}",
+    receiptDetailDeliveryOpen: "لم تتم التسوية مع {{name}} بعد",
+    receiptDetailCancelledAt: "أُلغي {{time}} بواسطة {{name}}",
+    receiptDetailRefundedAt: "استُرد {{time}} بواسطة {{name}}",
+    paymentSettingsTitle: "طرق الدفع",
+    paymentSettingsHint: "اختر طرق الدفع التي يقدّمها المطعم واسم كل منها. إيقاف طريقة يخفيها عن الطلبات الجديدة فقط — الطلبات السابقة تحتفظ بها. طلبات والمنيوس للطلبات القادمة عبر هذه التطبيقات: يدفع التطبيق للمطعم لاحقًا، لذلك تُتابَع في لوحة المعلومات كمبالغ مستحقة.",
+    paymentSettingsAddTitle: "إضافة طريقة دفع",
+    paymentSettingsNewName: "الاسم، مثل فوري أو تحويل بنكي",
+    paymentSettingsKindNow: "تُدفع فورًا",
+    paymentSettingsKindNowHint: "يُستلم المبلغ في الحال، مثل البطاقة أو المحفظة. ويمكن أن تكون جزءًا من دفع مقسّم.",
+    paymentSettingsKindLater: "يدفعها تطبيق لاحقًا",
+    paymentSettingsKindLaterHint: "يدفع التطبيق للمطعم لاحقًا. تُتابَع هذه الطلبات في لوحة المعلومات كمبالغ مستحقة حتى تحددها كمُستلَمة.",
+    paymentSettingsAdd: "إضافة",
+    paymentSettingsPaidLater: "تُدفع لاحقًا",
+    paymentOther: "أخرى",
+    notice_paymentMethodAdded: "تمت إضافة طريقة الدفع: {{name}}",
+    paymentSettingsOn: "مفعّل",
+    paymentSettingsOff: "متوقف",
+    paymentSettingsAlwaysOn: "مفعّل دائمًا",
+    paymentSettingsDeliveryApp: "تطبيق توصيل",
+    paymentSettingsLoadFailed: "تعذّر تحميل هذا الإعداد من الخادم، لذلك تم قفله لتجنّب الكتابة فوقه. أعد تحميل الصفحة للمحاولة مرة أخرى.",
+    platformOwedTitle: "مستحق من تطبيقات التوصيل",
+    platformOwedSubtitle: "الطلبات المدفوعة عبر طلبات أو المنيوس. يدفع التطبيق للمطعم لاحقًا، عادةً في نهاية الشهر — يظل كل طلب هنا حتى تحدده كمُستلَم.",
+    platformOwedTotal: "إجمالي المستحق",
+    platformOwedLoading: "جارٍ تحميل الأشهر الأخيرة…",
+    platformOwedShow: "عرض الطلبات",
+    platformOwedHide: "إخفاء الطلبات",
+    platformMarkReceived: "تم الاستلام",
+    confirm_platformReceived: "تحديد {{n}} طلب من {{app}} ({{amount}}) كمُستلَم؟",
+    notice_platformReceived: "{{app}}: تم تحديد {{n}} طلب كمُستلَم",
+    platformOwedWindowNote: "يشمل آخر 4 أشهر.",
+    riderReportTitle: "تقرير عامل التوصيل",
+    riderReportSubtitle: "اختر عامل توصيل أو أكثر لترى الطلبات التي لم تتم تسويتها معهم بعد — اسم العميل والعنوان وقيمة الطلب، مع رسوم التوصيل منفصلة — وكم يدين كل منهم للمطعم بعد احتفاظه بنصيبه من الرسوم. هذه هي نفس أرقام تسوية نقدية الدليفري في تبويب الوردية. الطباعة تعطي صفحة لكل عامل.",
+    riderReportPaidWith: "طريقة الدفع",
+    riderReportUnsettledNote: "طلبات لم تتم تسويتها بعد",
+    riderReportRiderShare: "نصيب العامل من الرسوم",
+    riderReportSelectAll: "تحديد الكل",
+    riderReportClear: "مسح",
+    riderReportSelectOne: "اختر عامل توصيل واحدًا على الأقل.",
+    riderReportNoRiders: "لا يوجد عمال توصيل بعد — أضفهم من تبويب الموظفين وستظهر تقاريرهم هنا.",
+    riderReportEmpty: "لا توجد طلبات توصيل غير مُسوّاة لـ {{name}}.",
+    riderReportOrders: "الطلبات",
+    riderReportOrdersTotal: "إجمالي الطلبات",
+    riderReportFeesTotal: "رسوم التوصيل",
+    riderReportOrderAmount: "قيمة الطلب",
+    riderReportNoName: "بدون اسم",
+    riderReportPrint: "طباعة التقرير",
+    riderReportSignature: "توقيع عامل التوصيل",
+    riderReportReceivedBy: "المستلم",
+    riderReportPrintedAt: "طُبع {{time}}",
 
     notice_giveCategoryName: "يرجى إدخال اسم للقسم أولاً",
     notice_categoryExists: "يوجد بالفعل قسم بهذا الاسم",
@@ -1902,6 +2339,34 @@ const normalizePhoneForWhatsApp = (raw) => {
 // silently resolve to the wrong one, so an item's stock check can run against a completely
 // unrelated item's recipe.
 let idCounter = 0;
+// What this device last saw of a restaurant's look (name, logo, colours, theme, language), kept so the next visit
+// paints the right restaurant at once. A device that has never opened this restaurant shows a plain spinner until
+// the real details arrive — never anyone else's name or a stock one.
+const bootKey = (tenantId) => `pos-boot:${tenantId}`;
+const readBoot = (tenantId) => {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(bootKey(tenantId)) || "null");
+    return v && typeof v === "object" ? v : null;
+  } catch (e) {
+    return null;
+  }
+};
+const writeBoot = (tenantId, patch) => {
+  try {
+    window.localStorage.setItem(bootKey(tenantId), JSON.stringify({ ...(readBoot(tenantId) || {}), ...patch }));
+  } catch (e) {
+    // storage full or blocked — the next visit just shows the spinner a moment longer
+  }
+};
+function BootLoader() {
+  return (
+    <div className="boot-loader" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <style>{`.boot-loader{background:#f4f2ee;color:#8a8680}@media (prefers-color-scheme: dark){.boot-loader{background:#20242B;color:#9CA1AC}}@keyframes boot-spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={{ width: 22, height: 22, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", animation: "boot-spin .8s linear infinite" }} />
+    </div>
+  );
+}
+
 const newId = (prefix) => `${prefix}_${Date.now()}_${(idCounter++).toString(36)}_${Math.floor(Math.random() * 1e6)}`;
 
 // A short two-tone chime for "a customer just requested the bill" — synthesized rather than an
@@ -2000,24 +2465,24 @@ restaurant's subscription package (Basic/Standard/Premium), and Expenses/Dashboa
 visible to a manager even on a package that includes them. If someone asks about a tab/feature you
 don't see mentioned anywhere in this list, or one that's missing for them specifically, say plainly
 that you don't see it and it may not be included in their current plan — don't guess.
-- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. "Print receipt" and "Download" are both available — see printing notes below. A "Kitchen ticket" button prints the order for the kitchen — dish names, quantities and notes with NO prices — and kitchen tickets can also print automatically (see Kitchen printing under Settings). Switching tables preserves each table's in-progress order separately.
-- **Price list tabs** (if this restaurant has created any): extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
-- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage their price overrides and extra items — see "Price list tabs" above for how they're used while ordering.
+- **Order**: build a ticket for a table or Takeaway/Delivery. Tap menu items to add them, adjust quantities, apply a discount (+ Add discount, available to every staff member, not just managers — the discount needs a written reason, which is saved on the receipt and shown in the Receipts tab), split the bill evenly among any number of people (+ Split bill), choose a payment method (Cash, Visa, InstaPay, or Wallet), then Save order. Once there are items in the cart, "+ Add to existing invoice" also appears if this month has any unpaid ("pay later") invoices — pick one (each row shows its ticket number, table or delivery, and the date it was created, since ticket numbers restart every day) to merge these items straight into that invoice (quantities combine for the same dish, everything else appends as a new line, and the total recalculates) instead of saving a separate new ticket. There is deliberately no way to print or download a customer receipt before the order is saved: the receipt is printed only after Save order (automatically if the device's auto-print is on, or later with "Print receipt" from the Receipts tab), so every printed ticket has a saved order behind it. Kitchen tickets (dish names, quantities and notes with NO prices) print only after the order is saved — automatically (see Kitchen printing under Settings) or from the saved receipt in the Receipts tab; there is no kitchen-ticket button on the Order screen before saving. When editing a saved delivery order in the Receipts tab, the "Delivery area" drop-down list lets staff pick another area; the delivery fee and the order total update to that area's fee and the change is recorded in the edit history. On a Windows till PC with a cash drawer plugged into the receipt printer, Settings > Cash drawer (per device) can turn on opening the drawer with F10 or an "Open cash drawer" button on the Order screen, and optionally automatically when an order is paid in cash (a split payment counts only if part of it is cash; card, wallet and delivery-app orders leave the drawer shut); it needs a small free helper program (downloadable from that same card) installed once on that computer, and Chrome may ask once to allow connecting to devices on the computer. A manager chooses which payment methods are offered, and can rename them, in Settings > Payment methods (each has an On/Off switch and a name box; Cash is always on; turning one off only hides it for new orders). The same card has "Add a payment method" for the restaurant's own extra methods (for example Fawry or Bank transfer): give it a name and choose "Paid now" (money received at once, can be part of a split payment) or "Paid later by an app" (tracked as money owed, like Talabat); an added method can be renamed or switched off but not deleted. Besides Cash, Visa, InstaPay and Wallet there are two more payment choices for orders that came through a delivery app — Talabat and Elmenus — which are Off until a manager switches them on there. Choose one when saving the order (they can't be part of a split payment, and the "pay later" choice doesn't apply): the sale counts in revenue and in the Dashboard's payment methods like any other, but no money reaches the drawer because the app pays the restaurant later, usually at the end of the month. Each such order is listed on the Shift tab under "Owed by delivery apps" (every settlement — riders and delivery apps — is done from the Shift tab), by app and month, with the total owed; when the app pays, tap "Mark received" on a month (or on a single order) and it stops counting as owed. Only the last 4 months are checked. In the Receipts tab, tap a receipt's ticket line or its items to open its full details (itemised prices, discount, service, VAT, delivery fee, payment, customer, who served it, whether the delivery or delivery-app money has been settled) with Print receipt and Kitchen ticket buttons. In the Shift tab, each delivery employee's settlement card has a "Print report" button next to "Settle up". Pressing "Settle up" (for a delivery employee) or "Mark received" (for a delivery app) opens a pick-list of that person's or app's unsettled orders — one brief line each with a tick box, the order number, date, items and price, with Select all / Clear and a running total (for a rider: cash collected, their share and what they owe or are owed, worked out for the ticked orders only); only the ticked orders are settled and the others stay unsettled. For a delivery app you then pick how it paid (Cash, Visa...). Everything that prints (receipts, kitchen tickets, reports) uses large, bold black type so it stays readable on basic printers. Switching tables preserves each table's in-progress order separately; switching between Takeaway and Delivery before saving carries the items and customer details across to the other one (unless that one already has its own items). Likewise, an order started on Takeaway or Delivery moves to a table when the cashier taps that table, as long as the table has no items of its own yet; on the Delivery slot the customer block is required: a delivery order cannot be saved until the customer name, phone number and address are filled in and a delivery area (zone) is chosen (a message lists what is missing); leaving a table that already has items for an empty Takeaway, Delivery or other table pops up a choice: "Move the items" (they follow the cashier and the table is left empty) or "Keep them on the table" (a separate new order starts there); the choice appears only on the order screen switcher, and never when the destination already has its own items.
+- **Price list tabs** (if this restaurant has created any; every price list stands for a delivery app such as Talabat or Elmenus — a list named after Talabat or Elmenus uses that app, any other list gets a payment type of its own named after the list): an order rung up on a price list tab is automatically recorded as paid through that app, never as drawer cash (and when a manager edits such a receipt, its payment method cannot be switched to cash or visa — it stays with the app) — the app owes the restaurant that money (shown under "Owed by delivery apps" on the Shift tab until marked received; "Mark received" — for one order or a whole month — asks how the app paid the restaurant: Cash, Visa or another method. Cash is added to the drawer of the shift that is open when it is marked received (the shift report shows it as "Cash received from delivery apps" and Close the day counts it in cash received); visa or another method never touches the drawer and is checked against the statement in the shift report; the receipt detail shows when and how it was received). On such a tab the payment buttons mean how the customer pays the app (Cash, Visa, ...): the Order screen says so, split payment and the cash-drawer button are hidden, and the chosen method is saved on the order and shown in its receipt detail. The Dashboard "Show" row can then narrow everything to one app. Details: extra pill tabs sitting right next to Order, one per price list (e.g. "Talabat"). Clicking one switches the Order screen into that price list's pricing — same dishes and recipes as the main menu, but with whichever prices were overridden for that list, plus any items added only to that list. Stock still deducts from the one shared ingredient inventory. These price lists are POS-terminal only — they never change what customers see on a table's QR menu or the online-ordering link, which always shows the regular menu at regular prices. Price lists themselves are created and managed from the Menu tab.
+- **Menu**: add/edit/delete categories and dishes. Every dish row also has a "Mark out of stock" / "Mark available" button: it switches a dish off by hand (for example when the kitchen runs out of something that isn't tracked in Stock) — the dish shows as out of stock on the Order screen and as not available on the QR menus, the online link and the call center link, until someone marks it available again. When a dish shows as out of stock because of its recipe, the badge on the Order screen names the ingredient that ran out (for example "Out of stock · no honey mustard"), and tapping the dish explains it — restock that ingredient in Stock, or remove it from the dish's recipe, and the dish comes back by itself. This works for any dish, with or without a recipe, and any employee can do it. Each dish can have a "recipe" — which stock ingredients it uses and how much — so orders automatically deduct stock. When adding or editing a dish's recipe, a "Copy the recipe of another item…" dropdown at the top of the recipe section copies all of another dish's ingredients and quantities in one go (for dishes that share a base), after which you can add more ingredients or change a quantity on top — ingredients already in the recipe are kept as typed, only missing ones are added. Every ingredient line in the recipe has an editable quantity box (just type a new number — no need to remove and re-add), and the "Search ingredient…" box under the recipe filters the stock list as you type (tap a result, enter the quantity, then Add or press Enter). A dish with no recipe set is treated as always in stock. Each dish can also have a photo — upload one from the item editor (editable any time; PNG, JPG, WEBP and GIF all work and big pictures are shrunk automatically); until you do, it shows the dish's initials instead. The photo shows everywhere that dish appears (Order screen, Menu tab, customer QR/online menu). There's also a "Scan a menu photo" option (if included in this restaurant's package) that reads a photo of a printed menu and pre-fills items for review before adding them — you check each one, edit anything wrong, then add. The "Price lists" section here is where you create/rename/delete price lists and manage them — see "Price list tabs" above for how they're used while ordering. When creating a price list you choose what it starts from: empty (it follows the main menu's prices), a copy of the main menu (every dish gets its current price written into the list), or a full copy of another price list (its prices, removed dishes, own categories and own dishes with their recipes — the copied dishes are separate dishes from then on). Inside a list ("Manage prices") you can: set a different price for any main-menu dish; add extra dishes (each with its own photo and recipe, so they deduct stock and show availability exactly like main-menu dishes, and an ingredient used by one can't be deleted); add a category that exists only in that list (type the name at the top of the list and tap "Add category" — it appears as a tab when that list is used on the Order screen, and can be deleted with its dishes without touching the main menu); and remove a main-menu dish from that list only ("Remove from this list" — it stays in the main menu, shows as removed, and can be restored with "Restore"). Deleting a category or dish from the main menu also removes it from every price list. Recipe quantities can be fractions of a unit — type 0.5, 1/2, ½ or 1 1/2 (for counted units like pieces, slices or bottles, quick buttons ¼ ⅓ ½ ¾ 1 1½ 2 appear after choosing the ingredient); they are shown as ½, 1¼ and so on, and each order deducts exactly that fraction from stock (the Stock tab can then show 7½ pieces). The category tabs can be rearranged: every category in the Menu tab has small ▲ ▼ arrows that move it earlier or later, and that order is used for the tabs on the Order screen and on the customer menus (a price list's own categories can be reordered the same way inside the list). "Main categories" (a card above the price lists) group the categories into bigger headings — for example Beef holding Cow Burger, Doner Burger and Bomb Burger (the existing categories then act as sub categories): create a main category, then choose which categories it contains, either from its own "Add a category…" list or from the "Add to a main category…" list on each category. Once at least one main category exists, the Order screen shows the main categories as a first row of tabs and the categories inside the chosen one as a second row; categories in no main category appear under "Other"; a category can be in several. Main categories can be renamed, reordered with ▲ ▼ and deleted (their categories and dishes stay). Customer menus list the categories in the same grouped order. With no main category nothing changes.
 - **Stock**: manage ingredients, their units (weight/volume/count), and current stock levels. Any staff member can add stock — the +/- buttons adjust by one unit, or type any amount into the restock field next to them and tap "Restock" to add it all at once (handy after a delivery, instead of tapping + repeatedly). Only managers can remove stock (typing a smaller number directly into the stock count, or the − button) — that's for correcting a miscount or returning defective supply, not everyday adjustments. Managers also see an "Import from Excel" button: upload an .xlsx or .csv sheet with one row per item (item name, current balance, measuring unit — columns in any order, English or Arabic headings). A preview shows what will be added (new items), updated (existing items get the new balance), left unchanged or skipped, and any problems, before anything is saved; an existing item keeps its unit (g/kg and ml/L are converted automatically) and nothing is ever deleted. A template and the current stock can be downloaded as Excel files from the same window.
-- **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket, and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
-- **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery.
+- **Tables**: set how many tables the restaurant has, rename any of them, see which are occupied, and generate/print a QR code per table that customers can scan to view the live menu and place their own order. A table shows "Occupied" while it has an open ticket or a saved unpaid (pay-later) invoice; each unpaid invoice is listed on the table card with its ticket number, date, items and total, with its own "Mark as paid" button (confirms, then marks that invoice paid) and an "Add items" button (while a table has an unpaid invoice and nothing else open, the "Open ticket" button is hidden — "Add items" replaces it) (opens the Order screen on that table in an "adding to unpaid invoice" mode: pick the items, then press "Add these items to #N" to merge them into that invoice; in this mode the payment choices and the Save button are hidden so the items can only go to that invoice; Cancel leaves that mode), and shows a "Bill requested" badge with the customer's chosen payment method once they use the QR menu's checkout option — staff confirm payment with a "Mark as paid" button, which clears the table.
+- **Delivery**: also shows a separate call center ordering link (copy it for the call center team): it opens the same menu and ordering as the online link, but agents first sign in with their staff name and PIN, and a phone/name search finds returning customers from the Customers list and fills in their name and address; the order shows up for review like any other online order, labeled as a call center order with the agent's name. Shows the shareable online-ordering link (for social media — customers browse the live menu and order pickup/delivery without a table's QR code) and lets you set delivery zones with a fee per zone, which customers pick from at checkout. The delivery fee retention setting (Settings tab) controls how much of each delivery fee the restaurant keeps vs. the rider — either a flat percentage or a fixed amount per delivery. At the bottom of the Delivery tab there is also a "Delivery employee report" (shown when staff tracking is included in the package): tap one or more delivery employees (or "Select all") and it lists the orders not yet settled with each of them — client name, phone, address, how it was paid and the order amount, with the delivery fee shown separately. For each employee it also shows the cash they collected, minus their share of the delivery fees, which gives what they owe the restaurant (or what the restaurant owes them) — the same figures as the Delivery cash reconciliation in the Shift tab, and it empties once you settle up there. "Print report" prints one page per selected employee with signature lines. Only orders assigned to that employee on the Order screen appear in it. After an order is saved, anyone signed in (not only managers) can change who it is assigned to with the "Reassign" dropdown on the order in the Receipts tab (when team tracking is included).
 - **Website** (manager-only; comes with the Online ordering link feature): turns the online-ordering link into a branded website for the restaurant. A manager picks one of five looks (Classic, Modern, Dark, Bold, Minimal — each sets fonts, shapes and layout together), can override the button and highlight colors (otherwise the brand colors from Settings are used), uploads a cover photo and up to 6 gallery photos, writes a tagline and an "About us" text in English and Arabic, adds an announcement banner, address and social links (Instagram, Facebook, TikTok, WhatsApp, website), chooses which sections show (About, Popular items row, Gallery, Opening hours — the hours and the "Open now / Closed" badge come from Settings → Shift hours) and chooses the language the page opens in. A live phone preview sits next to the controls (a "Preview" button on phones). Everything saves automatically, but customers keep seeing the original ordering page until the "Published" switch is turned on, and it can be switched off again at any time. The tab also lets the manager claim a short web address (for example /r/my-restaurant) to share on social media or print on menus; the original long link keeps working. Orders can't be sent from the preview. In the Menu editor, each dish has an "On your website" section: labels (Popular, New, Spicy, Vegetarian, Chef's pick) and a "Show in the Popular row" checkbox. Dish photos and the short description are what the website shows on each menu card. The website look also applies to table QR menus once published.
-- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. Editing lets you change each item's quantity (stock adjusts to match), add, change or remove the order's discount (no need to delete the order and make a new one — a discount that is added or changed needs a written reason, the total and the service/VAT recalculate right away, a "Total after this edit" line shows the new bill before you save, and the change is recorded in the edit history and in the cash-drawer explanation on Close the day if the order was already paid), and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
+- **Receipts**: order history, filterable by Month, by a single Day, or by a custom Range — the same Month/Day/Range toggle and date picker(s) as the Dashboard. Cancel (restores stock, use when an order never went out) and Refund (stock stays deducted, use when it was already served; the time is recorded) both open a window asking HOW the money goes back to the customer (Cancel also requires a written reason, which is saved on the receipt; the Shift report and the Close the day report show how many orders were cancelled and their total value, listing each cancelled order with its reason, and refunded orders separately) — it defaults to the way the order was paid (for a split payment, as paid) and can be changed to cash, Visa, InstaPay or wallet; that choice is saved on the receipt and used in the cash drawer check (an unpaid pay-later order has nothing to return), since neither can be undone — Edit does not, since it can just be edited again. On the Close the day drawer report (screen and print) each shift and the whole day show the cash handed back for cancelled/refunded orders on its own "Returned orders" line, separate from the "Expenses paid out" line. Editing lets you change each item's quantity (stock adjusts to match) only while the order is still unpaid — once an order is paid its quantities are locked and cannot be changed (the payment method, discount and delivery area can still be edited) — and add, change or remove the order's discount (no need to delete the order and make a new one — a discount that is added or changed needs a written reason, the total and the service/VAT recalculate right away, a "Total after this edit" line shows the new bill before you save, and the change is recorded in the edit history and in the cash-drawer explanation on Close the day if the order was already paid), and also change the payment method — useful for fixing a mis-recorded one after the fact; picking a method there replaces a split-payment breakdown with that single method. Every change is logged with who made it, when, and the reason if one was given — viewable via "View edit history" (manager-only). Mark fulfillment status (Preparing/Out for delivery) to trigger a WhatsApp update to the customer if they left a phone number — this opens WhatsApp with the message ready and still needs one tap of Send there, WhatsApp itself never allows sending on someone's behalf automatically.
 - **Expenses** (manager-only): log business expenses with a supplier, category, and paid/unpaid status, see totals, outstanding payables, and a by-category breakdown. Like the Dashboard and Receipts, it can be filtered by Month (a month dropdown), a single Day (a calendar), or a custom Range (any start and end date) using the toggle at the top; the totals, payables and category breakdown follow the chosen period.
-- **Dashboard** (manager-only): revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here.
-- **Customers**: anyone whose phone number was entered at checkout is saved here automatically, with order history.
-- **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance; the expected cash only subtracts cash expenses recorded during this shift — ones a previous shift already took out of the drawer are not subtracted again), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
-- **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count. Below the drawer table there is a "Cash collected at the end of the day" box: type the cash taken out of the drawer at the end of that business day (for restaurants that collect the day's cash around the last count). The last shift's drawer is then checked as should be − collected = counted, so a real shortage shows up and a correct collection shows as matching; until an amount is typed, a last-shift difference is shown as an "≈ collection" in blue (not a shortage) and does not need a note to close the day. Each day is checked on its own — the next day's first count is never compared with the previous day's.
+- **Dashboard** (manager-only): a "Show" row under the period picker (offered once the restaurant has a price list, has switched a delivery app on in Settings > payment methods, or the period has orders paid through one) narrows every figure on the page to All orders, Restaurant only, or one delivery app; with an app or Restaurant only chosen the Expenses and Net profit tiles are hidden (expenses belong to the whole restaurant), and with an app chosen the payment card adds how the customers paid that app (Cash / Visa / Not specified). On the Order screen, when the payment method is Talabat or Elmenus, an optional "The customer paid {app} by: Cash / Visa" choice appears; it is saved on the order and shown in the receipt detail. An order paid through a delivery app never enters the cash drawer — the app owes the restaurant that money (see "Owed by delivery apps"). Revenue, orders, average order value, an explicit Expenses figure for the period, net profit (revenue minus that expenses figure, with a hint spelling out the subtraction), discounts given, a revenue trend chart, items sold (a category dropdown on that card narrows it to one menu category and lists every dish in it with how many were sold in the period, including dishes that sold none), payment-method mix, and order source — all filterable by Month (a month and a year dropdown), by a single Day (a calendar that opens from the date button), or by a custom Range (any start and end date, e.g. "last 10 days" or a specific week) using the toggle and date picker(s) at the top, so it isn't locked to "this month." Which calendar day an order counts toward follows the Shift hours set in Settings — an order placed after midnight but before the next shift's configured start still counts toward the day that shift began, so a 6pm–2am shift never gets split across two days here. At the bottom of the Dashboard, a "Delivery report — day by day" card lists every delivery order of the chosen period for each delivery agent, one row per day: number of orders, order amount (without the fee), delivery fees, the agent's share of the fees, the restaurant's share, and cash collected. A drop-down picks one agent or all agents, tapping a day opens its individual orders (with the area, payment method and whether each is settled), and "Print report" prints one page per agent. It covers settled and not-yet-settled orders alike; the agent's share of a settled order is the one saved at settlement, and for an unsettled order it follows the current delivery-fee setting. Orders with no agent assigned appear under "No agent assigned".
+- **Customers**: anyone whose phone number was entered at checkout is saved here automatically. A search box at the top finds a customer by name or phone number; tapping a customer (or searching until only one is left) opens their full order history from every saved month — date and time, ticket number, delivery area or table, the items, the total and any Unpaid, Cancelled or Refunded mark — with the number of orders and the total spent (cancelled and refunded orders are listed but not counted). Managers also see "Import from Excel" and "Export to Excel" buttons on this screen: Export downloads every customer (name, phone, address, number of orders, last order date) as an Excel file; Import takes an .xlsx or .csv sheet with a phone column (name and address optional, columns in any order, English or Arabic headings), shows a preview of who will be added or updated, and only saves after you confirm — customers are matched by phone number (+20, 0 and spacing differences don't matter), a blank cell never erases stored details, order counts are kept, nothing is ever deleted, and a template can be downloaded from the import window.
+- **Shift**: shows the currently clocked-in employee's personal stats (hours worked, their orders, their revenue) plus register-wide totals for the day, including how many orders had a discount and the total discount amount, and — if any expenses were logged since clock-in — how many and their total, subtracted from net sales into a clearly-labeled "Net after expenses" line so it's obvious that figure already accounts for spending, not just sales. Every shift starts and ends with a cash count: signing in (clocking in) first asks you to count the drawer and type the total — you can't start without it — and "Clock out" first checks for delivery orders that are still with the riders and not settled (the same ones the Delivery cash reconciliation lists): if there are any, a reminder pop-up shows how many unsettled orders there are and what they add up to, and offers "Settle now" (goes to the Shift tab to settle with the riders, then clock out again) or "Close the shift anyway" — it is only a reminder, it never blocks closing. Then "Clock out" asks for the closing count the same way (you can't clock out without it), then ends the shift and shows a recap with what was expected, what was counted and the difference. Each shift's opening count, closing count and difference are saved and shown in the Staff tab's shift list, with a warning if a shift opened with a different amount than the previous shift counted at closing. Every employee (not just managers) also sees: a cash reconciliation panel (opening float, cash sales, expected vs. counted cash, variance; the expected cash only subtracts cash expenses recorded during this shift — ones a previous shift already took out of the drawer are not subtracted again), a Visa/InstaPay/wallet reconciliation panel (expected vs. confirmed-on-statement per method, with variance), and — if delivery riders are tracked — a per-rider delivery cash reconciliation panel showing each rider's cash collected, delivery fees kept, what's owed, the list of delivery addresses they went to that shift, and a "Settle up" button. "Print shift report" / "Download" produce one combined report covering all of the above sections together, expenses included.
+- **Close the day** (open to every employee, whatever their role; comes with Shift tracking): pick a business day and see, in one place, how it went (revenue, orders, payment methods, discounts, cancellations/refunds, expenses, net), then the cash drawer shift by shift — what each shift opened with (its counted opening), cash received, cash paid out (cash handed back to customers + cash expenses), what the drawer SHOULD hold, what was counted at closing, and the gap — with the whole-day total. Below that, "Why there is a gap" explains each gap in plain words, with who/when/how much: it lists the recorded events that could be behind it (an order whose payment method was changed after it was paid, dishes removed or added after payment, a cancelled order with no recorded return, a cash expense dated that day but outside every shift) and finds the combination that adds up to the gap, saying "together these explain the whole gap" or how much is still unexplained. If the gap only appeared after the shift was closed it says so and what changed. For cash that moved between one shift's closing count and the next shift's opening count it works out what the drawer should have held from the cash received and paid out in between (including orders taken while nobody had a shift). The whole-day row covers every cash movement. At the bottom anyone can press "Close the day" to sign the day off: it saves the figures as the day's record (a note explaining the gap is required when there is a cash gap), and later the screen shows anything that changed since closing; Print and Download give a report. "Also check" lists orders taken outside any shift, unpaid orders, shifts still open, auto-closed shifts and shifts without a cash count. Below the drawer table there is a "Cash collected at the end of the day" box: type the cash taken out of the drawer at the end of that business day (for restaurants that collect the day's cash around the last count). The last shift's drawer is then checked as should be − collected = counted, so a real shortage shows up and a correct collection shows as matching; until an amount is typed, a last-shift difference is shown as an "≈ collection" in blue (not a shortage) and does not need a note to close the day. Each day is checked on its own — the next day's first count is never compared with the previous day's (the one exception: a shift that was left open for more than a day by a missed clock-out and finally closed today is compared with the next opening today). On the drawer report (screen and print) the cash paid out is split into separate lines: "Expenses paid out" (cash expenses only), "Delivery agents' share of fees" (what riders kept from the cash they handed in, or were paid, when delivery was settled) and "Returned orders". Below the gaps there is a "Delivery cash settled during this shift" block for each shift in which delivery orders were settled: how many orders, the cash handed in and the fees the agents kept, with a warning list for settlements that look wrong — an order from an earlier day, an order assigned to a delivery app (Talabat, Elmenus...) as if it were a rider, or an order with no cash collected. The cash of a warned settlement is also offered to "Why there is a gap" as a possible cause ("if that cash was never handed over, this explains a shortage of ...").
 - **Staff**: manage the employee roster (name + 4-digit PIN). An employee can only ever edit their OWN PIN, not a colleague's. Also shows a 30-day revenue leaderboard, an "Open shifts right now" list (managers only — everyone currently clocked in on any device, with orders/revenue so far), and shift history. Shift numbers in this list are always worked out from the current orders (so an order edited or a pay-later bill that grew after clock-out is reflected) and show the payment-method split; a shift nobody clocked out of is closed automatically the next time that person signs in, and marked "auto-closed". Managers also get a "Day check" card: pick a business day and see every completed order grouped by the shift it was rung up in — plus a "Not in any logged shift" row for orders taken while the person had no shift in the log — adding up to exactly the Dashboard's revenue for that day. Managers can tap any past shift, or any currently open shift, to see its full detail: orders completed, net sales, payment-method breakdown, and every ticket from that shift — reconstructed live from receipts rather than the few numbers stored in the shift log. For a shift that's still in progress, the detail view is marked "Live now" and keeps refreshing every few seconds so a manager can watch that employee's sales come in in real time.
-- **Settings**: a "Kitchen printing" choice (per device) with four options: Off (default); "Print on this device" (a kitchen ticket prints here every time an order is saved on this device); "Send to the kitchen printer" (the ticket is sent to the device set as the kitchen printer — for phones, tablets and tills that have no printer); and "This device is the kitchen printer" (connect the kitchen printer to this device and keep the app open and awake — it prints every ticket saved on any device within about 10 seconds, shows the recent tickets with a "Print again" button, and has a test-ticket button). A kitchen ticket shows the table or takeaway, ticket number, time, each dish with its quantity and notes, delivery/pickup, and no prices; adding items to an existing unpaid invoice prints a ticket with only the added items, marked as an addition. Browsers always show a print window unless the computer's Chrome/Edge is started with the --kiosk-printing option and the kitchen printer is the default printer; phones and tablets always show their own print window. Also: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
+- **Settings**: a "Print automatically after saving an order" choice (per device): Nothing (default), Customer receipt (with prices), Kitchen ticket (dishes, quantities and notes — no prices) or Both; it prints the moment an order is saved on that device. Right below it, "Where the kitchen ticket prints" has three options: "Print on this device" (the kitchen ticket prints here); "Send to the kitchen printer" (the ticket is sent to the device set as the kitchen printer — for phones, tablets and tills that have no printer); and "This device is the kitchen printer" (connect the kitchen printer to this device and keep the app open and awake — it prints every ticket saved on any device within about 10 seconds, shows the recent tickets with a "Print again" button, and has a test-ticket button). A kitchen ticket shows the table or takeaway, ticket number, time, each dish with its quantity and notes, delivery/pickup, and no prices; adding items to an existing unpaid invoice prints a ticket with only the added items, marked as an addition. Settings > Print automatically has a "Download the silent-printing setup (Windows)" button: run the file once on the till computer, it makes the receipt printer the default and creates a desktop shortcut that opens the POS in Chrome with no print window; Chrome must be fully closed first and the POS then opened from that shortcut. Browsers always show a print window unless the computer's Chrome/Edge is started with the --kiosk-printing option and the kitchen printer is the default printer; phones and tablets always show their own print window. Also: a "New order sound" switch (per device) that plays a chime whenever a new customer or call center order arrives for review, with a "Play test sound" button — the browser only allows sound after someone has tapped or clicked on the page once. Also: restaurant name, logo, primary/secondary brand colors, a phone number, and a light/dark theme toggle for the staff app's own display (the customer-facing menu is unaffected) — these apply across the whole app and printed receipts. The phone number adds a "Call us" button to the online-ordering page (next to "Get directions", if a location is also set) so customers can call directly. Shift hours lets you set each weekday's shift start and end time (choose the hour and the minute from the two dropdowns next to each day) — this only affects which calendar day the Dashboard reports an order under (see Dashboard above); it doesn't restrict when staff can actually take orders. If VAT/service charge is included in this restaurant's package, it's also set here (a percentage each, applied automatically to every order — set either to 0 to turn it off). The delivery fee retention mode (percentage vs. fixed amount kept by the restaurant) is also set here. Also the EN/AR language toggle in the header.
 
 ## How the money numbers fit together
-Every money figure — Dashboard, Receipts, Shift, Staff, Close the day, Expenses — is worked out by the same single calculation from the saved orders, expenses and shifts, so tabs only differ when they answer different questions. The rules: an order counts as a sale when it is completed (an unpaid pay-later bill still counts, and is listed separately; cancelled and refunded orders are not sales). A sale belongs to the business day it was created in (the Shift hours in Settings decide where a day starts). Cash enters the drawer when it is paid (delivery cash when the rider settles) and leaves it when an order is returned or a cash expense is recorded — a cash expense reduces the drawer of the shift it was recorded in. A shift belongs to the business day most of it falls in. Orders created while nobody was clocked in are shown as "not inside any shift". Cash handed from one shift to the next is compared only within the same business day: cash is often collected when a day ends, so the first shift of a day is never compared with the last shift of the day before. Totals saved at clock-out are only a record; screens always recompute from the orders. All screens re-check the server about every 15 seconds, so after a short moment every terminal shows the same figures; if two screens differ for more than a minute, reloading the page forces a fresh read. The Staff tab leaderboard adds up every order each person created in the last 30 days, the same orders the Dashboard counts.
+Every money figure — Dashboard, Receipts, Shift, Staff, Close the day, Expenses — is worked out by the same single calculation from the saved orders, expenses and shifts, so tabs only differ when they answer different questions. The rules: an order counts as a sale when it is completed (an unpaid pay-later bill still counts, and is listed separately; cancelled and refunded orders are not sales). A sale belongs to the business day it was created in (the Shift hours in Settings decide where a day starts). Cash enters the drawer when it is paid (delivery cash when the rider settles — only what the rider actually hands over: the cash collected minus the rider's share of the delivery fees, which is saved when you press Settle up; if the restaurant owes the rider instead, that payout leaves the drawer, and it shows on Close the day and the Shift tab as "Rider pay at delivery settlement") and leaves it when an order is returned or a cash expense is recorded — a cash expense reduces the drawer of the shift it was recorded in. A shift belongs to the business day most of it falls in. Orders created while nobody was clocked in are shown as "not inside any shift". Cash handed from one shift to the next is compared only within the same business day: cash is often collected when a day ends, so the first shift of a day is never compared with the last shift of the day before. Totals saved at clock-out are only a record; screens always recompute from the orders. All screens re-check the server about every 15 seconds, so after a short moment every terminal shows the same figures; if two screens differ for more than a minute, reloading the page forces a fresh read. The Staff tab leaderboard adds up every order each person created in the last 30 days, the same orders the Dashboard counts.
 ## How staff log in
 The app requires signing in with a name + 4-digit PIN before anything else is usable (a login/PIN-pad screen). First-time setup lets someone add themselves. IMPORTANT: PINs here are for quick identification at a shared terminal, not real security — there's no encryption. If someone can't log in, check they're using the right PIN via a manager in the Staff tab (any logged-in staff member can edit their own PIN there).
 
@@ -2027,7 +2492,7 @@ After a manager's PIN is accepted, they're asked "Clock in for a shift" or "Just
 Each table's QR code, and the general online-ordering link, land on the same customer-facing menu with a table ID (or no table ID, for the general link) in the URL, showing customers a live, view-only menu (items, descriptions, prices — no stock/availability details, by design, for customer privacy) where they can add items and send an order. That order does NOT go straight to the kitchen — it shows up as a "pending order" for staff to review in the Tables view (a badge appears, plus a pill in the header) and must be explicitly Confirmed (which merges it into that table's ticket) or Rejected. This is intentional so staff always have final say before anything hits the kitchen. Once staff taps Confirm, the customer's own device — if that page is still open — automatically shows a "Your order was confirmed and is being prepared!" banner within a few seconds, with no action needed from the customer. Rejecting an order does NOT notify the customer automatically — staff need to let them know some other way.
 
 ## Known limitations — mention these proactively if relevant
-- **Printing and QR codes only fully work once this app is deployed to a real, published URL.** If someone is testing inside Claude's chat preview, "Print receipt" and the QR code links won't function — use the "Download" button instead (downloads a receipt/flyer file they can open and print manually), and know that QR codes will start working once the app is actually deployed/published somewhere with a real public URL.
+- **Printing and QR codes only fully work once this app is deployed to a real, published URL.** If someone is testing inside Claude's chat preview, printing and the QR code links won't function (the QR flyer has a "Download" button that saves a file to open and print manually), and know that QR codes will start working once the app is actually deployed/published somewhere with a real public URL.
 - **Offline behavior**: the staff app keeps working through a lost connection — orders, menu edits, stock changes all still work and are queued to sync automatically once back online (shown via a "changes waiting to sync" indicator in the header). However, nothing survives closing the tab or refreshing while offline. Customer QR ordering is deliberately blocked while offline (no queueing) so no order can exist that the restaurant never sees.
 - **Ticket numbers** are simple ascending numbers (1, 2, 3...) that restart when the business day starts (the shift start set in Settings > Shift hours, e.g. 08:00 — not at midnight), shared across every terminal.
 - **Split bill** divides the total evenly and rounds to the cent for display — with an odd total split many ways, the per-person amounts may not add up to the exact total to the last cent.
@@ -2189,6 +2654,8 @@ function MenuThumb({ item, size = 34 }) {
 
 const money = (n) => `${n.toFixed(2)} EGP`;
 const fmtQty = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+// Stock of a counted unit can be part of a piece (a recipe used half): shown as ½, 7¼ … ; weights keep two decimals.
+const fmtStock = (n, unit) => (isCountUnit(unit) && !Number.isInteger(n) ? fmtRecipeQty(n, unit) : fmtQty(n));
 
 // Business-day shift hours (Settings > Shift hours) — lets a restaurant say "our shift runs
 // 6pm-2am" so a 1am order still counts toward the day the shift started, instead of rolling onto
@@ -2199,6 +2666,41 @@ const fmtQty = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 // pickers used to) is a day behind for the first hours after local midnight (UTC+2/+3), which made
 // today's date unselectable right when late-night shifts were being reviewed.
 const todayLocalStr = () => localDateStr(new Date());
+
+// Which payment methods a restaurant offers, and what it calls them (Settings > Payment methods). Cash is always
+// on; the delivery apps are off until switched on, so a restaurant that never touches them sees no change.
+const MAX_CUSTOM_PAYMENT_METHODS = 12;
+const paymentConfigFrom = (raw) => {
+  let parsed = null;
+  try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+  const enabled = {};
+  const names = {};
+  const custom = [];
+  // Methods the restaurant added itself: an id, a name, and whether the money comes later from an app.
+  if (Array.isArray(parsed?.custom)) {
+    parsed.custom.forEach((c) => {
+      if (custom.length < MAX_CUSTOM_PAYMENT_METHODS && c && isCustomMethodId(c.id) && !custom.some((x) => x.id === c.id)) {
+        custom.push({ id: c.id, name: (typeof c.name === "string" && c.name.trim().slice(0, 24)) || "—", later: !!c.later });
+      }
+    });
+  }
+  [...PAYMENT_METHODS.map((m) => m.id), ...custom.map((c) => c.id)].forEach((id) => {
+    if (parsed?.enabled && typeof parsed.enabled[id] === "boolean") enabled[id] = parsed.enabled[id];
+    const nm = parsed?.names && typeof parsed.names[id] === "string" ? parsed.names[id].trim().slice(0, 24) : "";
+    if (nm && !isCustomMethodId(id)) names[id] = nm;
+  });
+  return { enabled, names, custom };
+};
+// Every price list is a delivery app's menu (Talabat, Elmenus, ...): an order rung up on it is paid through that app.
+// A list named after Talabat or Elmenus uses the built-in method of that name (so its orders add up with any others paid
+// through it); any other list gets a payment type of its own, named after the list.
+const profileMethodId = profileAppMethodId;
+const customPaymentOf = (cfg, id) => (cfg?.custom || []).find((c) => c.id === id);
+const paymentMethodOn = (cfg, id) => {
+  if (id === "cash") return true;
+  if (cfg && id in cfg.enabled) return !!cfg.enabled[id];
+  return customPaymentOf(cfg, id) ? true : !isPlatformMethod(id);
+};
 const monthLocalKey = () => todayLocalStr().slice(0, 7);
 const formatShortDate = (dateStr, isRtl) =>
   new Date(`${dateStr}T00:00:00Z`).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -2404,6 +2906,19 @@ const buildMapsHref = (mapsLink) => {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(trimmed)}`;
 };
 
+// Receipts go to all kinds of printers, including cheap low-resolution thermal ones that turn thin grey type into
+// a smudge. So everything that is printed is made plain and sturdy: a clean sans-serif (not a thin monospace),
+// medium-heavy weight, pure black, nothing smaller than 12.5px, and firmer rules. Done once here, on the finished
+// markup, so every printout (receipts, kitchen tickets, reports, QR sheets) gets it without each one repeating it.
+const printReadable = (html) =>
+  String(html)
+    .replace(/font-size:\s*(\d+(?:\.\d+)?)px/g, (m, n) => {
+      const size = Number(n);
+      return `font-size:${size > 16 ? size : Math.max(12.5, Math.round(size * 1.15 * 2) / 2)}px`;
+    })
+    .replace(/(?<![-\w])color:\s*#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g, "color:#000")
+    .replace(/(border(?:-top)?:\s*)1px/g, "$11.5px");
+
 // Wraps receipt body markup in a small standalone printable document (shared by both the
 // on-page print path and the downloadable file below).
 const receiptDocument = (title, bodyHtml, autoPrint, rtl) => `<!DOCTYPE html>
@@ -2412,18 +2927,24 @@ const receiptDocument = (title, bodyHtml, autoPrint, rtl) => `<!DOCTYPE html>
     <meta charset="utf-8" />
     <title>${escapeHtml(title)}</title>
     <style>
-      @page { margin: 12px; }
+      @page { margin: 6mm 4mm; }
       * { box-sizing: border-box; }
-      body { font-family: ${rtl ? "'Tajawal', 'Courier New', Courier, monospace" : "'Courier New', Courier, monospace"}; color: #000; width: 300px; margin: 0 auto; padding: 16px; }
+      html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { font-family: ${rtl ? "'Tajawal', Tahoma, 'Segoe UI', Arial, sans-serif" : "'Segoe UI', Tahoma, Arial, Helvetica, sans-serif"}; font-size: 14px; font-weight: 600; line-height: 1.45; font-variant-numeric: tabular-nums; text-rendering: geometricPrecision; color: #000; width: auto; max-width: 300px; margin: 0 auto; padding: 12px 6px; }
+      b, strong { font-weight: 800; }
       .center { text-align: center; }
-      .row { display: flex; justify-content: space-between; }
-      .dashed { border-top: 1px dashed #000; margin-top: 8px; padding-top: 8px; }
-      ${rtl ? "@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');" : ""}
+      .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; page-break-inside: avoid; }
+      .row > span:last-child { white-space: nowrap; }
+      .dashed { border-top: 1.5px dashed #000; margin-top: 10px; padding-top: 10px; }
+      ${rtl ? "@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800&display=swap');" : ""}
     </style>
     ${autoPrint ? `<script>window.addEventListener("load", function () { setTimeout(function () { window.print(); }, 150); });</script>` : ""}
   </head>
-  <body>${bodyHtml}</body>
+  <body>${printReadable(bodyHtml)}</body>
 </html>`;
+
+// The small helper program the cash-drawer feature talks to — it runs on the till computer itself (public/drawer-helper).
+const DRAWER_HELPER_URL = "http://127.0.0.1:9187";
 
 // Prints via a hidden same-page <iframe>. This works once the app is deployed as a normal
 // (unsandboxed) page. It will NOT work inside a sandboxed preview frame (e.g. this chat's
@@ -2440,16 +2961,33 @@ const printViaHiddenFrame = (title, bodyHtml, rtl) => {
   iframe.style.border = "0";
   document.body.appendChild(iframe);
 
+  // The print frame takes the keyboard focus so the browser prints it — and while it has it, a key pressed on the till goes
+  // to the frame, not to the app (F10 for the cash drawer then did nothing until someone clicked the page). So the frame
+  // hands F10 on to the app, and the focus goes back to the app as soon as printing is over.
+  const giveFocusBack = () => {
+    try {
+      window.focus();
+    } catch (e) {
+      // ignore
+    }
+  };
   const cleanup = () => {
     if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    giveFocusBack();
   };
   const doPrint = () => {
     try {
+      iframe.contentWindow.addEventListener("keydown", (e) => {
+        if (e.key !== "F10") return;
+        e.preventDefault();
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "F10", repeat: e.repeat, bubbles: true, cancelable: true }));
+      });
       iframe.contentWindow.focus();
       iframe.contentWindow.print();
     } catch (e) {
       console.error("Print failed:", e);
     }
+    giveFocusBack();
     try {
       iframe.contentWindow.addEventListener("afterprint", cleanup);
     } catch (e) {
@@ -2494,6 +3032,7 @@ const restockAmountFor = (unit) => (FINE_UNITS.includes(unit) ? 1 : 10);
 
 function POSPrototype({ tenantId }) {
   const storage = useMemo(() => createTenantStorage(tenantId), [tenantId]);
+  const [bootCache] = useState(() => readBoot(tenantId));
   const [tenantStatus, setTenantStatus] = useState(null); // { status, paid_until, days_remaining, restaurant_name } | null while loading
   const [renewalNoticeDismissed, setRenewalNoticeDismissed] = useState(false);
   const [view, setView] = useState("order"); // "order" | "menu" | "stock" | "receipts" | "customers" | "shift"
@@ -2503,6 +3042,9 @@ function POSPrototype({ tenantId }) {
   const [categories, setCategories] = useState([]);
   const [menu, setMenu] = useState({});
   const [ingredients, setIngredients] = useState({});
+  const [mainCategories, setMainCategories] = useState([]); // [{id, name, subs: [categoryName,...]}] — groups of the categories above (see src/menu/mainCategories.js)
+  const [activeMain, setActiveMain] = useState(null); // the main category tab selected on the Order screen
+  const [newMainName, setNewMainName] = useState("");
   const [menuLoaded, setMenuLoaded] = useState(false);
   // Couldn't reach the real menu/ingredients on this device (e.g. offline at startup) — distinct
   // from "genuinely never set up yet". Critical: menuLoaded still flips true either way so the UI
@@ -2516,7 +3058,8 @@ function POSPrototype({ tenantId }) {
   // A duty-roster-style light record, not a fork: an item with no override here still tracks the
   // base menu's price automatically, so editing the base item's price/recipe/photo is reflected
   // everywhere without having to touch every profile.
-  const [menuProfiles, setMenuProfiles] = useState([]); // [{id, name, priceOverrides: {itemId: price}, extraItems: {category: [item,...]}}]
+  const [menuProfiles, setMenuProfiles] = useState([]); // [{id, name, priceOverrides: {itemId: price}, extraItems: {category: [item,...]}, extraCategories: [name,...] (categories that exist only in this list), hiddenItems: [itemId,...] (main-menu dishes removed from this list)}]
+  const [profileCategoryDraft, setProfileCategoryDraft] = useState({}); // { [profileId]: text typed in "new category for this list" }
   const [menuProfilesLoaded, setMenuProfilesLoaded] = useState(false);
   // Same "don't let a failed read fall through to the placeholder default and get auto-saved over
   // real data" protection as menuLoadFailed above — see that comment. Applies to every config below
@@ -2525,6 +3068,7 @@ function POSPrototype({ tenantId }) {
   const menuProfilesLoadFailedRef = useRef(false);
   const [activeMenuProfile, setActiveMenuProfile] = useState(null); // profile id currently governing the order screen's prices, or null for the base menu
   const [newProfileName, setNewProfileName] = useState("");
+  const [newProfileSource, setNewProfileSource] = useState(""); // "" = start empty, "main" = copy the main menu's prices, or the id of a price list to copy
   const [managingProfileId, setManagingProfileId] = useState(null); // which profile's price-management panel is expanded, if any
 
   const [tableCount, setTableCount] = useState(12);
@@ -2550,6 +3094,7 @@ function POSPrototype({ tenantId }) {
   const [confirmingTablePayment, setConfirmingTablePayment] = useState(false); // same guard as savingOrder, for confirmTablePayment's own button
   const [addToInvoiceOpen, setAddToInvoiceOpen] = useState(false); // picker for merging the current cart into an already-saved unpaid invoice
   const [mergingIntoInvoice, setMergingIntoInvoice] = useState(false);
+  const [addTargetId, setAddTargetId] = useState(null); // receipt id of the unpaid invoice the Order screen is adding items to (set from the Tables tab)
   const [notice, setNotice] = useState(null);
   // Starts optimistic rather than trusting navigator.onLine's initial snapshot — that API is
   // notoriously unreliable inside embedded WebViews (e.g. the Claude mobile app's artifact
@@ -2611,6 +3156,14 @@ function POSPrototype({ tenantId }) {
   const [receiptsFilterMode, setReceiptsFilterMode] = useState("month"); // "month" | "day" | "range"
   const [receiptsFilterDay, setReceiptsFilterDay] = useState(null);
   const [receiptsFilterRangeStart, setReceiptsFilterRangeStart] = useState(null);
+  const [paymentConfig, setPaymentConfig] = useState({ enabled: {}, names: {}, custom: [] }); // shared: which payment methods are offered, and their custom names
+  const [paymentConfigLoaded, setPaymentConfigLoaded] = useState(false);
+  const [newPayName, setNewPayName] = useState(""); // Settings > Payment methods: the method being added
+  const [newPayLater, setNewPayLater] = useState(false); // ...and whether its money comes later from an app
+  const [paymentConfigLoadFailed, setPaymentConfigLoadFailed] = useState(false);
+  const [platformOpenKey, setPlatformOpenKey] = useState(null); // Shift tab's "Owed by delivery apps": which app+month row has its orders expanded
+  const [receiptDetailId, setReceiptDetailId] = useState(null); // Receipts tab: the receipt whose details window is open
+  const [riderReportIds, setRiderReportIds] = useState(null); // Delivery tab's employee report: which delivery employees are selected (null = just the first)
   const [receiptsFilterRangeEnd, setReceiptsFilterRangeEnd] = useState(null);
   const [receiptsRangePickerOpen, setReceiptsRangePickerOpen] = useState(false);
   const [receiptsRangePickingEnd, setReceiptsRangePickingEnd] = useState(false);
@@ -2619,11 +3172,18 @@ function POSPrototype({ tenantId }) {
   // belongs to the Receipts tab) so picking a month to review receipts doesn't also change what
   // the dashboard is showing, and vice versa.
   const [dashboardMode, setDashboardMode] = useState("month"); // "month" | "day" | "range"
+  const [dlvRepAgent, setDlvRepAgent] = useState("all"); // Dashboard delivery report: "all" or one agent's id
+  const [dlvRepOpenDay, setDlvRepOpenDay] = useState(null); // `${agentId}:${day}` whose orders are expanded
   const [dashboardMonth, setDashboardMonth] = useState(null); // "YYYY-MM", defaults to the current month once known
   const [dashboardDay, setDashboardDay] = useState(null); // "YYYY-MM-DD", defaults to today once known
   const [dashboardRangeStart, setDashboardRangeStart] = useState(null); // "YYYY-MM-DD", defaults to 7 days before the end
   const [dashboardRangeEnd, setDashboardRangeEnd] = useState(null); // "YYYY-MM-DD", defaults to today once known
   const [dashboardRangePickerOpen, setDashboardRangePickerOpen] = useState(false);
+  const [platformReceiveDlg, setPlatformReceiveDlg] = useState(null); // { appId }: choosing which of a delivery app's orders it has paid, and how
+  const [riderSettleDlg, setRiderSettleDlg] = useState(null); // { riderId }: choosing which of a rider's orders to settle now
+  const [settlePick, setSettlePick] = useState({}); // { [receiptId]: true } the orders ticked in whichever settle dialog is open
+  const [dashboardSource, setDashboardSource] = useState("all"); // "all" | "restaurant" | a delivery app's payment-method id (talabat, elmenus, ...): which orders the Dashboard counts
+  const [appPayment, setAppPayment] = useState(""); // "" | "cash" | "visa": how the customer paid the delivery app (only for an order paid through Talabat/Elmenus)
   const [dashboardCategory, setDashboardCategory] = useState(""); // menu category the "Items sold" card is narrowed to ("" = all)
   const [dashboardRangePickingEnd, setDashboardRangePickingEnd] = useState(false); // whether the next calendar click sets the end day (vs. starting a fresh range)
   const [shiftHoursConfig, setShiftHoursConfig] = useState(DEFAULT_SHIFT_HOURS);
@@ -2634,6 +3194,7 @@ function POSPrototype({ tenantId }) {
   const [editDraftItems, setEditDraftItems] = useState([]);
   const [editReason, setEditReason] = useState("");
   const [editPaymentMethod, setEditPaymentMethod] = useState(null);
+  const [editZoneLabel, setEditZoneLabel] = useState(""); // the delivery area chosen while a saved delivery order is being edited
   const [editDraftDiscount, setEditDraftDiscount] = useState({ type: "percent", value: "", reason: "" }); // the discount while a saved order is being edited
   const [restockAmounts, setRestockAmounts] = useState({}); // per-ingredient typed bulk-restock amount, keyed by ingredient id
   const [expandedHistoryId, setExpandedHistoryId] = useState(null); // receipt id whose edit-history panel is open, if any
@@ -2720,8 +3281,10 @@ function POSPrototype({ tenantId }) {
   const [pendingOpeningCount, setPendingOpeningCount] = useState(null); // employee about to start a shift, waiting for the opening cash count
   const [openingCountDraft, setOpeningCountDraft] = useState("");
   const [closingCountOpen, setClosingCountOpen] = useState(false);
+  const [settleReminderOpen, setSettleReminderOpen] = useState(false); // shown before the closing count when riders still hold unsettled delivery orders
   const [closingCountDraft, setClosingCountDraft] = useState("");
   const [returnDialog, setReturnDialog] = useState(null); // { receipt, action: "cancel" | "refund", method } — which way the money goes back to the customer
+  const [moveOrderPrompt, setMoveOrderPrompt] = useState(null); // { from, to, count } — leaving a table that has items: move them or keep them there?
   const [confirmDialog, setConfirmDialog] = useState(null); // { message, onConfirm } | null — replaces window.confirm, which this preview's sandbox silently blocks
   const [helpChatOpen, setHelpChatOpen] = useState(false);
   const [helpChatMessages, setHelpChatMessages] = useState([]); // [{ role: "user"|"assistant", content: string }]
@@ -2752,21 +3315,21 @@ function POSPrototype({ tenantId }) {
   const [editingPinValue, setEditingPinValue] = useState("");
   const [nowTick, setNowTick] = useState(() => Date.now());
 
-  const [lang, setLang] = useState("ar");
+  const [lang, setLang] = useState(bootCache?.lang === "en" ? "en" : "ar");
   const [langLoaded, setLangLoaded] = useState(false);
 
   // Staff terminal's own light/dark theme — see the token block in FONTS above. Independent of
   // any per-device local setting so every terminal in the restaurant shows the same theme, same
   // as the rest of branding.
-  const [uiTheme, setUiTheme] = useState("dark");
+  const [uiTheme, setUiTheme] = useState(bootCache?.theme === "light" ? "light" : "dark");
   const [uiThemeLoaded, setUiThemeLoaded] = useState(false);
   const [uiThemeLoadFailed, setUiThemeLoadFailed] = useState(false);
   const uiThemeLoadFailedRef = useRef(false);
 
-  const [restaurantName, setRestaurantName] = useState("Ember & Vine");
-  const [logoUrl, setLogoUrl] = useState(null);
-  const [primaryColor, setPrimaryColor] = useState(COLORS.burgundy);
-  const [secondaryColor, setSecondaryColor] = useState(COLORS.brass);
+  const [restaurantName, setRestaurantName] = useState(bootCache?.name || "");
+  const [logoUrl, setLogoUrl] = useState(bootCache?.logo || null);
+  const [primaryColor, setPrimaryColor] = useState(bootCache?.primary || COLORS.burgundy);
+  const [secondaryColor, setSecondaryColor] = useState(bootCache?.secondary || COLORS.brass);
   const [mapsLink, setMapsLink] = useState(""); // a Google Maps place link, or a plain address — see openInGoogleMaps
   const [phoneNumber, setPhoneNumber] = useState(""); // shown as a "Call" button on the online-ordering page
   const [brandingLoaded, setBrandingLoaded] = useState(false);
@@ -2814,6 +3377,11 @@ function POSPrototype({ tenantId }) {
   const [kitchenMode, setKitchenMode] = useState("off"); // device-local: off | here | send | station — see "kitchen-print-mode" in lib/tenantStorage.js
   const [kitchenRecent, setKitchenRecent] = useState([]); // station only: the latest tickets in the shared queue
   const kitchenModeRef = useRef("off");
+  const [autoPrint, setAutoPrint] = useState("none"); // device-local: none | receipt | kitchen | both — what prints by itself when an order is saved here
+  const autoPrintRef = useRef("none");
+  const [drawerMode, setDrawerMode] = useState("off"); // device-local: off | manual | auto — see "cash-drawer" in lib/tenantStorage.js
+  const drawerModeRef = useRef("off");
+  const [drawerHelper, setDrawerHelper] = useState(null); // null = not checked yet | { ok, printer }
   const kitchenPrintedRef = useRef([]); // ids this station has already printed
   const kitchenSinceRef = useRef(0); // only tickets created after the station was switched on are printed
   const kitchenHandlerRef = useRef(() => {}); // always the newest handler, so the poll never uses a stale language/closure
@@ -2823,6 +3391,9 @@ function POSPrototype({ tenantId }) {
   const pendingFetchedOkRef = useRef(false);
   const [callCenterLinkCopied, setCallCenterLinkCopied] = useState(false);
   const [stockImportOpen, setStockImportOpen] = useState(false);
+  const [customersImportOpen, setCustomersImportOpen] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [openCustomerPhone, setOpenCustomerPhone] = useState(null); // customer whose order history is expanded on the Customers tab
   const [newIngName, setNewIngName] = useState("");
   const [newIngUnit, setNewIngUnit] = useState("kg");
   const [newIngUnitCustom, setNewIngUnitCustom] = useState("");
@@ -2885,6 +3456,19 @@ function POSPrototype({ tenantId }) {
   const showRenewalNotice =
     tenantStatus?.status === "active" && [7, 3, 1].includes(tenantStatus.days_remaining) && !renewalNoticeDismissed;
 
+  // Expenses tab: the months that have expenses saved, for its month picker (it used to list only the current month
+  // until an expense was added in this session).
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await storage.list("expenses:", false);
+        const months = (result?.keys || []).map((k) => k.replace("expenses:", "")).filter((k) => /^\d{4}-\d{2}$/.test(k));
+        if (months.length > 0) setExpenseMonthKeys((prev) => Array.from(new Set([...prev, ...months])).sort().reverse());
+      } catch (e) {
+        // the picker just keeps offering the current month
+      }
+    })();
+  }, [storage]);
   useEffect(() => {
     (async () => {
       try {
@@ -2982,12 +3566,21 @@ function POSPrototype({ tenantId }) {
         const result = await getSharedWithRetry(storage, "restaurant-branding");
         const parsed = result?.value ? JSON.parse(result.value) : null;
         if (parsed) {
-          setRestaurantName(parsed.name || "Ember & Vine");
+          setRestaurantName(parsed.name || "");
           setLogoUrl(parsed.logo || null);
           setPrimaryColor(parsed.primary || theme.primary);
           setSecondaryColor(parsed.secondary || theme.secondary);
           setMapsLink(parsed.mapsLink || "");
           setPhoneNumber(parsed.phone || "");
+        }
+        // A restaurant that never set its own name shows the one it was registered under — never a stock name.
+        if (!parsed || !parsed.name) {
+          try {
+            const st = await (await fetch(`/api/pos/${encodeURIComponent(tenantId)}/status`)).json();
+            if (st?.restaurant_name) setRestaurantName(st.restaurant_name);
+          } catch (e) {
+            // the name stays empty until the next load
+          }
         }
       } catch (e) {
         // fall back to defaults already set
@@ -3051,6 +3644,17 @@ function POSPrototype({ tenantId }) {
 
     (async () => {
       try {
+        const result = await getSharedWithRetry(storage, "payment-methods-config");
+        setPaymentConfig(paymentConfigFrom(result?.value));
+      } catch (e) {
+        setPaymentConfigLoadFailed(true);
+      } finally {
+        setPaymentConfigLoaded(true);
+      }
+    })();
+
+    (async () => {
+      try {
         const result = await getSharedWithRetry(storage, "ui-theme-config");
         const parsed = result?.value ? JSON.parse(result.value) : null;
         if (parsed?.theme === "light" || parsed?.theme === "dark") setUiTheme(parsed.theme);
@@ -3095,6 +3699,7 @@ function POSPrototype({ tenantId }) {
         if (parsed) {
           if (parsed.categories) setCategories(parsed.categories);
           if (parsed.menu) setMenu(parsed.menu);
+          setMainCategories(cleanMains(parsed.mainCategories));
         } else {
           // The server answered and there is no saved menu: a brand-new restaurant. Offer the starter set.
           setCategories(Object.keys(INITIAL_MENU));
@@ -3310,11 +3915,18 @@ function POSPrototype({ tenantId }) {
   };
   // ---- Kitchen printing (per device) ----
   useEffect(() => {
-    Promise.all([storage.get("kitchen-print-mode"), storage.get("kitchen-print-since"), storage.get("kitchen-printed")])
-      .then(([m, since, printed]) => {
+    Promise.all([storage.get("kitchen-print-mode"), storage.get("kitchen-print-since"), storage.get("kitchen-printed"), storage.get("auto-print"), storage.get("cash-drawer")])
+      .then(([m, since, printed, auto, drawer]) => {
         const mode = KITCHEN_MODES.includes(m?.value) ? m.value : "off";
         kitchenModeRef.current = mode;
         setKitchenMode(mode);
+        // A device that was already printing kitchen tickets keeps doing exactly that.
+        const savedAuto = ["none", "receipt", "kitchen", "both"].includes(auto?.value) ? auto.value : mode !== "off" ? "kitchen" : "none";
+        autoPrintRef.current = savedAuto;
+        setAutoPrint(savedAuto);
+        const savedDrawer = ["off", "manual", "auto"].includes(drawer?.value) ? drawer.value : "off";
+        drawerModeRef.current = savedDrawer;
+        setDrawerMode(savedDrawer);
         kitchenSinceRef.current = Number(since?.value) || 0;
         try {
           const ids = JSON.parse(printed?.value || "[]");
@@ -3352,6 +3964,100 @@ function POSPrototype({ tenantId }) {
       }
     };
   }, [kitchenMode]);
+  const changeAutoPrint = (mode) => {
+    setAutoPrint(mode);
+    autoPrintRef.current = mode;
+    storage.set("auto-print", mode).catch(() => {});
+    // Kitchen tickets need somewhere to go: print here unless this device already sends them elsewhere or is the printer.
+    if ((mode === "kitchen" || mode === "both") && kitchenModeRef.current === "off") changeKitchenMode("here");
+  };
+  const checkDrawerHelper = async () => {
+    try {
+      const res = await fetch(`${DRAWER_HELPER_URL}/ping`);
+      const data = await res.json();
+      setDrawerHelper({ ok: !!data.ok, printer: data.printer || "" });
+    } catch (e) {
+      setDrawerHelper({ ok: false, printer: "" });
+    }
+  };
+  // Asks the helper program on this computer to send "open drawer" to the receipt printer the drawer is plugged into.
+  const openCashDrawer = async (quiet) => {
+    // One try gives up after 4 seconds (a helper busy with the printer used to leave the key looking dead), and a failed
+    // try is repeated once: opening a drawer that is already open does no harm, a drawer that stays shut does.
+    const tryOnce = async () => {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 4000);
+      try {
+        // text/plain keeps this a "simple" request, so the browser does not need a pre-flight check first.
+        const r = await fetch(`${DRAWER_HELPER_URL}/open`, { method: "POST", headers: { "Content-Type": "text/plain" }, body: "open", signal: ctl.signal });
+        if (r.ok) return r;
+        return { failedResponse: r };
+      } catch (e) {
+        return null;
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+    let res = await tryOnce();
+    if (!res || res.failedResponse) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      const again = await tryOnce();
+      if (again) res = again;
+    }
+    if (!res) {
+      flashNotice(t("notice_drawerFailed"), 9000); // never reached the helper: not installed, not running, or the browser blocked the connection
+      return;
+    }
+    if (res.failedResponse) res = res.failedResponse;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      flashNotice(t("notice_drawerPrinter", { error: data.error || res.status }), 9000); // the helper answered but the printer would not take it
+      return;
+    }
+    if (!quiet) flashNotice(t("notice_drawerOpened"));
+  };
+  // Only money that goes into the till opens the drawer by itself: a receipt with no cash in it (card, wallet,
+  // delivery apps, anything else) leaves it shut. A split payment opens it only if one of its parts is cash.
+  const openDrawerAfterSettlement = (receipt) => {
+    if (drawerModeRef.current !== "auto") return;
+    if (receiptMethodAmounts(receipt).some((a) => a.method === "cash" && a.amount > 0)) openCashDrawer(true);
+  };
+  const changeDrawerMode = (mode) => {
+    setDrawerMode(mode);
+    drawerModeRef.current = mode;
+    storage.set("cash-drawer", mode).catch(() => {});
+    if (mode !== "off") checkDrawerHelper();
+  };
+  const openDrawerRef = useRef(() => {});
+  openDrawerRef.current = openCashDrawer;
+  // F10 opens the drawer, as on the old tills — only for someone signed in on shift, and never on a view-only device.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== "F10" || drawerModeRef.current === "off") return;
+      e.preventDefault();
+      if (e.repeat) return; // holding the key down must not fire the drawer over and over
+      if (!currentEmployee || viewingOnly) {
+        flashNotice(t("notice_drawerNeedSignIn"));
+        return;
+      }
+      openDrawerRef.current(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [currentEmployee, viewingOnly]);
+  // A small Windows file that sets up silent printing on this till (see lib/autoPrintSetup.js); built here so its
+  // shortcut opens exactly the page the staff are on now.
+  const downloadAutoPrintSetup = () => {
+    const bat = buildAutoPrintSetupBat(`${window.location.origin}${window.location.pathname}`);
+    const url = URL.createObjectURL(new Blob([bat], { type: "application/octet-stream" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "POS-Auto-Print-Setup.bat";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  };
   const changeKitchenMode = (mode) => {
     setKitchenMode(mode);
     kitchenModeRef.current = mode;
@@ -3389,9 +4095,12 @@ function POSPrototype({ tenantId }) {
     // menuLoadFailed: the initial read never actually succeeded, so categories/menu are still
     // whatever placeholder they started as — writing that out would overwrite the tenant's real
     // data. Stays blocked until retryMenuLoad() below confirms a real read.
-    if (!menuLoaded || menuLoadFailed) return;
-    syncSet("menu-config", JSON.stringify({ categories, menu }), true, t("syncLabelMenu"));
-  }, [categories, menu, menuLoaded, menuLoadFailed]);
+    if (!menuLoaded || menuLoadFailed) return undefined;
+    // A burst of edits (grouping several categories in a row, say) is saved once, with the final state — separate
+    // requests sent back to back can arrive out of order and leave an older state stored.
+    const timer = setTimeout(() => syncSet("menu-config", JSON.stringify({ categories, menu, mainCategories }), true, t("syncLabelMenu")), 500);
+    return () => clearTimeout(timer);
+  }, [categories, menu, mainCategories, menuLoaded, menuLoadFailed]);
   // No blanket auto-persist effect for ingredients-config — every mutation (updateIngredientStock,
   // addIngredient, deleteIngredient, commitIngredientStockValue) writes it explicitly against a
   // freshly-fetched value instead. See the "Ingredient stock helpers" section for why.
@@ -3416,6 +4125,14 @@ function POSPrototype({ tenantId }) {
       t("syncLabelSettings")
     );
   }, [deliveryFeeRetentionMode, deliveryFeeRetentionPercent, deliveryFeeRetentionFixed, deliveryShareConfigLoaded, deliveryShareConfigLoadFailed]);
+  useEffect(() => {
+    if (!paymentConfigLoaded || paymentConfigLoadFailed) return;
+    syncSet("payment-methods-config", JSON.stringify(paymentConfig), true, t("syncLabelSettings"));
+  }, [paymentConfig, paymentConfigLoaded, paymentConfigLoadFailed]);
+  // A method switched off while a ticket still had it selected falls back to cash.
+  useEffect(() => {
+    if (paymentConfigLoaded && paymentMethod !== "split" && !paymentMethodOn(paymentConfig, paymentMethod)) setPaymentMethod("cash");
+  }, [paymentConfig, paymentConfigLoaded, paymentMethod]);
   useEffect(() => {
     if (!uiThemeLoaded || uiThemeLoadFailed) return;
     syncSet("ui-theme-config", JSON.stringify({ theme: uiTheme }), true, t("syncLabelSettings"));
@@ -3449,6 +4166,17 @@ function POSPrototype({ tenantId }) {
     lastPublishedAvailabilityRef.current = serialized;
     syncSet("menu-availability", serialized, true, t("syncLabelStock"));
   }, [menu, ingredients, menuLoaded, menuLoadFailed, manualOutOfStock, manualOutLoaded]);
+
+  useEffect(() => {
+    if (!brandingLoaded || !restaurantName) return;
+    writeBoot(tenantId, { name: restaurantName, logo: logoUrl && logoUrl.length < 650000 ? logoUrl : null, primary: primaryColor, secondary: secondaryColor });
+  }, [brandingLoaded, restaurantName, logoUrl, primaryColor, secondaryColor]);
+  useEffect(() => {
+    if (uiThemeLoaded && !uiThemeLoadFailed) writeBoot(tenantId, { theme: uiTheme });
+  }, [uiTheme, uiThemeLoaded, uiThemeLoadFailed]);
+  useEffect(() => {
+    if (langLoaded) writeBoot(tenantId, { lang });
+  }, [lang, langLoaded]);
 
   // Ticks once a minute purely to refresh the live "hours worked so far" display while someone's
   // clocked in — doesn't touch storage, just forces a re-render of that one computed string.
@@ -3552,6 +4280,10 @@ function POSPrototype({ tenantId }) {
     if (key === "order") setActiveMenuProfile(null);
     setView(key);
   };
+  useEffect(() => {
+    if (activeMenuProfile && (paymentMethod === "split" || (paymentMethod !== "cash" && allMethods.some((m) => m.id === paymentMethod && m.platform)))) setPaymentMethod("cash");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMenuProfile, paymentMethod]);
   const openMenuProfileTab = (profileId) => {
     setActiveMenuProfile(profileId);
     setView("order");
@@ -3602,10 +4334,29 @@ function POSPrototype({ tenantId }) {
   // interpolation. This covers app chrome only — menu items, categories, and ingredient/stock
   // names are the restaurant's own data and are never run through this.
   const t = (key, vars) => {
+    // A name the restaurant gave a payment method in Settings replaces the built-in one everywhere it is shown.
+    if (key.startsWith("payment_")) {
+      const pid = key.slice(8);
+      const given = customPaymentOf(paymentConfig, pid)?.name || paymentConfig.names[pid];
+      if (given) return given;
+      const listOfMethod = !isPlatformMethod(pid) ? menuProfiles.find((p) => profileMethodId(p) === pid) : null;
+      if (listOfMethod) return listOfMethod.name;
+      if (isCustomMethodId(pid)) return (STRINGS[lang] && STRINGS[lang].paymentOther) || "Other";
+    }
     const template = (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.en[key] || key;
     if (!vars) return template;
     return template.replace(/\{\{(\w+)\}\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : ""));
   };
+  // Every payment method this restaurant knows: the built-in ones plus those added in Settings (flagged `custom`).
+  // `platform` means the money comes later from an app (see platformOwed); the rest are paid at once.
+  const listMethods = menuProfiles
+    .map((p) => ({ id: profileMethodId(p), label: p.name, custom: true, platform: true, fromList: true }))
+    .filter((m, i, all) => !isPlatformMethod(m.id) && all.findIndex((x) => x.id === m.id) === i);
+  const allMethods = [...PAYMENT_METHODS, ...paymentConfig.custom.map((c) => ({ id: c.id, label: c.name, custom: true, platform: c.later })), ...listMethods];
+  const allDirectMethods = allMethods.filter((m) => !m.platform);
+  const isLaterMethod = (id) => allMethods.some((m) => m.id === id && m.platform);
+  const enabledMethods = allMethods.filter((m) => !m.fromList && paymentMethodOn(paymentConfig, m.id)); // a price list's payment type is never a pill: it comes from the list the order is rung up on
+  const enabledDirectMethods = allDirectMethods.filter((m) => paymentMethodOn(paymentConfig, m.id));
   // Simple two-way pluralizer for the small set of countable UI strings ("N items", etc.).
   const tCount = (baseKey, n, vars) => t(n === 1 ? baseKey : `${baseKey}_plural`, { n, ...vars });
   const isRtl = lang === "ar";
@@ -3665,7 +4416,7 @@ function POSPrototype({ tenantId }) {
     if (id === "dine-in") return t("dineInLabel");
     return tableNames[id] || t("tableNumbered", { n: id });
   };
-  const tableIds = useMemo(() => Array.from({ length: tableCount }, (_, i) => String(i + 1)), [tableCount]);
+  const tableIds = useMemo(() => (tablesLoaded ? Array.from({ length: tableCount }, (_, i) => String(i + 1)) : []), [tableCount, tablesLoaded]);
   // Confirmed orders are kept around (not removed) so the customer's device can pick up the status
   // change — see markPendingOrderConfirmed — so every staff-facing view of "what's pending review"
   // needs to explicitly exclude them.
@@ -3684,6 +4435,7 @@ function POSPrototype({ tenantId }) {
     // one just from opening an empty table, which is exactly what made the sequence look random.
     ticketNo: null,
     paymentMethod: "cash",
+    appPayment: "",
     paidNow: true,
     splitAmounts: {},
     discount: null,
@@ -3701,16 +4453,50 @@ function POSPrototype({ tenantId }) {
   // for. Stashes the outgoing table's in-progress cart in memory and restores (or starts fresh)
   // the incoming one — so staff can hop between tables without losing anyone's order. These
   // drafts live only for this browser session; they're not persisted to storage.
-  const switchTable = (nextId) => {
+  // opts.offerMove: called from the order screen's switcher — when the cashier leaves a TABLE that already has items for
+  // an empty Takeaway/Delivery/table slot, ask whether the items should move with them or stay on the table.
+  // opts.moveItems: the cashier chose to move them.
+  const switchTable = (nextId, opts = {}) => {
     if (nextId === activeTableId) return;
     const outgoingKey = activeTableId === null ? "takeaway" : activeTableId;
-    const outgoingDraft = { cart, ticketNo, paymentMethod, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
+    const outgoingDraft = { cart, ticketNo, paymentMethod, appPayment, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta, deliveryFee, deliveryMethod, deliveryZoneLabel, assignedTo };
     const incomingKey = nextId === null ? "takeaway" : nextId;
-    const incoming = tableDrafts[incomingKey] || blankDraft();
-    setTableDrafts((prev) => ({ ...prev, [outgoingKey]: outgoingDraft }));
+    let incoming = tableDrafts[incomingKey] || blankDraft();
+    const leavingATable = activeTableId !== null && activeTableId !== "delivery";
+    const destinationEmpty = !(incoming.cart && incoming.cart.length > 0);
+    if (opts.offerMove && leavingATable && cart.length > 0 && destinationEmpty) {
+      setMoveOrderPrompt({ from: activeTableId, to: nextId, count: cart.length });
+      return;
+    }
+    const forceMove = !!opts.moveItems && cart.length > 0 && destinationEmpty;
+    setAddTargetId(null); // leaving this slot ends any "adding to an unpaid invoice" mode
+    // Takeaway and Delivery are the same order with a different fulfilment — if the cashier flips
+    // between them before confirming, bring the items (and the customer/payment details typed so
+    // far) along instead of leaving them behind on the other tab. Only when the destination is
+    // still empty, so it never overwrites or merges into an order already in progress there. The
+    // delivery fee, zone and assignee stay behind — they only make sense for one of the two.
+    const pickupDeliveryHop = (activeTableId === null && nextId === "delivery") || (activeTableId === "delivery" && nextId === null);
+    // The same goes for an order started on Takeaway or Delivery that turns out to be for a table (or the generic
+    // Dine In slot): the items follow the cashier to the table. Only in that direction — hopping from one table
+    // to another never moves anything, because tables are separate orders running side by side.
+    const toTableHop = (activeTableId === null || activeTableId === "delivery") && nextId !== null && nextId !== "delivery";
+    const carryOver = (pickupDeliveryHop || toTableHop || forceMove) && cart.length > 0 && !(incoming.cart && incoming.cart.length > 0);
+    if (carryOver) {
+      incoming = nextId !== null && nextId !== "delivery"
+        ? { ...blankDraft(), cart, ticketNo, paymentMethod, appPayment, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone }
+        : { ...blankDraft(), cart, ticketNo, paymentMethod, appPayment, paidNow, splitAmounts, discount, splitCount, customerName, customerPhone, customerAddress, orderEta };
+      if (nextId === "delivery" && customerAddress) {
+        const addressWords = customerAddress.toLowerCase().split(/[\s,،/]+/).filter(Boolean);
+        const zone = deliveryZones.find((z) => z.label.toLowerCase().split(/[\s,،/]+/).filter(Boolean).some((zw) => addressWords.includes(zw)));
+        if (zone) incoming = { ...incoming, deliveryFee: zone.fee, deliveryZoneLabel: zone.label };
+      }
+    }
+    const leftBehind = carryOver ? blankDraft() : outgoingDraft;
+    setTableDrafts((prev) => ({ ...prev, [outgoingKey]: leftBehind }));
     setCart(incoming.cart);
     setTicketNo(incoming.ticketNo);
     setPaymentMethod(incoming.paymentMethod);
+    setAppPayment(incoming.appPayment || "");
     setPaidNow(incoming.paidNow !== false);
     setSplitAmounts(incoming.splitAmounts || {});
     setDiscount(incoming.discount);
@@ -3731,6 +4517,7 @@ function POSPrototype({ tenantId }) {
     setShowCustomerSuggestions(false);
     setSaved(false);
     setActiveTableId(nextId);
+    if (carryOver && (toTableHop || forceMove)) flashNotice(t("notice_orderMovedToTable", { table: tableLabel(nextId) }));
   };
   // Defense in depth: if a specific numbered table was open when a manager turns the "tables"
   // package feature off (or the admin downgrades the package), don't leave that numbered ticket
@@ -3750,6 +4537,7 @@ function POSPrototype({ tenantId }) {
         setTicketNo(fresh.ticketNo);
         setPaymentMethod(fresh.paymentMethod);
         setPaidNow(fresh.paidNow);
+        setAppPayment(fresh.appPayment || "");
         setSplitAmounts(fresh.splitAmounts);
         setDiscount(fresh.discount);
         setSplitCount(fresh.splitCount);
@@ -3889,7 +4677,7 @@ function POSPrototype({ tenantId }) {
     const modalVtAmt = Math.round((modalSubtotalForValidation + modalSvcAmt) * (modalVatPercent / 100) * 100) / 100;
     const modalGrandTotal = modalSubtotalForValidation + modalSvcAmt + modalVtAmt;
     const splitPayments = paymentMethod === "split"
-      ? PAYMENT_METHODS.map((m) => ({ method: m.id, amount: Math.round((Number(tableSplitAmounts?.[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
+      ? allDirectMethods.map((m) => ({ method: m.id, amount: Math.round((Number(tableSplitAmounts?.[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
       : null;
     if (paymentMethod === "split") {
       const splitSum = splitPayments.reduce((s, sp) => s + sp.amount, 0);
@@ -3949,6 +4737,7 @@ function POSPrototype({ tenantId }) {
     };
 
     await appendReceipt(thisMonthKey(), receipt);
+    openDrawerAfterSettlement(receipt);
     await persistTableTab(tableId, []);
     await clearCheckoutRequest(tableId);
 
@@ -3964,6 +4753,7 @@ function POSPrototype({ tenantId }) {
       setAssignedTo(fresh.assignedTo);
       setPaymentMethod(fresh.paymentMethod);
       setPaidNow(fresh.paidNow);
+        setAppPayment(fresh.appPayment || "");
       setSplitAmounts(fresh.splitAmounts);
       setSaved(false);
       setTableDrafts((prev) => ({ ...prev, [tableId]: fresh }));
@@ -4070,6 +4860,7 @@ function POSPrototype({ tenantId }) {
       setCart(incoming.cart);
       setTicketNo(incoming.ticketNo);
       setPaymentMethod(incoming.paymentMethod);
+      setAppPayment(incoming.appPayment || "");
       setPaidNow(incoming.paidNow !== false);
       setSplitAmounts(incoming.splitAmounts || {});
       setDiscount(incoming.discount);
@@ -4265,6 +5056,10 @@ function POSPrototype({ tenantId }) {
   useEffect(() => {
     if (selectedExpenseMonth) ensureExpenseMonthLoaded(selectedExpenseMonth);
   }, [selectedExpenseMonth]);
+  // Customers tab: a customer's order history can span any saved month, so load them all while the tab is open.
+  useEffect(() => {
+    if (view === "customers") monthKeys.forEach((mk) => ensureMonthLoaded(mk));
+  }, [view, monthKeys]);
   useEffect(() => {
     ensureExpenseMonthLoaded(thisMonthKey());
   }, []);
@@ -4299,6 +5094,16 @@ function POSPrototype({ tenantId }) {
     storageKeys.forEach((mk) => ensureMonthLoaded(mk));
     reportingKeys.forEach((mk) => ensureExpenseMonthLoaded(mk));
   }, [dashboardMode, dashboardRangeStart, dashboardRangeEnd]);
+  // Shift tab's "Owed by delivery apps": an app pays about a month late, so this month and the three before it
+  // are always loaded, whatever period the Dashboard itself is showing.
+  useEffect(() => {
+    if (view !== "shift") return;
+    let mk = thisMonthKey();
+    for (let i = 0; i < 4; i++) {
+      ensureMonthLoaded(mk);
+      mk = prevMonthKey(mk);
+    }
+  }, [view]);
 
   // Tracks connectivity and retries failed writes automatically once back online. Restaurant-wide
   // data now lives in a real tenant-scoped Postgres table via lib/tenantStorage.js (see
@@ -4424,6 +5229,7 @@ function POSPrototype({ tenantId }) {
       if (parsed) {
         if (parsed.categories) setCategories(parsed.categories);
         if (parsed.menu) setMenu(parsed.menu);
+        setMainCategories(cleanMains(parsed.mainCategories));
       } else {
         setCategories(Object.keys(INITIAL_MENU));
         setMenu(INITIAL_MENU);
@@ -4629,10 +5435,10 @@ function POSPrototype({ tenantId }) {
     return persistExpenseMonth(monthKey, existing.filter((e) => e.id !== expenseId));
   };
 
-  const flashNotice = (text) => {
+  const flashNotice = (text, ms = 2600) => {
     setNotice(text);
     window.clearTimeout(window.__posNoticeTimer);
-    window.__posNoticeTimer = window.setTimeout(() => setNotice(null), 2600);
+    window.__posNoticeTimer = window.setTimeout(() => setNotice(null), ms);
   };
 
   // Copies text to the clipboard reliably even where the modern Clipboard API is blocked — the
@@ -4749,6 +5555,29 @@ function POSPrototype({ tenantId }) {
   const persistCustomers = async (dict) => {
     setCustomers(dict);
     return syncSet("customers-directory", JSON.stringify(dict), false, t("syncLabelCustomers"));
+  };
+  // Applies an Excel/CSV customer import against the freshest stored directory (not this device's copy), so customers
+  // another terminal saved meanwhile are never overwritten. Nothing is deleted.
+  const applyCustomersImport = async (rows, updateExisting) => {
+    let fresh = customers;
+    try {
+      const result = await storage.get("customers-directory", false);
+      fresh = result?.value ? JSON.parse(result.value) : {};
+    } catch (e) {
+      fresh = customers;
+    }
+    const { directory, added, updated } = applyCustomersPlan(buildCustomersPlan(rows, fresh, { updateExisting }), fresh);
+    if (added + updated === 0) return { added, updated, saved: true };
+    const saved = await persistCustomers(directory);
+    return { added, updated, saved };
+  };
+  const exportCustomers = async () => {
+    try {
+      const n = await exportCustomersFile(customers, isRtl);
+      flashNotice(t("notice_customersExported", { n }));
+    } catch (e) {
+      flashNotice(t("notice_customersExportFailed"));
+    }
   };
 
   const handlePhoneChange = (value) => {
@@ -4907,7 +5736,8 @@ function POSPrototype({ tenantId }) {
     const saved = await syncSet("ingredients-config", JSON.stringify(next), true, t("syncLabelStock"));
     return { added, updated, saved };
   };
-  const isIngredientUsed = (id) => Object.values(menu).some((items) => items.some((it) => it.recipe.some((r) => r.ingredientId === id)));
+  const isIngredientUsed = (id) =>
+    [...Object.values(menu), ...menuProfiles.flatMap((p) => Object.values(p.extraItems || {}))].some((items) => (items || []).some((it) => (it.recipe || []).some((r) => r.ingredientId === id)));
   const deleteIngredient = (id) => {
     if (isIngredientUsed(id)) {
       flashNotice(t("notice_cantDeleteUsed"));
@@ -4941,24 +5771,41 @@ function POSPrototype({ tenantId }) {
     return null;
   };
   const activeMenuProfileObj = menuProfiles.find((p) => p.id === activeMenuProfile) || null;
+  // On a price list the chosen payment method is how the customer pays the app, not the till.
+  const listAppMethod = activeMenuProfileObj ? profileMethodId(activeMenuProfileObj) : null;
   // The menu as it should actually be browsed/ordered from right now: unchanged when no profile
   // is active, otherwise the base items with that profile's price overrides applied, plus its
   // own extra items appended into their category. Recipes/stock always come from the base item
   // (a profile changes price, not what the dish actually is), except for extra items, which only
   // exist within the profile to begin with.
+  // A price list can also have categories of its own, and can leave out main-menu dishes it should not sell.
+  const effectiveCategories = !activeMenuProfileObj ? categories : [...categories, ...(activeMenuProfileObj.extraCategories || []).filter((c) => !categories.includes(c))];
   const effectiveMenu = !activeMenuProfileObj
     ? menu
     : Object.fromEntries(
-        categories.map((cat) => [
+        effectiveCategories.map((cat) => [
           cat,
           [
-            ...(menu[cat] || []).map((it) =>
-              activeMenuProfileObj.priceOverrides[it.id] !== undefined ? { ...it, price: activeMenuProfileObj.priceOverrides[it.id] } : it
-            ),
+            ...(menu[cat] || [])
+              .filter((it) => !(activeMenuProfileObj.hiddenItems || []).includes(it.id))
+              .map((it) => (activeMenuProfileObj.priceOverrides[it.id] !== undefined ? { ...it, price: activeMenuProfileObj.priceOverrides[it.id] } : it)),
             ...((activeMenuProfileObj.extraItems || {})[cat] || []),
           ],
         ])
       );
+  // Switching to a price list that lacks the category being browsed (or back to the main menu from a list's own
+  // category) lands on the first category that exists.
+  // With main categories, the first row of tabs is the mains and the second row the categories inside the chosen one.
+  const mainTabs = mainTabsFor(effectiveCategories, mainCategories, t("mainCategoryOther"));
+  const activeMainTab = mainTabs.find((m) => m.id === activeMain) || mainTabs[0] || null;
+  const visibleSubs = activeMainTab ? activeMainTab.subs : effectiveCategories;
+  const selectMain = (tab) => {
+    setActiveMain(tab.id);
+    if (tab.subs.length > 0) setActive(tab.subs[0]);
+  };
+  useEffect(() => {
+    if (visibleSubs.length > 0 && !visibleSubs.includes(active)) setActive(visibleSubs[0]);
+  }, [activeMenuProfile, menuProfiles, categories, mainCategories, activeMain, active]);
 
   // remaining ingredient stock after subtracting what's already reserved by the current cart
   const remainingIngredientStock = useMemo(() => {
@@ -4996,10 +5843,25 @@ function POSPrototype({ tenantId }) {
     return { ok: true };
   };
 
+  // The recipe ingredients that are what keeps an item out of stock (none left for even one serving, or
+  // deleted from Stock), by name — so staff see what to restock instead of guessing.
+  const missingIngredientNames = (item) =>
+    (item.recipe || [])
+      .filter((r) => {
+        const ing = ingredients[r.ingredientId];
+        return !ing || r.qty <= 0 || ing.stock < r.qty;
+      })
+      .map((r) => ingredients[r.ingredientId]?.name || t("genericStock"));
+
   const servingsBadge = (item) => {
     const max = rawMaxServings(item);
     if (max === null) return { text: t("stockNotTracked"), color: "var(--track)", fg: "var(--text-muted)" };
-    if (max === 0) return { text: t("outOfStock"), color: "#3A2A28", fg: "#E3A79C" };
+    if (max === 0) {
+      const missing = manualOutOfStock[item.id] ? [] : missingIngredientNames(item);
+      const shown = missing.slice(0, 2).join(isRtl ? "، " : ", ");
+      const text = missing.length === 0 ? t("outOfStock") : t("outOfStockMissing", { ingredient: shown + (missing.length > 2 ? ` +${missing.length - 2}` : "") });
+      return { text, color: "#3A2A28", fg: "#E3A79C" };
+    }
     if (max <= 3) return { text: t("lowLeft", { n: max }), color: "#3A331F", fg: "#E3C98A" };
     return { text: t("available", { n: max }), color: "#22301F", fg: "#9FCB8E" };
   };
@@ -5101,6 +5963,18 @@ function POSPrototype({ tenantId }) {
     // unsure their first tap registered, would otherwise re-run this on the same still-populated
     // cart and save the same order twice.
     if (cart.length === 0 || savingOrder) return;
+    // A delivery order needs everything the rider and the restaurant's records depend on: who, where and which area.
+    if (activeTableId === "delivery") {
+      const missing = [];
+      if (!customerName.trim()) missing.push(t("reqName"));
+      if (!customerPhone.trim()) missing.push(t("reqPhone"));
+      if (!customerAddress.trim()) missing.push(t("reqAddress"));
+      if (deliveryZones.length > 0 && !deliveryZoneLabel) missing.push(t("reqArea"));
+      if (missing.length > 0) {
+        flashNotice(t("notice_deliveryNeeds", { fields: missing.join(isRtl ? "، " : ", ") }));
+        return;
+      }
+    }
     // A discount already sitting on a ticket (e.g. one started before reasons were required) can't be
     // saved without its reason.
     if (discount && !(discount.reason || "").trim()) {
@@ -5112,10 +5986,10 @@ function POSPrototype({ tenantId }) {
     setSavingOrder(true);
     const finalTicketNo = ensureTicketNo();
 
-    const splitPayments = paymentMethod === "split"
-      ? PAYMENT_METHODS.map((m) => ({ method: m.id, amount: Math.round((Number(splitAmounts[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
+    const splitPayments = paymentMethod === "split" && !listAppMethod
+      ? allDirectMethods.map((m) => ({ method: m.id, amount: Math.round((Number(splitAmounts[m.id]) || 0) * 100) / 100 })).filter((sp) => sp.amount > 0)
       : null;
-    if (paymentMethod === "split") {
+    if (paymentMethod === "split" && !listAppMethod) {
       const splitSum = splitPayments.reduce((s, sp) => s + sp.amount, 0);
       if (splitPayments.length < 2 || Math.abs(splitSum - total) > 0.01) {
         flashNotice(t("notice_splitPaymentMismatch", { amount: money(total) }));
@@ -5157,10 +6031,15 @@ function POSPrototype({ tenantId }) {
       deliveryZoneLabel: deliveryZoneLabel || "",
       total,
       splitCount: splitCount && splitCount > 1 ? splitCount : null,
-      paymentMethod,
+      paymentMethod: listAppMethod || paymentMethod,
       splitPayments,
-      paid: paidNow,
-      paidAt: paidNow ? new Date().toISOString() : null,
+      // On a price list: the order is paid through that list's app, and the method the cashier picked is how the customer pays the app.
+      appPayment: listAppMethod
+        ? (allDirectMethods.some((m) => m.id === paymentMethod) ? paymentMethod : "cash")
+        : isPlatformMethod(paymentMethod) && allDirectMethods.some((m) => m.id === appPayment) ? appPayment : null,
+      priceList: activeMenuProfileObj ? { id: activeMenuProfileObj.id, name: activeMenuProfileObj.name } : null,
+      paid: paidNow || isLaterMethod(listAppMethod || paymentMethod), // a delivery-app order is paid as far as the till is concerned; the app owes the restaurant (see platformOwed)
+      paidAt: (paidNow || isLaterMethod(listAppMethod || paymentMethod)) ? new Date().toISOString() : null,
       customer,
       eta: orderEta.trim(),
       status: "completed",
@@ -5168,10 +6047,12 @@ function POSPrototype({ tenantId }) {
       whatsappLog: [],
     };
 
-    // The kitchen hears about it straight away, whatever happens to the save below.
-    dispatchKitchenTicket(kitchenTicketFromReceipt({ ...receipt, servedBy: receipt.servedBy }));
-
     const receiptOk = await appendReceipt(thisMonthKey(), receipt);
+
+    // Nothing prints before the order is recorded, so a printed ticket always has a saved receipt behind it.
+    // (receiptOk only says whether the cloud sync landed; the order is already in this device's list and queued.)
+    autoPrintAfterSave(receipt);
+    if (paidNow && !listAppMethod) openDrawerAfterSettlement(receipt);
 
     let customerOk = true;
     if (customer && customer.phone) {
@@ -5214,6 +6095,7 @@ function POSPrototype({ tenantId }) {
       setAssignedTo(fresh.assignedTo);
       setPaymentMethod(fresh.paymentMethod);
       setPaidNow(fresh.paidNow);
+        setAppPayment(fresh.appPayment || "");
       setSplitAmounts(fresh.splitAmounts);
       setCustomerName(fresh.customerName);
       setCustomerPhone(fresh.customerPhone);
@@ -5240,9 +6122,17 @@ function POSPrototype({ tenantId }) {
   // service/VAT are recomputed using that invoice's own stored rates (same rule saveEditReceipt
   // uses), not today's live settings. Stock is deducted for the newly added items exactly like a
   // normal save, since these are genuinely new items being added to the kitchen's workload.
+  // Every unpaid invoice in the months that are loaded (this month always is) — a table that still owes a bill from
+  // before a month change must keep showing it. `unpaidInvoicesForTable` is what the Tables tab uses to mark a table
+  // occupied and to list its open items.
+  const unpaidInvoicesAll = Object.values(receiptsByMonth).flat().filter((r) => r.status === "completed" && r.paid === false);
+  const unpaidInvoicesForTable = (id) => unpaidInvoicesAll.filter((r) => r.tableId !== null && r.tableId !== undefined && String(r.tableId) === String(id)).sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+  // Set when the Order screen was opened with "Add items" on a table's unpaid invoice: then the only thing the cart can
+  // do is be added to that invoice (no new ticket, no payment choices).
+  const addTarget = addTargetId ? unpaidInvoicesAll.find((r) => r.id === addTargetId) || null : null;
   const addCartToUnpaidInvoice = (receiptId) => {
     if (cart.length === 0 || mergingIntoInvoice) return;
-    const target = unpaidInvoicesThisMonth.find((r) => r.id === receiptId);
+    const target = unpaidInvoicesAll.find((r) => r.id === receiptId);
     if (!target) return;
     setMergingIntoInvoice(true);
 
@@ -5252,7 +6142,7 @@ function POSPrototype({ tenantId }) {
     });
 
     // Only the items being added go to the kitchen, marked as an addition to an existing order.
-    dispatchKitchenTicket(kitchenTicketFromReceipt({ ...target, items: cart.map((c) => ({ name: c.name, qty: c.qty, note: c.note || "" })), servedBy: currentEmployee ? { name: currentEmployee.name } : target.servedBy }, true));
+    if (autoPrintRef.current === "kitchen" || autoPrintRef.current === "both") dispatchKitchenTicket(kitchenTicketFromReceipt({ ...target, items: cart.map((c) => ({ name: c.name, qty: c.qty, note: c.note || "" })), servedBy: currentEmployee ? { name: currentEmployee.name } : target.servedBy }, true));
 
     const newItems = cart.map((c) => {
       const menuItem = findMenuItemAnywhere(c.id);
@@ -5295,6 +6185,7 @@ function POSPrototype({ tenantId }) {
     setAssignedTo(fresh.assignedTo);
     setPaymentMethod(fresh.paymentMethod);
     setPaidNow(fresh.paidNow);
+        setAppPayment(fresh.appPayment || "");
     setSplitAmounts(fresh.splitAmounts);
     setCustomerName(fresh.customerName);
     setCustomerPhone(fresh.customerPhone);
@@ -5304,6 +6195,7 @@ function POSPrototype({ tenantId }) {
     const key = activeTableId === null ? "takeaway" : activeTableId;
     setTableDrafts((prev) => ({ ...prev, [key]: fresh }));
     setAddToInvoiceOpen(false);
+    setAddTargetId(null);
     setMergingIntoInvoice(false);
   };
 
@@ -5312,88 +6204,6 @@ function POSPrototype({ tenantId }) {
     const nameHtml = `<div style="font-size:16px;font-weight:700;">${escapeHtml(restaurantName)}</div>`;
     if (!logoUrl) return nameHtml;
     return `<img src="${logoUrl}" alt="${escapeHtml(restaurantName)}" style="max-width:130px;max-height:60px;margin:0 auto 6px;display:block;" />${nameHtml}`;
-  };
-
-  const buildOrderReceiptBodyHtml = (ticketNoOverride) => {
-    const displayTicketNo = ticketNoOverride || ticketNo;
-    const rows = cart
-      .map(
-        (item) => `
-      <div class="row" style="font-size:12px;margin-bottom:${item.note ? 0 : 4}px;">
-        <span>${item.qty}&times; ${escapeHtml(item.name)}</span>
-        <span>${money(item.price * item.qty)}</span>
-      </div>
-      ${item.note ? `<div style="font-size:10.5px;color:#555;font-style:italic;margin-bottom:4px;">${escapeHtml(item.note)}</div>` : ""}`
-      )
-      .join("");
-    const customerBlock =
-      customerName || customerPhone || customerAddress
-        ? `<div style="font-size:11px;margin-top:4px;">
-            ${escapeHtml(customerName)}${customerName && customerPhone ? " &middot; " : ""}${escapeHtml(customerPhone)}
-            ${customerAddress ? `<div>${escapeHtml(customerAddress)}</div>` : ""}
-          </div>`
-        : "";
-    const discountRow = discount
-      ? `<div class="row" style="font-size:11px;">
-          <span>${escapeHtml(t("discount"))} ${discount.type === "percent" ? `(${discount.value}%)` : ""}</span>
-          <span>-${money(discAmt)}</span>
-        </div>`
-      : "";
-    const serviceRow = effectiveServicePercent > 0
-      ? `<div class="row" style="font-size:11px;">
-          <span>${escapeHtml(t("serviceCharge"))} (${effectiveServicePercent}%)</span>
-          <span>${money(serviceAmt)}</span>
-        </div>`
-      : "";
-    const vatRow = effectiveVatPercent > 0
-      ? `<div class="row" style="font-size:11px;">
-          <span>${escapeHtml(t("vat"))} (${effectiveVatPercent}%)</span>
-          <span>${money(vatAmt)}</span>
-        </div>`
-      : "";
-    const deliveryFeeRow = deliveryMethod === "delivery" && deliveryFee > 0
-      ? `<div class="row" style="font-size:11px;">
-          <span>${escapeHtml(t("deliveryFeeLineLabel"))}${deliveryZoneLabel ? ` (${escapeHtml(deliveryZoneLabel)})` : ""}</span>
-          <span>${money(deliveryFee)}</span>
-        </div>`
-      : "";
-    const deliveryMethodLine = deliveryMethod
-      ? `<div style="font-size:10.5px;color:#555;margin-top:2px;">${escapeHtml(deliveryMethod === "pickup" ? t("pickupBadge") : t("deliveryBadge", { zone: deliveryZoneLabel }))}</div>`
-      : "";
-    return `
-      <div class="center">
-        ${brandHeaderHtml()}
-        <div style="font-size:11px;">${escapeHtml(tableLabel(activeTableId))}</div>
-        <div style="font-size:11px;">${escapeHtml(t("ticketNumber", { n: displayTicketNo }))}</div>
-        <div style="font-size:11px;">${new Date().toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}</div>
-        ${deliveryMethodLine}
-        ${customerBlock}
-      </div>
-      <div class="dashed">${rows}</div>
-      <div class="dashed">
-        <div class="row" style="font-size:11px;"><span>${escapeHtml(t("subtotal"))}</span><span>${money(subtotal)}</span></div>
-        ${discountRow}
-        ${serviceRow}
-        ${vatRow}
-        ${deliveryFeeRow}
-        <div class="row" style="font-size:14px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("total"))}</span><span>${money(total)}</span></div>
-        ${splitCount > 1 ? `<div class="row" style="font-size:12px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("splitLabel", { n: splitCount }))}</span><span>${escapeHtml(t("eachPays", { amount: money(total / splitCount) }))}</span></div>` : ""}
-        ${paymentMethod === "split"
-          ? PAYMENT_METHODS.filter((m) => Number(splitAmounts[m.id]) > 0)
-              .map((m) => `<div style="font-size:11px;margin-top:2px;">${escapeHtml(t("paidVia", { method: t(`payment_${m.id}`) }))} &mdash; ${money(Number(splitAmounts[m.id]) || 0)}</div>`)
-              .join("")
-          : `<div style="font-size:11px;margin-top:4px;">${escapeHtml(t("paidVia", { method: t(`payment_${paymentMethod}`) }))}</div>`}
-      </div>
-      <div class="center" style="font-size:10px;margin-top:14px;">${escapeHtml(t("thankYou"))}</div>`;
-  };
-  const printOrderReceipt = () => {
-    const n = ensureTicketNo();
-    printViaHiddenFrame(t("ticketNumber", { n }), buildOrderReceiptBodyHtml(n), isRtl);
-  };
-  const downloadOrderReceipt = () => {
-    const n = ensureTicketNo();
-    downloadReceiptFile(t("ticketNumber", { n }), buildOrderReceiptBodyHtml(n), isRtl);
-    flashNotice(t("notice_receiptDownloaded"));
   };
 
   // Reprints an already-saved receipt from history — same layout as buildOrderReceiptBodyHtml,
@@ -5464,7 +6274,7 @@ function POSPrototype({ tenantId }) {
         ${r.splitCount > 1 ? `<div class="row" style="font-size:12px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("splitLabel", { n: r.splitCount }))}</span><span>${escapeHtml(t("eachPays", { amount: money(r.total / r.splitCount) }))}</span></div>` : ""}
         ${r.paymentMethod === "split" && Array.isArray(r.splitPayments)
           ? r.splitPayments.map((sp) => `<div style="font-size:11px;margin-top:2px;">${escapeHtml(t("paidVia", { method: t(`payment_${sp.method}`) }))} &mdash; ${money(sp.amount)}</div>`).join("")
-          : `<div style="font-size:11px;margin-top:4px;">${escapeHtml(t("paidVia", { method: t(`payment_${r.paymentMethod}`) }))}</div>`}
+          : `<div style="font-size:11px;margin-top:4px;">${escapeHtml(t("paidVia", { method: t(`payment_${receiptMethodOf(r)}`) }))}</div>`}
       </div>
       <div class="center" style="font-size:10px;margin-top:14px;">${escapeHtml(t("thankYou"))}</div>`;
   };
@@ -5519,7 +6329,7 @@ function POSPrototype({ tenantId }) {
   };
   // Called whenever an order is created: does whatever this device is set up to do (nothing, by default).
   const dispatchKitchenTicket = async (ticket) => {
-    const mode = kitchenModeRef.current;
+    const mode = kitchenModeRef.current === "off" ? "here" : kitchenModeRef.current;
     if (mode === "here") {
       printKitchenTicket(ticket);
     } else if (mode === "station") {
@@ -5534,6 +6344,16 @@ function POSPrototype({ tenantId }) {
       }
     }
   };
+  // What this device prints by itself the moment an order is saved: the customer receipt (with prices), the kitchen
+  // ticket (without), both, or nothing — as chosen in Settings.
+  const autoPrintAfterSave = (receipt) => {
+    const mode = autoPrintRef.current;
+    if (mode === "receipt" || mode === "both") printViaHiddenFrame(t("ticketNumber", { n: receipt.ticketNo }), buildSavedReceiptBodyHtml(receipt), isRtl);
+    if (mode === "kitchen" || mode === "both") {
+      // Two print windows at once get in each other's way, so the second follows a moment later.
+      setTimeout(() => dispatchKitchenTicket(kitchenTicketFromReceipt(receipt)), mode === "both" ? 1500 : 0);
+    }
+  };
   // The kitchen-printer device: prints each new ticket from the shared queue once.
   const handleKitchenQueue = (list) => {
     setKitchenRecent([...list].reverse().slice(0, 12));
@@ -5544,19 +6364,6 @@ function POSPrototype({ tenantId }) {
     todo.forEach((ticket, i) => setTimeout(() => printKitchenTicket(ticket), i * 2500));
   };
   kitchenHandlerRef.current = handleKitchenQueue;
-  const printKitchenTicketFromCart = () => {
-    const n = ensureTicketNo();
-    printKitchenTicket(buildKitchenTicket({
-      ticketNo: n,
-      table: activeTableId === null ? null : tableLabel(activeTableId),
-      items: cart,
-      customerName,
-      deliveryMethod,
-      zoneLabel: deliveryZoneLabel,
-      eta: orderEta,
-      servedBy: currentEmployee?.name,
-    }));
-  };
   const printKitchenTestTicket = () => {
     printKitchenTicket(buildKitchenTicket({ ticketNo: null, table: t("kitchenTestLabel"), items: [{ name: t("kitchenTestDish"), qty: 2, note: "" }, { name: t("kitchenTestDish"), qty: 1, note: "—" }], servedBy: currentEmployee?.name }));
   };
@@ -5615,6 +6422,56 @@ function POSPrototype({ tenantId }) {
   const receiptsListRevenue = receiptsListSummary.revenue;
   const receiptsListUnpaid = receiptsListSummary.unpaid.orders;
   const receiptsListUnpaidTotal = receiptsListSummary.unpaid.total;
+
+  // Dashboard: what each delivery app still owes, from every month loaded so far (the last four are always
+  // loaded when the Dashboard opens), grouped by the business month the order was sold in.
+  const platformWindowLoaded = (() => {
+    let mk = thisMonthKey();
+    for (let i = 0; i < 4; i++) {
+      if (receiptsByMonth[mk] === undefined) return false;
+      mk = prevMonthKey(mk);
+    }
+    return true;
+  })();
+  const platformOwedByApp = platformOwed(Object.values(receiptsByMonth).flat(), allMethods.filter((m) => m.platform).map((m) => ({ id: m.id, label: m.label })))
+    .filter((app) => app.orders.length > 0)
+    .map((app) => {
+      const months = {};
+      app.orders.forEach((x) => {
+        const mk = businessDateForTimestamp(x.r.timestamp, shiftHoursConfig).slice(0, 7);
+        (months[mk] = months[mk] || []).push(x);
+      });
+      return {
+        ...app,
+        months: Object.keys(months).sort().map((mk) => ({
+          key: mk,
+          orders: months[mk].sort((a, b) => (a.r.timestamp < b.r.timestamp ? -1 : 1)),
+          owed: round2(months[mk].reduce((s, x) => s + x.amount, 0)),
+        })),
+      };
+    });
+  const platformOwedGrandTotal = round2(platformOwedByApp.reduce((s, a) => s + a.owed, 0));
+  // The delivery app has paid: mark these orders received so they stop counting as owed. Re-reads each month
+  // first, like every other receipt write, so another terminal's changes are not overwritten.
+  // Asks how the app paid (cash, visa, ...) before anything is saved.
+  const markPlatformReceived = (app, entries) => {
+    setSettlePick(Object.fromEntries(entries.map((x) => [x.r.id, true])));
+    setPlatformReceiveDlg({ appId: app.id });
+  };
+  // `how` is the method the app paid the restaurant in. Cash goes into the drawer of the shift it is marked received in
+  // (see cashFlows); the other methods are checked against the statement in the shift's electronic reconciliation.
+  const confirmPlatformReceived = async (app, entries, how) => {
+    const ids = new Set(entries.map((x) => x.r.id));
+    const at = new Date().toISOString();
+    const by = currentEmployee ? { id: currentEmployee.id, name: currentEmployee.name } : null;
+    const monthKeysTouched = [...new Set(entries.map((x) => storageMonthOf(x.r.timestamp)))];
+    for (const mk of monthKeysTouched) {
+      const list = await fetchFreshMonth(mk);
+      await persistMonth(mk, list.map((r) => (ids.has(r.id) && !r.platformSettled ? { ...r, platformSettled: true, platformSettledAt: at, platformSettledBy: by, platformSettledMethod: how } : r)));
+    }
+    flashNotice(t("notice_platformReceived", { app: t(`payment_${app.id}`), n: entries.length }));
+  };
+
 
   const availableExpenseMonths = useMemo(() => Array.from(new Set([thisMonthKey(), ...expenseMonthKeys])).sort().reverse(), [expenseMonthKeys]);
   const currentExpenseMonth = selectedExpenseMonth || thisMonthKey();
@@ -5692,13 +6549,28 @@ function POSPrototype({ tenantId }) {
   // footer, Close the day and the Staff tab use.
   const dashboardMonthFirstDay = `${dashboardReportingMonthKeys[0]}-01`;
   const dashboardMonthLastDay = lastDayOfMonth(dashboardReportingMonthKeys[dashboardReportingMonthKeys.length - 1]);
-  const dashboardMonthReceiptsAll = (ledger.ordersInDays(dashboardMonthFirstDay, dashboardMonthLastDay) || []).filter((r) => r.status === "completed");
+  // Which orders the Dashboard counts: all of them, only the restaurant's own, or those paid through one delivery app
+  // (an app's order is never drawer cash — see platformOwed). Expenses belong to the restaurant as a whole, so they and the
+  // net profit are shown only for "all".
+  const dashboardAppIds = allMethods.filter((m) => m.platform).map((m) => m.id);
+  const receiptSourceId = (r) => (dashboardAppIds.includes(receiptMethodOf(r)) ? receiptMethodOf(r) : "restaurant");
+  const dashboardSourceMatch = (r) => dashboardSource === "all" || receiptSourceId(r) === dashboardSource;
+  const dashboardMonthReceiptsAll = (ledger.ordersInDays(dashboardMonthFirstDay, dashboardMonthLastDay) || []).filter((r) => r.status === "completed" && dashboardSourceMatch(r));
   const [dashboardFirstDay, dashboardLastDay] =
     dashboardMode === "day" ? [effectiveDashboardDay, effectiveDashboardDay]
     : dashboardMode === "range" ? [effectiveDashboardRangeStart, effectiveDashboardRangeEnd]
     : [dashboardMonthFirstDay, dashboardMonthLastDay];
   const dashboardPeriod = ledger.period(dashboardFirstDay, dashboardLastDay);
-  const dashboardReceipts = dashboardPeriod ? dashboardPeriod.completed : [];
+  const dashboardReceipts = dashboardPeriod ? dashboardPeriod.completed.filter(dashboardSourceMatch) : [];
+  // The source picker is offered once the restaurant has switched a delivery app on, or has orders from one in this period.
+  const dashboardSourceOffered = dashboardSource !== "all" || menuProfiles.length > 0 || allMethods.some((m) => m.platform && paymentMethodOn(paymentConfig, m.id)) || (dashboardPeriod ? dashboardPeriod.completed.some((r) => receiptSourceId(r) !== "restaurant") : false);
+  const dashboardSourceOptions = [{ id: "all", label: t("dashSourceAll") }, { id: "restaurant", label: t("dashSourceRestaurant") }, ...allMethods.filter((m) => m.platform).map((m) => ({ id: m.id, label: t(`payment_${m.id}`) }))];
+  const dashboardAppPayments = (() => {
+    const out = {};
+    if (dashboardSource === "all" || dashboardSource === "restaurant") return out;
+    dashboardReceipts.forEach((r) => { const k = r.appPayment || "none"; out[k] = round2((out[k] || 0) + r.total); });
+    return out;
+  })();
   const dashboardSummary = summarize(dashboardReceipts);
   const dashboardExpenseTotal = ledger.expensesInDays(dashboardFirstDay, dashboardLastDay).reduce((s, e) => s + e.amount, 0);
 
@@ -5744,7 +6616,7 @@ function POSPrototype({ tenantId }) {
     if (dashboardMode !== "day") return null;
     const prevDayStr = addDaysStr(effectiveDashboardDay, -1);
     const prev = ledger.period(prevDayStr, prevDayStr);
-    return prev ? prev.revenue : 0;
+    return prev ? prev.completed.filter(dashboardSourceMatch).reduce((s, r) => s + r.total, 0) : 0;
   })();
   const periodVsPreviousPct = previousDayRevenue > 0 ? Math.round(((dashboardPeriodRevenue - previousDayRevenue) / previousDayRevenue) * 100) : null;
 
@@ -5765,20 +6637,26 @@ function POSPrototype({ tenantId }) {
   dashboardReceipts.forEach((r) => r.items.forEach((it) => { if (dashboardItemCategory[it.name] === undefined) dashboardItemCategory[it.name] = dashboardCategoryOf(it); }));
   const dashboardCategoryOptions = [
     ...Object.keys(menu),
+    ...menuProfiles.flatMap((p) => p.extraCategories || []).filter((c, i, all) => !(c in menu) && all.indexOf(c) === i),
     ...(Object.values(dashboardItemCategory).includes(OTHER_CATEGORY) ? [OTHER_CATEGORY] : []),
   ];
   const activeDashboardCategory = dashboardCategoryOptions.includes(dashboardCategory) ? dashboardCategory : "";
   const topSellers = (() => {
     if (!activeDashboardCategory) return Object.entries(dashboardItemTotals).sort((a, b) => b[1] - a[1]).map(([name, qty]) => ({ name, qty }));
     // A chosen category lists every dish on it, including the ones that sold nothing in this period.
-    const names = new Set(activeDashboardCategory === OTHER_CATEGORY ? [] : (menu[activeDashboardCategory] || []).map((i) => i.name));
+    const names = new Set(
+      activeDashboardCategory === OTHER_CATEGORY
+        ? []
+        : [...(menu[activeDashboardCategory] || []), ...menuProfiles.flatMap((p) => (p.extraItems || {})[activeDashboardCategory] || [])].map((i) => i.name)
+    );
     Object.keys(dashboardItemTotals).forEach((name) => { if (dashboardItemCategory[name] === activeDashboardCategory) names.add(name); });
     return [...names].map((name) => ({ name, qty: dashboardItemTotals[name] || 0 })).sort((a, b) => b.qty - a.qty);
   })();
   const topSellersTotalQty = topSellers.reduce((sum, s) => sum + s.qty, 0);
   const maxTopSellerQty = Math.max(1, ...topSellers.map((s) => s.qty));
 
-  const dashboardByMethod = PAYMENT_METHODS.map((m) => ({ ...m, total: dashboardSummary.byMethod[m.id] }));
+  const dashboardByMethod = allMethods.map((m) => ({ ...m, total: dashboardSummary.byMethod[m.id] || 0 }));
+  const dashboardByMethodShown = dashboardByMethod.filter((m) => !(m.platform || m.custom) || m.total > 0); // delivery apps only show once they have sales
   const maxMethodTotal = Math.max(1, ...dashboardByMethod.map((m) => m.total));
 
   // Categorized using data already on each receipt: deliveryMethod is only ever set for orders
@@ -5993,13 +6871,19 @@ function POSPrototype({ tenantId }) {
   const openReturnDialog = (r, action) => {
     if (r.status !== "completed") return;
     const isSplit = r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0;
-    setReturnDialog({ receipt: r, action, method: isSplit ? "same" : r.paymentMethod || "cash" });
+    setReturnDialog({ receipt: r, action, method: isSplit ? "same" : r.paymentMethod || "cash", reason: "" });
   };
   const cancelReceipt = (r) => openReturnDialog(r, "cancel");
   const refundReceipt = (r) => openReturnDialog(r, "refund");
   const confirmReturnDialog = () => {
     if (!returnDialog) return;
     const { receipt: r, action, method } = returnDialog;
+    // A cancelled order always needs a written reason, so the closing reports can say why it was cancelled.
+    const reason = (returnDialog.reason || "").trim();
+    if (action === "cancel" && reason.length < 3) {
+      flashNotice(t("notice_cancelReasonRequired"));
+      return;
+    }
     const wasPaid = r.paid !== false;
     const returnedAmounts = !wasPaid
       ? []
@@ -6011,7 +6895,7 @@ function POSPrototype({ tenantId }) {
     setReturnDialog(null);
     if (action === "cancel") {
       r.items.forEach((it) => (it.recipeSnapshot || []).forEach((rec) => updateIngredientStock(rec.ingredientId, rec.qty * it.qty)));
-      updateReceiptInStorage(r, (x) => ({ ...x, status: "cancelled", cancelledAt: at, cancelledBy: by, returnedAmounts }));
+      updateReceiptInStorage(r, (x) => ({ ...x, status: "cancelled", cancelledAt: at, cancelledBy: by, cancelReason: reason, returnedAmounts }));
       flashNotice(t("notice_orderCancelled", { n: r.ticketNo }));
     } else {
       updateReceiptInStorage(r, (x) => ({ ...x, status: "refunded", refundedAt: at, refundedBy: by, returnedAmounts }));
@@ -6116,8 +7000,8 @@ function POSPrototype({ tenantId }) {
     if (statusDef?.whatsapp) sendWhatsAppUpdate(updated, statusId);
   };
 
-  // Reassigns which waiter/delivery person a saved order is attributed to — a manager correction,
-  // separate from editItemsHistory since it's not a change to what was ordered.
+  // Reassigns which waiter/delivery person a saved order is attributed to — open to everyone signed in on shift
+  // (not just managers), and separate from editItemsHistory since it's not a change to what was ordered.
   const assignReceiptTo = (r, member) => {
     const updated = { ...r, assignedTo: member ? { id: member.id, name: member.name, role: member.role } : null };
     updateReceiptInStorage(r, () => updated);
@@ -6131,6 +7015,7 @@ function POSPrototype({ tenantId }) {
       onConfirm: () => {
         const updated = { ...r, paid: true, paidAt: new Date().toISOString() };
         updateReceiptInStorage(r, () => updated);
+        openDrawerAfterSettlement(updated);
         flashNotice(t("notice_orderMarkedPaid", { n: r.ticketNo }));
       },
     });
@@ -6140,7 +7025,8 @@ function POSPrototype({ tenantId }) {
     setEditingReceiptId(r.id);
     setEditDraftItems(r.items.map((it) => ({ ...it })));
     setEditReason("");
-    setEditPaymentMethod(r.paymentMethod || null);
+    setEditPaymentMethod(receiptMethodOf(r) || null);
+    setEditZoneLabel(r.deliveryZoneLabel || "");
     setEditDraftDiscount(r.discount ? { type: r.discount.type, value: String(r.discount.value), reason: r.discount.reason || "" } : { type: "percent", value: "", reason: "" });
   };
   const cancelEditReceipt = () => {
@@ -6148,7 +7034,17 @@ function POSPrototype({ tenantId }) {
     setEditDraftItems([]);
     setEditReason("");
     setEditPaymentMethod(null);
+    setEditZoneLabel("");
     setEditDraftDiscount({ type: "percent", value: "", reason: "" });
+  };
+  // The delivery area picked while editing a delivery order, when it differs from the one saved on the order
+  // (null = unchanged). Only the areas currently set up can be picked; the order's own area is never re-priced
+  // just because that area's fee was changed later.
+  const editedZoneFor = (r) =>
+    r.deliveryMethod === "delivery" && editZoneLabel !== (r.deliveryZoneLabel || "") ? deliveryZones.find((z) => z.label === editZoneLabel) || null : null;
+  const editFeeFor = (r) => {
+    const z = editedZoneFor(r);
+    return z ? Number(z.fee) || 0 : r.deliveryFee || 0;
   };
   // What the edited discount boxes mean for this order: the discount to store (null = none), whether the
   // discount itself changed (so it needs a reason and goes in the edit history), or which notice to show.
@@ -6167,15 +7063,19 @@ function POSPrototype({ tenantId }) {
     return { discount: { type: d.type, value: v, reason }, changed: true };
   };
   // The bill for an order after an edit — worked out with THIS order's own service/VAT rates, never today's.
-  const editedBillFor = (r, items, disc) => {
+  const editedBillFor = (r, items, disc, fee = r.deliveryFee || 0) => {
     const newSubtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
     const newDiscAmt = discountAmount(newSubtotal, disc);
     const newNet = newSubtotal - newDiscAmt;
     const newServiceAmt = Math.round(newNet * ((r.serviceRate || 0) / 100) * 100) / 100;
     const newVatAmt = Math.round((newNet + newServiceAmt) * ((r.vatRate || 0) / 100) * 100) / 100;
-    return { subtotal: newSubtotal, discountAmount: newDiscAmt, serviceAmount: newServiceAmt, vatAmount: newVatAmt, total: newNet + newServiceAmt + newVatAmt + (r.deliveryFee || 0) };
+    return { subtotal: newSubtotal, discountAmount: newDiscAmt, serviceAmount: newServiceAmt, vatAmount: newVatAmt, total: newNet + newServiceAmt + newVatAmt + fee };
   };
-  const changeEditQty = (index, delta, original) => {
+  // Once an order has been paid its items are final: only a still-unpaid order (pay later / pay at the table) may have
+  // its quantities changed. Everything else about a paid order (payment method, discount, delivery area) stays editable.
+  const itemsLockedFor = (r) => r.paid !== false;
+  const changeEditQty = (index, delta, original, locked) => {
+    if (locked) return;
     setEditDraftItems((prev) =>
       prev.map((it, i) => {
         if (i !== index) return it;
@@ -6237,10 +7137,16 @@ function POSPrototype({ tenantId }) {
     if (paymentMethodChanged) {
       changes.push({ name: t("paymentMethodEditLabel"), from: t(`payment_${r.paymentMethod}`), to: t(`payment_${editPaymentMethod}`) });
     }
+    const zoneChange = editedZoneFor(r);
+    const newFee = editFeeFor(r);
+    if (zoneChange) {
+      const zoneText = (label, fee) => `${label || "—"} (${money(fee || 0)})`;
+      changes.push({ name: t("deliveryAreaEditLabel"), from: zoneText(r.deliveryZoneLabel, r.deliveryFee), to: zoneText(zoneChange.label, newFee) });
+    }
     const cleaned = finalItems;
     // Recomputed using THIS receipt's own stored rates, not today's live settings — editing an
     // old order shouldn't retroactively apply a VAT/service rate change made since then.
-    const bill = editedBillFor(r, cleaned, discountEdit.discount);
+    const bill = editedBillFor(r, cleaned, discountEdit.discount, newFee);
     const { subtotal: newSubtotal, discountAmount: newDiscAmt, serviceAmount: newServiceAmt, vatAmount: newVatAmt } = bill;
     if (discountEdit.changed) {
       // The discount's own effect on the bill, measured on the new items so a dish change isn't counted twice.
@@ -6289,6 +7195,8 @@ function POSPrototype({ tenantId }) {
       serviceAmount: newServiceAmt,
       vatAmount: newVatAmt,
       total: newTotal,
+      deliveryFee: newFee,
+      deliveryZoneLabel: zoneChange ? zoneChange.label : r.deliveryZoneLabel,
       // Switching away from a split payment to a single method retires the per-method breakdown —
       // there's no sensible way to keep it once it's no longer actually split.
       paymentMethod: editPaymentMethod || r.paymentMethod,
@@ -6327,6 +7235,7 @@ function POSPrototype({ tenantId }) {
   const shiftCancelled = shiftReceipts.filter((r) => r.status === "cancelled");
   const shiftRefunded = shiftReceipts.filter((r) => r.status === "refunded");
   const shiftRefundsTotal = shiftRefunded.reduce((s, r) => s + r.total, 0);
+  const shiftCancelledTotal = shiftCancelled.reduce((s, r) => s + r.total, 0);
   // "Gross" is everything rung up this shift, INCLUDING orders since refunded — a refunded order
   // stops being "completed", so counting only completed orders here and then subtracting refunds
   // again took every refund off twice. Gross minus refunds is therefore exactly the completed
@@ -6348,13 +7257,13 @@ function POSPrototype({ tenantId }) {
     ? monthReceiptsForShift.filter((r) => r.status === "completed" && r.paid !== false && (r.paidAt || r.timestamp) >= shiftStart)
     : [];
   const paymentsCollectedThisShiftAmounts = paymentsCollectedThisShift.flatMap(receiptMethodAmounts);
-  const shiftByMethod = PAYMENT_METHODS.map((m) => ({
+  const shiftByMethod = allMethods.map((m) => ({
     ...m,
     total: paymentsCollectedThisShiftAmounts.filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0),
     // Counts orders that touched this method at all — a split order can count toward more than
     // one method's count, same as it contributes to more than one method's total.
     count: paymentsCollectedThisShift.filter((r) => receiptMethodAmounts(r).some((a) => a.method === m.id)).length,
-  }));
+  })).filter((m) => !(m.platform || m.custom) || m.count > 0); // delivery apps and added methods only show once the shift sold through them
   // A delivery rider physically holds the cash they collect until settleDeliveryCash marks it
   // settled — until then it hasn't reached the drawer, so it doesn't belong in what the drawer
   // is expected to hold. The "by payment method" breakdown above still counts it as cash revenue
@@ -6380,7 +7289,8 @@ function POSPrototype({ tenantId }) {
   const shiftFlows = shiftStart
     ? cashFlows(monthReceiptsForShift, Object.values(expensesByMonth).flat(), (iso) => iso >= shiftStart)
     : { cashIn: 0, cashReturned: 0, cashExpenses: 0, paidOut: 0 };
-  const shiftCashSalesTotal = shiftFlows.cashIn;
+  const shiftAppCashTotal = shiftFlows.appCash || 0; // cash a delivery app paid the restaurant during this shift (marked received on the Dashboard)
+  const shiftCashSalesTotal = shiftFlows.cashIn - shiftAppCashTotal;
   // Shown as its own line in the drawer reconciliation so the gap against "by payment method"
   // above is explained, instead of just looking like the numbers don't add up.
   const shiftUnsettledDeliveryCash = paymentsCollectedThisShift
@@ -6410,11 +7320,12 @@ function POSPrototype({ tenantId }) {
     ? Object.values(expensesByMonth).flat().filter((e) => e.status === "paid" && e.paymentMethod === "cash" && (e.recordedAt || `${e.date}T00:00:00.000Z`) >= shiftStart)
     : [];
   const shiftCashExpensesTotal = shiftFlows.cashExpenses;
+  const shiftRiderPayTotal = shiftFlows.riderPay || 0; // riders' fee share kept (or paid out) when delivery was settled during this shift
   const myOpenShiftEntry = currentEmployee ? openShifts[currentEmployee.id] : null;
   const openingCountedThisShift = !!(myOpenShiftEntry && myOpenShiftEntry.clockIn === shiftStart && myOpenShiftEntry.openingCash !== undefined);
   // For a shift that started with the mandatory count, the counted figure IS the opening cash.
   const openingFloatNum = openingCountedThisShift ? myOpenShiftEntry.openingCash : Number(openingFloat) || 0;
-  const expectedCash = openingFloatNum + shiftCashSalesTotal - shiftCashRefundsTotal - shiftCashExpensesTotal;
+  const expectedCash = openingFloatNum + shiftCashSalesTotal + shiftAppCashTotal - shiftCashRefundsTotal - shiftCashExpensesTotal - shiftRiderPayTotal;
   const countedCashNum = countedCash === "" ? null : Number(countedCash) || 0;
   const cashVariance = countedCashNum === null ? null : Math.round((countedCashNum - expectedCash) * 100) / 100;
 
@@ -6422,8 +7333,11 @@ function POSPrototype({ tenantId }) {
   // what actually landed in the bank or gateway statement against what the shift expects for that
   // method (sales minus refunds) — same idea as the cash count above, just no opening float, since
   // an electronic balance doesn't carry a physical float over from one shift to the next.
-  const shiftElectronicMethods = PAYMENT_METHODS.filter((m) => m.id !== "cash").map((m) => {
-    const sales = reconCollected.flatMap(receiptMethodAmounts).filter((a) => a.method === m.id).reduce((sum, a) => sum + a.amount, 0);
+  const shiftElectronicMethods = allDirectMethods.filter((m) => m.id !== "cash").map((m) => {
+    const appPaidIn = shiftStart
+      ? monthReceiptsForShift.filter((r) => r.platformSettled && r.platformSettledMethod === m.id && r.platformSettledAt >= shiftStart && r.status === "completed").reduce((sum, r) => sum + r.total, 0)
+      : 0; // what a delivery app paid the restaurant by this method during the shift
+    const sales = reconCollected.flatMap(receiptMethodAmounts).filter((a) => a.method === m.id).reduce((sum, a) => sum + a.amount, 0) + appPaidIn;
     const refunds = returnsThisShift.flatMap(returnAmountsOf).filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0);
     const expected = Math.round((sales - refunds) * 100) / 100;
     const confirmedRaw = confirmedElectronic[m.id];
@@ -6446,7 +7360,20 @@ function POSPrototype({ tenantId }) {
     if (e.kind === "discountDown") return t("cdDiscountDown", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), about: e.approx ? t("cdAbout") : "", amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
     if (e.kind === "discountUp") return t("cdDiscountUp", { n: e.n, list: e.list, by: e.by || "—", at: cdFmtTime(e.at), about: e.approx ? t("cdAbout") : "", amount: money(Math.abs(e.amount)) }) + (e.afterClose ? ` ${t("cdAfterClose")}` : "");
     if (e.kind === "legacyVoid") return t("cdItemLegacyVoid", { n: e.n, amount: money(e.amount), status: t(e.status === "cancelled" ? "cancelledBadge" : "refundedBadge").toLowerCase() });
+    if (e.kind === "settledCash") return t("cdItemSettledCash", { n: e.n, rider: e.rider || "—", why: cdSettleWhy(e), amount: money(Math.abs(e.amount)) });
     return t("cdItemLooseExpense", { what: e.what, amount: money(Math.abs(e.amount)) });
+  };
+  // Why a delivery settlement is flagged on Close the day (e = a flagged settled order: flags, orderDay).
+  const cdSettleWhy = (o) => o.flags.map((f) => t(f === "old" ? "cdWhyOld" : f === "app" ? "cdWhyApp" : "cdWhyNoCash", { day: o.orderDay })).join("; ");
+  // The "delivery cash settled during this shift" lines (title, summary and the flagged orders), for screen and print.
+  const cdSettledLines = (d) => {
+    if (!d.settled || d.settled.n === 0) return [];
+    const lines = [{ strong: true, text: t("cdSettledTitle", { name: d.name }) }, { text: t("cdSettledLine", { n: d.settled.n, cash: money(d.settled.cash), share: money(d.settled.share) }) }];
+    if (d.settled.flagged.length > 0) {
+      lines.push({ text: t("cdSettledFlagged") });
+      d.settled.flagged.forEach((o) => lines.push({ bullet: true, warn: true, text: t("cdSettledFlagLine", { n: o.n, rider: o.rider || "—", cash: money(o.cash), why: cdSettleWhy(o) }) }));
+    }
+    return lines;
   };
   const cdSigned = (n) => `${n >= 0 ? "+" : "-"}${money(Math.abs(n))}`;
   const cdGapLines = (d) => {
@@ -6571,6 +7498,7 @@ function POSPrototype({ tenantId }) {
     const lines = (arr) => arr.map((l) => `<div style="margin-top:4px;${l.strong ? "font-weight:700;" : ""}${l.bullet ? "padding-inline-start:10px;" : ""}">${l.bullet ? "• " : ""}${e(l.text)}</div>`).join("");
     const gapRows = cd.drawers.filter((d) => d.gap !== null && Math.abs(d.gap) >= 0.01).map((d) => `<div style="margin-bottom:8px;">${lines(cdGapLines(d))}</div>`).join("");
     const handoverRows = cd.drawers.map((d) => cdHandoverLines(d)).filter((l) => l.length > 0).map((l) => `<div style="margin-bottom:8px;">${lines(l)}</div>`).join("");
+    const settledRows = cd.drawers.filter((d) => !d.loading).map((d) => cdSettledLines(d)).filter((l) => l.length > 0).map((l) => `<div style="margin-bottom:8px;">${lines(l)}</div>`).join("");
     return `
       <div style="text-align:center;font-weight:700;font-size:16px;">${e(restaurantName)}</div>
       <div style="text-align:center;font-size:13px;">${e(t("cdReportTitle"))} — ${e(dayLabel)}</div>
@@ -6581,7 +7509,9 @@ function POSPrototype({ tenantId }) {
         ${row(t("cdOrders"), cd.orders)}
         ${cd.byMethod.map((m) => row(t(`payment_${m.id}`), money(m.total))).join("")}
         ${cd.discounts.n > 0 ? row(t("cdDiscounts", { n: cd.discounts.n, amount: money(cd.discounts.total) }), "") : ""}
-        ${cd.voided.n > 0 ? row(t("cdVoided", { n: cd.voided.n, amount: money(cd.voided.total) }), "") : ""}
+        ${row(t("cdCancelled", { n: cd.cancelled.n }), money(cd.cancelled.total))}
+        ${cd.cancelled.orders.map((r) => `<div style="font-size:11px;margin:0 0 3px;padding-inline-start:8px;">${e(t("ticketHash", { n: r.ticketNo }))} &middot; ${money(r.total)}${r.cancelReason ? ` &middot; ${e(r.cancelReason)}` : ""}</div>`).join("")}
+        ${cd.refunded.n > 0 ? row(t("cdRefunded", { n: cd.refunded.n }), money(cd.refunded.total)) : ""}
         ${row(t("cdExpenses"), money(cd.expenseTotal))}
         ${row(t("cdNet"), money(cd.revenue - cd.expenseTotal), "font-weight:700;")}
       </div>
@@ -6592,7 +7522,9 @@ function POSPrototype({ tenantId }) {
             <div style="font-weight:600;">${e(d.name)} &middot; ${e(new Date(d.clockIn).toLocaleString(loc, tf))} – ${e(d.clockOut ? new Date(d.clockOut).toLocaleString(loc, tf) : t("cdStillOpen"))}</div>
             ${row(t("cdOpened"), d.opening !== null ? money(d.opening) : "—")}
             ${row(t("cdReceived"), money(d.cashIn))}
-            ${row(t("cdPaidOut"), money(d.paidOut))}
+            ${row(t("cdPaidOutExpenses"), money(d.cashExpenses))}
+            ${d.riderPay > 0 ? row(t("cdRiderShareRow"), money(d.riderPay)) : ""}
+            ${d.cashReturned > 0 ? row(t("cdReturnedOrders"), money(d.cashReturned)) : ""}
             ${row(t("cdShouldBe"), d.expected !== null ? money(d.expected) : "—")}
             ${row(t("cdCounted"), d.counted !== null ? money(d.counted) : t("cdNotCounted"))}
             ${row(t("cdGap"), d.gap === null ? "—" : Math.abs(d.gap) < 0.01 ? t("varianceMatch") : cdSigned(d.gap), "font-weight:700;")}
@@ -6602,7 +7534,9 @@ function POSPrototype({ tenantId }) {
             <div style="font-weight:700;">${e(t("cdWholeDay"))}</div>
             ${row(t("cdOpened"), cd.dayTotals.opening !== null ? money(cd.dayTotals.opening) : "—")}
             ${row(t("cdReceived"), money(cd.dayTotals.cashIn))}
-            ${row(t("cdPaidOut"), money(cd.dayTotals.paidOut))}
+            ${row(t("cdPaidOutExpenses"), money(cd.dayTotals.expenses))}
+            ${cd.dayTotals.riderPay > 0 ? row(t("cdRiderShareRow"), money(cd.dayTotals.riderPay)) : ""}
+            ${cd.dayTotals.returned > 0 ? row(t("cdReturnedOrders"), money(cd.dayTotals.returned)) : ""}
             ${row(t("cdShouldBe"), cd.dayTotals.expectedEnd !== null ? money(cd.dayTotals.expectedEnd) : "—")}
             ${cd.dayTotals.collected > 0 ? row(t("cdCollectedRow"), "-" + money(cd.dayTotals.collected)) : ""}
             ${row(t("cdCounted"), cd.dayTotals.finalCounted !== null ? money(cd.dayTotals.finalCounted) : "—")}
@@ -6610,6 +7544,7 @@ function POSPrototype({ tenantId }) {
           </div>` : ""}
       </div>
       ${gapRows || handoverRows ? `<div class="dashed" style="font-size:12px;"><div style="font-weight:600;margin-bottom:6px;">${e(t("cdGapsTitle"))}</div>${gapRows}${handoverRows}</div>` : ""}
+      ${settledRows ? `<div class="dashed" style="font-size:12px;">${settledRows}</div>` : ""}
       ${closing && closing.note ? `<div class="dashed" style="font-size:12px;">${e(t("cdClosedNote", { note: closing.note }))}</div>` : ""}`;
   };
 
@@ -6661,8 +7596,9 @@ function POSPrototype({ tenantId }) {
       </div>
       <div class="dashed" style="font-size:12px;">
         <div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t("ordersCompleted"))}</span><span>${shiftCompleted.length}</span></div>
-        <div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t("ordersCancelled"))}</span><span>${shiftCancelled.length}</span></div>
-        <div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t("ordersRefunded"))}</span><span>${shiftRefunded.length}</span></div>
+        <div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t("ordersCancelled"))} &middot; ${shiftCancelled.length}</span><span>${money(shiftCancelledTotal)}</span></div>
+        ${shiftCancelled.map((r) => `<div style="font-size:11px;margin:0 0 3px;padding-inline-start:8px;">${escapeHtml(t("ticketHash", { n: r.ticketNo }))} &middot; ${money(r.total)}${r.cancelReason ? ` &middot; ${escapeHtml(r.cancelReason)}` : ""}</div>`).join("")}
+        <div class="row" style="margin-bottom:4px;"><span>${escapeHtml(t("ordersRefunded"))} &middot; ${shiftRefunded.length}</span><span>${money(shiftRefundsTotal)}</span></div>
       </div>
       <div class="dashed" style="font-size:12px;">${methodRows}</div>
       ${shiftUnpaid.length > 0 ? `
@@ -6684,8 +7620,10 @@ function POSPrototype({ tenantId }) {
         <div style="font-weight:600;margin-bottom:6px;">${escapeHtml(t("cashReconciliationTitle"))}</div>
         <div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("openingFloatLabel"))}</span><span>${money(openingFloatNum)}</span></div>
         <div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("cashSalesLabel"))}</span><span>${money(shiftCashSalesTotal)}</span></div>
+        ${shiftAppCashTotal > 0 ? `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("appCashLabel"))}</span><span>${money(shiftAppCashTotal)}</span></div>` : ""}
         ${shiftUnsettledDeliveryCash > 0 ? `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("unsettledDeliveryCashLabel"))}</span><span>${money(shiftUnsettledDeliveryCash)}</span></div>` : ""}
         ${shiftCashRefundsTotal > 0 ? `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("cashRefundsLabel"))}</span><span>-${money(shiftCashRefundsTotal)}</span></div>` : ""}
+        ${shiftRiderPayTotal > 0 ? `<div class="row" style="margin-bottom:3px;"><span>${escapeHtml(t("riderPayLabel"))}</span><span>-${money(shiftRiderPayTotal)}</span></div>` : ""}
         ${cashExpenseRows}
         <div class="row" style="font-weight:700;margin-top:4px;"><span>${escapeHtml(t("expectedCashLabel"))}</span><span>${money(expectedCash)}</span></div>
         ${countedCashNum !== null ? `<div class="row" style="margin-top:3px;"><span>${escapeHtml(t("countedCashLabel"))}</span><span>${money(countedCashNum)}</span></div>` : ""}
@@ -6882,8 +7820,8 @@ function POSPrototype({ tenantId }) {
   // collected when a day ends, so it is never compared with the day before's last count.
   const lastCountedToday = () => {
     const today = businessDateForTimestamp(new Date().toISOString(), shiftHoursConfig);
-    const dayOf = (e) => businessDateForTimestamp(new Date((new Date(e.clockIn).getTime() + new Date(e.clockOut).getTime()) / 2).toISOString(), shiftHoursConfig);
-    return [...shiftLog].filter((e) => typeof e.countedCash === "number" && e.clockOut && dayOf(e) === today).sort((a, b) => b.clockOut.localeCompare(a.clockOut))[0] || null;
+    // A shift left open for days and finally closed today counts too (its midpoint is on an earlier day).
+    return [...shiftLog].filter((e) => typeof e.countedCash === "number" && e.clockOut && ledger.closedOnDay(e, today, Date.now())).sort((a, b) => b.clockOut.localeCompare(a.clockOut))[0] || null;
   };
   const doClockIn = async (emp, openingCash = 0) => {
     const now = new Date().toISOString();
@@ -7103,6 +8041,16 @@ function POSPrototype({ tenantId }) {
     // While the recap is on screen the shift has already been logged — pressing Clock out again
     // used to log the same shift a second time.
     if (!currentEmployee || shiftRecap) return;
+    // Delivery orders still with a rider are the cash that makes a drawer come out short: remind whoever is closing
+    // to settle them first. It is only a reminder — "Close the shift anyway" carries on to the cash count.
+    if (settleReminderGroups.length > 0) {
+      setSettleReminderOpen(true);
+      return;
+    }
+    startClosingCount();
+  };
+  const startClosingCount = () => {
+    setSettleReminderOpen(false);
     setClosingCountDraft("");
     setClosingCountOpen(true);
   };
@@ -7394,28 +8342,169 @@ function POSPrototype({ tenantId }) {
         return { ...p, orderList: orders, orders: orders.length, cashTotal, feesTotal, net: Math.round((cashTotal - feesTotal) * 100) / 100 };
       });
   }, [dutyRoster, receiptsByMonth, deliveryFeeRetentionMode, deliveryFeeRetentionPercent, deliveryFeeRetentionFixed]);
+  // What the closing-shift reminder lists: the same unsettled orders the Settle button below would settle, per rider,
+  // with how many there are and what they add up to (the full order totals, delivery fee included).
+  const settleReminderGroups = hasFeature("teamTracking")
+    ? deliveryReconciliation.filter((p) => p.orders > 0).map((p) => ({ id: p.id, name: p.name, orders: p.orders, total: round2(p.orderList.reduce((s, r) => s + r.total, 0)), cash: round2(p.cashTotal) }))
+    : [];
+  const settleReminderOrders = settleReminderGroups.reduce((s, g) => s + g.orders, 0);
+  const settleReminderTotal = round2(settleReminderGroups.reduce((s, g) => s + g.total, 0));
 
   // Marks every currently-outstanding delivery order for this rider (exactly the ones counted
   // into their card above) as settled, once the manager has actually collected/paid out the net
   // amount — so they drop out of every future reconciliation instead of double-counting.
   const settleDeliveryCash = (rider) => {
-    setConfirmDialog({
-      message: t("confirm_settleDelivery", { name: rider.name }),
-      onConfirm: async () => {
-        const monthKey = thisMonthKey();
-        // Re-read the month first: writing back this device's cached copy could erase orders another
-        // terminal saved since this one last refreshed.
-        const list = await fetchFreshMonth(monthKey);
-        const updated = list.map((r) =>
-          r.tableId === "delivery" && r.status === "completed" && r.assignedTo?.id === rider.id && r.paid !== false && !r.deliverySettled
-            ? { ...r, deliverySettled: true, deliverySettledAt: new Date().toISOString() }
-            : r
-        );
-        await persistMonth(monthKey, updated);
-        flashNotice(t("notice_deliverySettled", { name: rider.name }));
-      },
-    });
+    setSettlePick(Object.fromEntries(rider.orderList.map((r) => [r.id, true])));
+    setRiderSettleDlg({ riderId: rider.id });
   };
+  // Settles exactly the orders the cashier ticked (any month they were sold in).
+  const settleDeliveryOrders = async (rider, orders) => {
+    const ids = new Set(orders.map((r) => r.id));
+    const settledAt = new Date().toISOString();
+    for (const monthKey of [...new Set(orders.map((r) => storageMonthOf(r.timestamp)))]) {
+      // Re-read the month first: writing back this device's cached copy could erase orders another
+      // terminal saved since this one last refreshed.
+      const list = await fetchFreshMonth(monthKey);
+      // What the rider keeps of each order's delivery fee is saved with it: the drawer then receives what they hand
+      // over (cash collected minus their share), or pays out what the restaurant owes them.
+      await persistMonth(monthKey, list.map((r) => (ids.has(r.id) && !r.deliverySettled ? { ...r, deliverySettled: true, deliverySettledAt: settledAt, riderFeeShare: agentFeeShare(r.deliveryFee || 0) } : r)));
+    }
+    flashNotice(t("notice_deliverySettled", { name: rider.name }));
+  };
+  // One brief line per order for the settle pick-lists: ticket, date, items, price.
+  const settleOrderRow = (r, amount) => (
+    <label key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 2px", borderTop: "1px solid #E4DECE", cursor: "pointer", textAlign: "start" }}>
+      <input type="checkbox" checked={!!settlePick[r.id]} onChange={(e) => setSettlePick((prev) => ({ ...prev, [r.id]: e.target.checked }))} style={{ width: 18, height: 18, flexShrink: 0 }} />
+      <span style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 12.5, fontWeight: 600, flexShrink: 0 }}>#{r.ticketNo}</span>
+      <span style={{ fontSize: 11, color: "#7A7468", flexShrink: 0 }}>{new Date(r.timestamp).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { day: "numeric", month: "short" })}</span>
+      <span style={{ fontSize: 12, color: "#4A453D", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(r.items || []).map((it) => `${it.qty}× ${it.name}`).join(", ")}</span>
+      <span style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 12.5, flexShrink: 0 }}>{money(amount)}</span>
+    </label>
+  );
+  const settleListControls = (rows) => {
+    const n = rows.filter((r) => settlePick[r.id]).length;
+    return (
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, marginBottom: 4 }}>
+        <span style={{ color: "#7A7468" }}>{t("settleSelectedCount", { n, m: rows.length })}</span>
+        <span style={{ display: "flex", gap: 10 }}>
+          <button onClick={() => setSettlePick(Object.fromEntries(rows.map((r) => [r.id, true])))} style={{ border: "none", background: "none", color: theme.primary, fontSize: 12, cursor: "pointer", padding: 0 }}>{t("settleSelectAll")}</button>
+          <button onClick={() => setSettlePick({})} style={{ border: "none", background: "none", color: theme.primary, fontSize: 12, cursor: "pointer", padding: 0 }}>{t("settleSelectNone")}</button>
+        </span>
+      </div>
+    );
+  };
+
+  // Delivery tab: the report for one or more delivery employees. It is the Delivery cash reconciliation of the
+  // Shift tab put on paper — the same unsettled orders, the same cash collected and rider share — so the two
+  // can never disagree. The order amount is everything the client was charged except the delivery fee.
+  const riderReportRiders = deliveryReconciliation;
+  const riderReportSelected = riderReportIds === null ? riderReportRiders.slice(0, 1) : riderReportRiders.filter((p) => riderReportIds.includes(p.id));
+  const riderReportRowsOf = (p) =>
+    [...p.orderList]
+      .sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0))
+      .map((r) => {
+        const fee = Number(r.deliveryFee) || 0;
+        return { r, fee, amount: round2(r.total - fee), method: receiptMethodOf(r) === "split" ? t("payment_split") : t(`payment_${receiptMethodOf(r)}`) };
+      });
+  const riderReportOrdersTotalOf = (rows) => round2(rows.reduce((s, x) => s + x.amount, 0));
+  const riderReportFeesTotalOf = (rows) => round2(rows.reduce((s, x) => s + x.fee, 0));
+  const riderReportPrintable = riderReportSelected.filter((p) => p.orders > 0);
+  const printRiderReportFor = (riders) => {
+    if (riders.length === 0) return;
+    const locale = isRtl ? "ar-EG" : "en-US";
+    const stamp = (iso) => new Date(iso).toLocaleString(locale, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+    const line = (label, value, opts = {}) => `<div class="row" style="font-size:${opts.size || 12}px;${opts.bold ? "font-weight:700;" : ""}margin-top:${opts.top ?? 3}px;"><span>${escapeHtml(label)}</span><span>${value}</span></div>`;
+    const printedAt = t("riderReportPrintedAt", { time: new Date().toLocaleString(locale, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) });
+    const section = (p, first) => {
+      const rows = riderReportRowsOf(p);
+      const orderBlocks = rows
+        .map(({ r, fee, amount, method }, i) => `
+      <div style="border:1px solid #000;border-radius:5px;padding:6px 8px;margin-top:8px;page-break-inside:avoid;">
+        <div class="row" style="font-size:10.5px;color:#444;"><span>${i + 1} &middot; ${escapeHtml(t("ticketNumber", { n: r.ticketNo }))}</span><span>${escapeHtml(stamp(r.timestamp))}</span></div>
+        <div style="font-size:13px;font-weight:700;margin-top:4px;">${escapeHtml(r.customer?.name || t("riderReportNoName"))}</div>
+        ${r.customer?.phone ? `<div style="font-size:11px;">${escapeHtml(r.customer.phone)}</div>` : ""}
+        ${r.customer?.address ? `<div style="font-size:11px;margin-top:2px;">${escapeHtml(r.customer.address)}</div>` : ""}
+        <div style="border-top:1px dashed #000;margin-top:6px;padding-top:5px;">
+          <div class="row" style="font-size:12px;"><span>${escapeHtml(t("riderReportOrderAmount"))}</span><span style="font-weight:700;">${money(amount)}</span></div>
+          <div class="row" style="font-size:11px;margin-top:2px;"><span>${escapeHtml(t("deliveryFeeLineLabel"))}</span><span>${money(fee)}</span></div>
+          <div class="row" style="font-size:10.5px;color:#444;margin-top:2px;"><span>${escapeHtml(t("riderReportPaidWith"))}</span><span>${escapeHtml(method)}</span></div>
+        </div>
+      </div>`)
+        .join("");
+      const owedLabel = p.net < 0 ? t("deliveryReconciliationOwedToAgent") : t("deliveryReconciliationOwed");
+      return `
+      <div${first ? "" : ` style="page-break-before:always;"`}>
+        <div class="center">
+          ${brandHeaderHtml()}
+          <div style="font-size:13px;font-weight:700;letter-spacing:0.5px;margin-top:8px;">${escapeHtml(t("riderReportTitle"))}</div>
+          <div style="font-size:15px;font-weight:700;margin-top:4px;">${escapeHtml(p.name)}</div>
+          <div style="font-size:11px;margin-top:2px;">${escapeHtml(t("riderReportUnsettledNote"))}</div>
+        </div>
+        <div class="dashed" style="margin-top:10px;">
+          ${line(t("riderReportOrders"), String(rows.length), { top: 0 })}
+          ${line(t("riderReportOrdersTotal"), money(riderReportOrdersTotalOf(rows)))}
+          ${line(t("riderReportFeesTotal"), money(riderReportFeesTotalOf(rows)))}
+          <div style="border-top:1px dashed #000;margin-top:6px;"></div>
+          ${line(t("deliveryReconciliationCash"), money(p.cashTotal), { top: 6 })}
+          ${line(t("riderReportRiderShare"), `-${money(p.feesTotal)}`)}
+          <div style="border-top:1px solid #000;margin-top:6px;"></div>
+          ${line(owedLabel, money(Math.abs(p.net)), { bold: true, size: 14, top: 6 })}
+        </div>
+        ${orderBlocks}
+        <div style="margin-top:26px;font-size:11px;">
+          <div style="border-top:1px solid #000;padding-top:3px;">${escapeHtml(t("riderReportSignature"))}</div>
+          <div style="border-top:1px solid #000;padding-top:3px;margin-top:22px;">${escapeHtml(t("riderReportReceivedBy"))}</div>
+        </div>
+        <div class="center" style="font-size:10px;margin-top:14px;color:#444;">${escapeHtml(printedAt)}</div>
+      </div>`;
+    };
+    const body = riders.map((p, i) => section(p, i === 0)).join("");
+    printViaHiddenFrame(`${t("riderReportTitle")} — ${riders.map((p) => p.name).join(", ")}`, body, isRtl);
+  };
+  const printRiderReport = () => printRiderReportFor(riderReportPrintable);
+
+  // Dashboard: the delivery report for the period being shown — every delivery order, per agent and per day.
+  const dlvRepFull = ledger.deliveryReport(dashboardFirstDay, dashboardLastDay, agentFeeShare);
+  const dlvRepAgents = dlvRepFull ? dlvRepFull.agents : [];
+  const dlvRepShown = dlvRepAgent === "all" ? dlvRepAgents : dlvRepAgents.filter((a) => a.id === dlvRepAgent);
+  const dlvRepName = (a) => a.name || t("dlvRepNoAgent");
+  const printDeliveryReport = () => {
+    if (!dlvRepFull || dlvRepShown.length === 0) return;
+    const locale = isRtl ? "ar-EG" : "en-US";
+    const dayText = (d) => formatShortDate(d, isRtl);
+    // Receipt paper is narrow, so every day is a small stacked block (label on one side, amount on the other)
+    // instead of the seven-column table of the screen, which the printer cut off at the edge.
+    const line = (label, value, opts = {}) => `<div class="row" style="font-size:${opts.size || 11.5}px;${opts.bold ? "font-weight:700;" : ""}margin-top:${opts.top ?? 2}px;"><span>${escapeHtml(label)}</span><span>${value}</span></div>`;
+    const block = (title, x, isTotal) => `
+        <div style="${isTotal ? "border-top:2px solid #000;margin-top:12px;padding-top:6px;" : "border-top:1px dashed #000;margin-top:8px;padding-top:6px;"}page-break-inside:avoid;">
+          <div class="row" style="font-size:${isTotal ? 13 : 12}px;font-weight:700;"><span>${escapeHtml(title)}</span><span>${escapeHtml(t("dlvRepOrders"))}: ${x.orders}</span></div>
+          ${line(t("dlvRepOrderAmount"), money(x.orderAmount))}
+          ${line(t("dlvRepFees"), money(x.fees))}
+          ${line(t("dlvRepAgentShare"), money(x.riderShare))}
+          ${line(t("dlvRepRestShare"), money(x.restaurantShare))}
+          ${line(t("dlvRepCash"), money(x.cash), { bold: true, size: 12.5, top: 3 })}
+        </div>`;
+    const body = dlvRepShown
+      .map((a, i) => `
+      <div${i === 0 ? "" : ` style="page-break-before:always;"`}>
+        <div class="center">
+          ${brandHeaderHtml()}
+          <div style="font-size:13px;font-weight:700;margin-top:8px;">${escapeHtml(t("dlvRepTitle"))}</div>
+          <div style="font-size:15px;font-weight:700;margin-top:4px;">${escapeHtml(dlvRepName(a))}</div>
+          <div style="font-size:11px;margin-top:2px;">${escapeHtml(t("dlvRepPeriod", { from: dayText(dlvRepFull.startDay), to: dayText(dlvRepFull.endDay) }))}</div>
+        </div>
+        <div style="margin-top:6px;">
+          ${a.days.map((d) => block(dayText(d.day), d, false)).join("")}
+          ${block(t("dlvRepTotal"), a, true)}
+        </div>
+        <div class="center" style="font-size:10px;margin-top:14px;color:#444;">${escapeHtml(t("dlvRepPrinted", { time: new Date().toLocaleString(locale, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) }))}</div>
+      </div>`)
+      .join("");
+    printViaHiddenFrame(`${t("dlvRepTitle")}`, body, isRtl);
+  };
+
+  // Receipts tab: the receipt whose details are open, always read fresh from the loaded months.
+  const receiptDetail = receiptDetailId ? Object.values(receiptsByMonth).flat().find((x) => x.id === receiptDetailId) || null : null;
 
   // --- Menu / category editor ---
   const addCategory = () => {
@@ -7430,18 +8519,78 @@ function POSPrototype({ tenantId }) {
     }
     setCategories((prev) => [...prev, name]);
     setMenu((prev) => ({ ...prev, [name]: [] }));
+    // A price list that already had its own category of this name now simply shares the main one.
+    setMenuProfiles((prev) => prev.map((p) => ((p.extraCategories || []).includes(name) ? { ...p, extraCategories: p.extraCategories.filter((c) => c !== name) } : p)));
     setNewCategoryName("");
+  };
+  const addMainCategory = () => {
+    const name = newMainName.trim();
+    if (!name) {
+      flashNotice(t("notice_giveCategoryName"));
+      return;
+    }
+    if (mainCategories.some((m) => m.name === name)) {
+      flashNotice(t("notice_mainCategoryExists"));
+      return;
+    }
+    setMainCategories((prev) => [...prev, { id: newId("main"), name, subs: [] }]);
+    setNewMainName("");
+  };
+  const renameMainCategory = (id, name) => setMainCategories((prev) => prev.map((m) => (m.id === id ? { ...m, name } : m)));
+  const deleteMainCategory = (main) => {
+    setConfirmDialog({
+      message: t("confirm_deleteMainCategory", { name: main.name }),
+      onConfirm: () => {
+        setMainCategories((prev) => prev.filter((m) => m.id !== main.id));
+        if (activeMain === main.id) setActiveMain(null);
+      },
+    });
+  };
+  // Moves a category one place earlier (-1) or later (+1); the Order screen tabs and the customer menus follow.
+  const moveCategory = (cat, dir) => {
+    setCategories((prev) => {
+      const i = prev.indexOf(cat);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+  const moveProfileCategory = (profileId, cat, dir) => {
+    setMenuProfiles((prev) =>
+      prev.map((p) => {
+        if (p.id !== profileId) return p;
+        const list = [...(p.extraCategories || [])];
+        const i = list.indexOf(cat);
+        const j = i + dir;
+        if (i < 0 || j < 0 || j >= list.length) return p;
+        [list[i], list[j]] = [list[j], list[i]];
+        return { ...p, extraCategories: list };
+      })
+    );
   };
   const deleteCategory = (cat) => {
     setConfirmDialog({
       message: t("confirm_deleteCategory", { name: cat }),
       onConfirm: () => {
+        const removedIds = new Set((menu[cat] || []).map((it) => it.id));
+        setMainCategories((prev) => removeSubEverywhere(prev, cat));
         setCategories((prev) => prev.filter((c) => c !== cat));
         setMenu((prev) => {
           const next = { ...prev };
           delete next[cat];
           return next;
         });
+        // The category's dishes are gone from every price list too: their prices, removals and the extras added under it.
+        setMenuProfiles((prev) =>
+          prev.map((p) => {
+            const extraItems = { ...(p.extraItems || {}) };
+            delete extraItems[cat];
+            const priceOverrides = Object.fromEntries(Object.entries(p.priceOverrides || {}).filter(([id]) => !removedIds.has(id)));
+            return { ...p, extraItems, priceOverrides, hiddenItems: (p.hiddenItems || []).filter((id) => !removedIds.has(id)) };
+          })
+        );
         if (active === cat) setActive(categories.find((c) => c !== cat) || "");
       },
     });
@@ -7482,14 +8631,15 @@ function POSPrototype({ tenantId }) {
   };
 
   const addRecipeLine = () => {
-    if (!recipeDraftIng || !recipeDraftQty || Number(recipeDraftQty) <= 0) {
+    const draftQty = parseRecipeQty(recipeDraftQty);
+    if (!recipeDraftIng || !(draftQty > 0)) {
       flashNotice("Pick an ingredient and a quantity used per serving");
       return;
     }
     const addedId = recipeDraftIng;
     setItemEditor((prev) => {
       const withoutDup = prev.recipe.filter((r) => r.ingredientId !== addedId);
-      return { ...prev, recipe: [...withoutDup, { ingredientId: addedId, qty: Number(recipeDraftQty) }] };
+      return { ...prev, recipe: [...withoutDup, { ingredientId: addedId, qty: draftQty }] };
     });
     setRecipeQtyDrafts((d) => {
       const { [addedId]: _gone, ...rest } = d;
@@ -7503,7 +8653,7 @@ function POSPrototype({ tenantId }) {
   // half-typed value like "0." survives; only a valid number above zero is applied to the recipe.
   const editRecipeLineQty = (ingredientId, raw) => {
     setRecipeQtyDrafts((d) => ({ ...d, [ingredientId]: raw }));
-    const n = parseFloat(raw);
+    const n = parseRecipeQty(raw);
     if (n > 0) setItemEditor((prev) => ({ ...prev, recipe: prev.recipe.map((r) => (r.ingredientId === ingredientId ? { ...r, qty: n } : r)) }));
   };
   const finishRecipeLineQtyEdit = (ingredientId) => {
@@ -7596,9 +8746,58 @@ function POSPrototype({ tenantId }) {
           );
         } else {
           setMenu((prev) => ({ ...prev, [category]: prev[category].filter((it) => it.id !== item.id) }));
+          // ...and out of every price list's own prices and removals.
+          setMenuProfiles((prev) =>
+            prev.map((p) => {
+              const priceOverrides = { ...(p.priceOverrides || {}) };
+              delete priceOverrides[item.id];
+              return { ...p, priceOverrides, hiddenItems: (p.hiddenItems || []).filter((id) => id !== item.id) };
+            })
+          );
         }
       },
     });
+  };
+  // ---- A price list's own categories, and removing a main-menu dish from one list ----
+  const addProfileCategory = (profileId) => {
+    const name = (profileCategoryDraft[profileId] || "").trim();
+    if (!name) {
+      flashNotice(t("notice_giveCategoryName"));
+      return;
+    }
+    const profile = menuProfiles.find((p) => p.id === profileId);
+    if (!profile) return;
+    if (categories.includes(name) || (profile.extraCategories || []).includes(name)) {
+      flashNotice(t("notice_profileCategoryExists"));
+      return;
+    }
+    setMenuProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, extraCategories: [...(p.extraCategories || []), name], extraItems: { ...(p.extraItems || {}), [name]: [] } } : p)));
+    setProfileCategoryDraft((d) => ({ ...d, [profileId]: "" }));
+    flashNotice(t("notice_profileCategoryAdded", { name }));
+  };
+  const deleteProfileCategory = (profileId, cat) => {
+    setConfirmDialog({
+      message: t("confirm_deleteProfileCategory", { name: cat }),
+      onConfirm: () => {
+        setMenuProfiles((prev) =>
+          prev.map((p) => {
+            if (p.id !== profileId) return p;
+            const extraItems = { ...(p.extraItems || {}) };
+            delete extraItems[cat];
+            return { ...p, extraCategories: (p.extraCategories || []).filter((c) => c !== cat), extraItems };
+          })
+        );
+      },
+    });
+  };
+  const removeItemFromProfile = (profileId, item) => {
+    setConfirmDialog({
+      message: t("confirm_removeFromProfile", { name: item.name }),
+      onConfirm: () => setMenuProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, hiddenItems: [...new Set([...(p.hiddenItems || []), item.id])] } : p))),
+    });
+  };
+  const restoreItemInProfile = (profileId, item) => {
+    setMenuProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, hiddenItems: (p.hiddenItems || []).filter((id) => id !== item.id) } : p)));
   };
   // Menu profiles CRUD — see the effectiveMenu/findMenuItemAnywhere note above for how a profile
   // relates to the base menu.
@@ -7608,11 +8807,35 @@ function POSPrototype({ tenantId }) {
       flashNotice(t("notice_giveProfileName"));
       return;
     }
-    const profile = { id: newId("profile"), name, priceOverrides: {}, extraItems: {} };
+    let profile = { id: newId("profile"), name, priceOverrides: {}, extraItems: {} };
+    let copiedFrom = null;
+    if (newProfileSource === "main") {
+      // Every main-menu dish gets its current price written into the list, so the list keeps those prices even if
+      // the main menu's change later (edit any of them in the list to suit).
+      profile = { ...profile, priceOverrides: Object.fromEntries(Object.values(menu).flat().map((it) => [it.id, it.price])) };
+      copiedFrom = t("profileCopyMainName");
+    } else if (newProfileSource) {
+      const source = menuProfiles.find((p) => p.id === newProfileSource);
+      if (source) {
+        // A full copy: prices, dishes removed from it, its own categories and its own dishes (with fresh ids and the
+        // same recipes — they are separate dishes from then on).
+        profile = {
+          ...profile,
+          priceOverrides: { ...(source.priceOverrides || {}) },
+          hiddenItems: [...(source.hiddenItems || [])],
+          extraCategories: [...(source.extraCategories || [])],
+          extraItems: Object.fromEntries(
+            Object.entries(source.extraItems || {}).map(([cat, items]) => [cat, (items || []).map((it) => ({ ...it, id: newId("item"), recipe: (it.recipe || []).map((r) => ({ ...r })), badges: [...(it.badges || [])] }))])
+          ),
+        };
+        copiedFrom = `"${source.name}"`;
+      }
+    }
     setMenuProfiles((prev) => [...prev, profile]);
     setNewProfileName("");
+    setNewProfileSource("");
     setManagingProfileId(profile.id);
-    flashNotice(t("notice_profileCreated", { name }));
+    flashNotice(copiedFrom ? t("notice_profileCreatedCopy", { name, source: copiedFrom }) : t("notice_profileCreated", { name }));
   };
   const renameMenuProfile = (profileId, name) => {
     setMenuProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, name } : p)));
@@ -7916,6 +9139,7 @@ function POSPrototype({ tenantId }) {
   // vs shared "staff roster"), so wait for both before deciding what to show — otherwise a
   // logged-in employee could flash the login screen for a moment while the roster is still
   // loading in behind them.
+  if (!bootCache && !(brandingLoaded && uiThemeLoaded && langLoaded)) return <BootLoader />;
   if (!currentEmployeeLoaded || !employeesLoaded) {
     return (
       <div data-theme={uiTheme} dir={isRtl ? "rtl" : "ltr"} lang={lang} style={{ fontFamily: isRtl ? "Tajawal, Inter, sans-serif" : "Inter, sans-serif", background: "var(--bg)", minHeight: "100vh", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -8270,8 +9494,25 @@ function POSPrototype({ tenantId }) {
       {view === "order" && (
         <div style={{ display: "flex", alignItems: "flex-start", flexDirection: isCompact ? "column" : "row" }}>
           <div style={{ flex: 1, width: isCompact ? "100%" : undefined, padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px" }}>
+            {mainTabs.length > 0 && (
+              <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                {mainTabs.map((mt) => {
+                  const on = activeMainTab && activeMainTab.id === mt.id;
+                  return (
+                    <button
+                      key={mt.id}
+                      onClick={() => selectMain(mt)}
+                      className="tab-pill"
+                      style={{ padding: "10px 22px", borderRadius: 10, border: `1px solid ${on ? theme.secondary : "var(--border)"}`, background: on ? "rgba(176,141,87,0.18)" : "transparent", color: on ? theme.secondaryLight : "var(--text-muted)", fontSize: 14.5, fontWeight: 600, cursor: "pointer" }}
+                    >
+                      {mt.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
-              {categories.map((cat) => (
+              {visibleSubs.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setActive(cat)}
@@ -8301,7 +9542,7 @@ function POSPrototype({ tenantId }) {
                   <button
                     key={item.id}
                     onClick={() => addItem(item)}
-                    disabled={out}
+                    aria-disabled={out}
                     className="menu-card"
                     style={{
                       textAlign: "left",
@@ -8337,7 +9578,7 @@ function POSPrototype({ tenantId }) {
           <div style={{ width: isCompact ? "100%" : 360, padding: isCompact ? (isMobile ? "0 14px 16px" : "0 20px 20px") : "28px 28px 28px 0", flexShrink: 0, boxSizing: "border-box" }}>
             <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, marginBottom: 2 }}>
               <button
-                onClick={() => switchTable(null)}
+                onClick={() => switchTable(null, { offerMove: true })}
                 style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === null ? theme.secondary : "var(--border)"}`, background: activeTableId === null ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === null ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === null ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap", position: "relative" }}
               >
                 {t("takeawayLabel")}
@@ -8345,7 +9586,7 @@ function POSPrototype({ tenantId }) {
               </button>
               {hasFeature("deliveryZones") && (
                 <button
-                  onClick={() => switchTable("delivery")}
+                  onClick={() => switchTable("delivery", { offerMove: true })}
                   style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === "delivery" ? theme.secondary : "var(--border)"}`, background: activeTableId === "delivery" ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === "delivery" ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === "delivery" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
                 >
                   {t("deliveryLabel")}
@@ -8356,7 +9597,7 @@ function POSPrototype({ tenantId }) {
                 tableIds.map((id) => (
                   <button
                     key={id}
-                    onClick={() => switchTable(id)}
+                    onClick={() => switchTable(id, { offerMove: true })}
                     style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === id ? theme.secondary : "var(--border)"}`, background: activeTableId === id ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === id ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === id ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
                   >
                     {tableLabel(id)}
@@ -8367,7 +9608,7 @@ function POSPrototype({ tenantId }) {
                 // No individual table tracking on this package — just one generic "Dine In"
                 // bucket alongside Takeaway/Delivery, instead of a numbered-table list.
                 <button
-                  onClick={() => switchTable("dine-in")}
+                  onClick={() => switchTable("dine-in", { offerMove: true })}
                   style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, border: `1px solid ${activeTableId === "dine-in" ? theme.secondary : "var(--border)"}`, background: activeTableId === "dine-in" ? "rgba(176,141,87,0.18)" : "transparent", color: activeTableId === "dine-in" ? theme.secondaryLight : "var(--text-muted)", fontSize: 11.5, fontWeight: activeTableId === "dine-in" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}
                 >
                   {t("dineInLabel")}
@@ -8491,7 +9732,24 @@ function POSPrototype({ tenantId }) {
               </div>
               )}
 
-              {cart.length > 0 && unpaidInvoicesThisMonth.length > 0 && (
+              {(() => {
+                if (!addTarget) return null;
+                return (
+                  <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12, fontFamily: "Inter, sans-serif" }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 8 }}>{t("addingToInvoiceBanner", { n: addTarget.ticketNo, table: tableLabel(activeTableId), total: money(addTarget.total) })}</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        disabled={cart.length === 0 || mergingIntoInvoice}
+                        onClick={() => addCartToUnpaidInvoice(addTarget.id)}
+                        style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: cart.length === 0 || mergingIntoInvoice ? "not-allowed" : "pointer", opacity: cart.length === 0 || mergingIntoInvoice ? 0.5 : 1 }}
+                      >{t("addToThisInvoice", { n: addTarget.ticketNo })}</button>
+                      <button onClick={() => setAddTargetId(null)} style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("cancel")}</button>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {!addTarget && cart.length > 0 && unpaidInvoicesThisMonth.length > 0 && (
                 <div style={{ borderTop: `1.5px dashed ${COLORS.line}`, marginTop: 6, paddingTop: 12 }}>
                   <button onClick={() => setAddToInvoiceOpen(true)} style={{ fontSize: 11.5, color: theme.primary, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>{t("addToExistingInvoice")}</button>
                 </div>
@@ -8522,6 +9780,7 @@ function POSPrototype({ tenantId }) {
               </div>
             </div>
 
+            {!addTarget && (<>
             {hasFeature("teamTracking") && dutyRoster.length > 0 && (
               <div style={{ marginTop: 14 }}>
                 <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("assignedToLabel")}</div>
@@ -8615,23 +9874,35 @@ function POSPrototype({ tenantId }) {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>
-              {PAYMENT_METHODS.map((m) => (
-                <button key={m.id} onClick={() => setPaymentMethod(m.id)} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === m.id ? theme.secondary : "var(--border)"}`, background: paymentMethod === m.id ? "#3A2E22" : "transparent", color: paymentMethod === m.id ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
+            {listAppMethod && (
+              <div style={{ marginTop: 14, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("listPaysVia", { list: activeMenuProfileObj.name, app: t(`payment_${listAppMethod}`) })}</div>
+            )}
+            <div style={{ display: "flex", gap: 6, marginTop: listAppMethod ? 6 : 14, flexWrap: "wrap" }}>
+              {enabledMethods.filter((m) => !listAppMethod || !m.platform).map((m) => (
+                <button key={m.id} onClick={() => { setPaymentMethod(m.id); if (isLaterMethod(m.id)) setPaidNow(true); }} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === m.id ? theme.secondary : "var(--border)"}`, background: paymentMethod === m.id ? "#3A2E22" : "transparent", color: paymentMethod === m.id ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
                   {t(`payment_${m.id}`)}
                 </button>
               ))}
-              <button onClick={() => { setPaymentMethod("split"); setPaidNow(true); }} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === "split" ? theme.secondary : "var(--border)"}`, background: paymentMethod === "split" ? "#3A2E22" : "transparent", color: paymentMethod === "split" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
+              {!listAppMethod && <button onClick={() => { setPaymentMethod("split"); setPaidNow(true); }} className="pay-pill" style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${paymentMethod === "split" ? theme.secondary : "var(--border)"}`, background: paymentMethod === "split" ? "#3A2E22" : "transparent", color: paymentMethod === "split" ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
                 {t("splitPaymentOption")}
-              </button>
+              </button>}
             </div>
 
+            {!listAppMethod && isPlatformMethod(paymentMethod) && (
+              <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("appPaidByLabel", { app: t(`payment_${paymentMethod}`) })}</span>
+                {[["cash", t("appPaidByCash")], ["visa", t("appPaidByVisa")]].map(([k, label]) => (
+                  <button key={k} onClick={() => setAppPayment(appPayment === k ? "" : k)} className="pay-pill" style={{ padding: "6px 14px", borderRadius: 7, border: `1px solid ${appPayment === k ? theme.secondary : "var(--border)"}`, background: appPayment === k ? "#3A2E22" : "transparent", color: appPayment === k ? theme.secondaryLight : "var(--text-muted)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>{label}</button>
+                ))}
+              </div>
+            )}
+
             {paymentMethod === "split" && (() => {
-              const splitEntered = PAYMENT_METHODS.reduce((s, m) => s + (Number(splitAmounts[m.id]) || 0), 0);
+              const splitEntered = allDirectMethods.reduce((s, m) => s + (Number(splitAmounts[m.id]) || 0), 0);
               const splitRemaining = Math.round((total - splitEntered) * 100) / 100;
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: 10 }}>
-                  {PAYMENT_METHODS.map((m) => (
+                  {enabledDirectMethods.map((m) => (
                     <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                       <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t(`payment_${m.id}`)}</span>
                       <input
@@ -8651,7 +9922,7 @@ function POSPrototype({ tenantId }) {
               );
             })()}
 
-            {paymentMethod !== "split" && (
+            {!listAppMethod && paymentMethod !== "split" && !isLaterMethod(paymentMethod) && (
               <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                 <button onClick={() => setPaidNow(true)} className="pay-pill" style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${paidNow ? "#3F5B45" : "var(--border)"}`, background: paidNow ? "#22301F" : "transparent", color: paidNow ? "#9FCB8E" : "var(--text-muted)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
                   {t("paidNowOption")}
@@ -8662,20 +9933,17 @@ function POSPrototype({ tenantId }) {
               </div>
             )}
 
-            <button disabled={cart.length === 0} onClick={printKitchenTicketFromCart} title={t("kitchenTicketTooltip")} style={{ width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: cart.length === 0 ? "#5A5F6A" : "var(--text-muted)", fontSize: 12.5, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
-              {t("kitchenTicketButton")}
-            </button>
+            {drawerMode !== "off" && !listAppMethod && (
+              <button onClick={() => openCashDrawer(false)} title={t("drawerButtonTooltip")} style={{ width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>
+                {t("drawerButton")}
+              </button>
+            )}
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-              <button disabled={cart.length === 0} onClick={printOrderReceipt} title={t("printReceiptTooltip")} style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "var(--border)" : theme.secondary}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : theme.secondaryLight, fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
-                {t("printReceipt")}
-              </button>
-              <button disabled={cart.length === 0} onClick={downloadOrderReceipt} title={t("downloadReceiptTooltip")} style={{ padding: "13px 16px", borderRadius: 8, border: `1px solid ${cart.length === 0 ? "var(--border)" : "var(--border)"}`, background: "transparent", color: cart.length === 0 ? "#5A5F6A" : "var(--text-muted)", fontSize: 14, fontWeight: 500, cursor: cart.length === 0 ? "not-allowed" : "pointer", opacity: cart.length === 0 ? 0.5 : 1 }}>
-                {t("download")}
-              </button>
               <button disabled={cart.length === 0 || savingOrder} onClick={saveOrder} className="save-btn" style={{ flex: 1, padding: "13px 0", borderRadius: 8, border: "none", background: cart.length === 0 || savingOrder ? "#4A2C33" : paidNow ? theme.primary : "#8A6A2E", color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: cart.length === 0 || savingOrder ? "not-allowed" : "pointer", opacity: cart.length === 0 || savingOrder ? 0.6 : 1 }}>
-                {savingOrder ? t("saved") : paidNow ? t("saveOrder") : t("saveOrderUnpaid")}
+                {savingOrder ? t("saved") : paidNow || listAppMethod ? t("saveOrder") : t("saveOrderUnpaid")}
               </button>
             </div>
+            </>)}
           </div>
         </div>
       )}
@@ -8694,7 +9962,7 @@ function POSPrototype({ tenantId }) {
                   style={{ textAlign: isRtl ? "right" : "left", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", cursor: mergingIntoInvoice ? "not-allowed" : "pointer", opacity: mergingIntoInvoice ? 0.6 : 1 }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-                    <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{t("ticketHash", { n: r.ticketNo })}{r.table ? ` · ${r.table}` : ""}</span>
+                    <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{t("ticketHash", { n: r.ticketNo })}{r.table ? ` · ${r.table}` : ""} · {new Date(r.timestamp).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { day: "numeric", month: "short" })}</span>
                     <span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(r.total)}</span>
                   </div>
                   <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>{r.items.map((it) => `${it.qty}× ${it.name}`).join(", ")}</div>
@@ -8732,12 +10000,57 @@ function POSPrototype({ tenantId }) {
           </div>
 
           <div style={{ marginBottom: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 18 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 3 }}>{t("mainCategoriesTitle")}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14, lineHeight: 1.5 }}>{t("mainCategoriesSubtitle")}</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: mainCategories.length ? 14 : 0, flexWrap: "wrap" }}>
+              <input type="text" value={newMainName} onChange={(e) => setNewMainName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addMainCategory(); }} placeholder={t("newMainPlaceholder")} className="field" style={{ flex: 1, minWidth: 180 }} />
+              <button onClick={addMainCategory} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}>{t("addMainCategory")}</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {mainCategories.map((m, mi) => (
+                <div key={m.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <input type="text" value={m.name} onChange={(e) => renameMainCategory(m.id, e.target.value)} className="field" style={{ flex: 1, minWidth: 140, fontWeight: 500 }} />
+                    <button disabled={mi === 0} onClick={() => setMainCategories((prev) => moveMain(prev, m.id, -1))} title={t("moveCategoryUp")} aria-label={t("moveCategoryUp")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: mi === 0 ? "default" : "pointer", opacity: mi === 0 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▲</button>
+                    <button disabled={mi === mainCategories.length - 1} onClick={() => setMainCategories((prev) => moveMain(prev, m.id, 1))} title={t("moveCategoryDown")} aria-label={t("moveCategoryDown")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: mi === mainCategories.length - 1 ? "default" : "pointer", opacity: mi === mainCategories.length - 1 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▼</button>
+                    <button onClick={() => deleteMainCategory(m)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+                    {m.subs.filter((c) => categories.includes(c)).map((c) => (
+                      <span key={c} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "4px 6px 4px 10px", borderRadius: 999, background: "var(--surface)", border: "1px solid var(--border)" }}>
+                        {c}
+                        <button onClick={() => setMainCategories((prev) => removeSubFromMain(prev, m.id, c))} aria-label={t("remove")} style={{ background: "none", border: "none", color: "#E3A79C", cursor: "pointer", fontSize: 13, padding: "0 4px" }}>×</button>
+                      </span>
+                    ))}
+                    {categories.some((c) => !m.subs.includes(c)) && (
+                      <select value="" onChange={(e) => { if (e.target.value) setMainCategories((prev) => addSubToMain(prev, m.id, e.target.value)); }} className="field" style={{ fontSize: 12, padding: "5px 8px" }}>
+                        <option value="">{t("mainAddCategory")}</option>
+                        {categories.filter((c) => !m.subs.includes(c)).map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Fraunces, serif", marginBottom: 3 }}>{t("priceListsTitle")}</div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14 }}>{t("priceListsSubtitle")}</div>
 
-            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-              <input type="text" value={newProfileName} onChange={(e) => setNewProfileName(e.target.value)} placeholder={t("newProfileNamePlaceholder")} className="field" style={{ flex: 1 }} />
+            <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+              <input type="text" value={newProfileName} onChange={(e) => setNewProfileName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") createMenuProfile(); }} placeholder={t("newProfileNamePlaceholder")} className="field" style={{ flex: 1, minWidth: 180 }} />
               <button onClick={createMenuProfile} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("createProfile")}</button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("profileStartFromLabel")}</span>
+              <select value={newProfileSource} onChange={(e) => setNewProfileSource(e.target.value)} className="field" style={{ flex: 1, minWidth: 200 }}>
+                <option value="">{t("profileStartEmpty")}</option>
+                <option value="main">{t("profileStartMain")}</option>
+                {menuProfiles.map((p) => (
+                  <option key={p.id} value={p.id}>{t("profileStartCopyOf", { name: p.name })}</option>
+                ))}
+              </select>
             </div>
 
             {menuProfiles.length === 0 && <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("noProfilesYet")}</div>}
@@ -8761,48 +10074,87 @@ function POSPrototype({ tenantId }) {
                     </div>
                   </div>
 
+                  <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 8 }}>{t("profilePaidThrough", { app: t(`payment_${profileMethodId(p)}`) })}</div>
+
                   {managingProfileId === p.id && (
                     <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
-                      {categories.map((cat) => (
+                      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+                        <input type="text" value={profileCategoryDraft[p.id] || ""} onChange={(e) => setProfileCategoryDraft((d) => ({ ...d, [p.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === "Enter") addProfileCategory(p.id); }} placeholder={t("profileAddCategoryPlaceholder")} className="field" style={{ flex: 1 }} />
+                        <button onClick={() => addProfileCategory(p.id)} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}>{t("profileAddCategory")}</button>
+                      </div>
+                      {[...categories, ...(p.extraCategories || []).filter((c) => !categories.includes(c))].map((cat) => {
+                        const ownCategory = !categories.includes(cat);
+                        return (
                         <div key={cat} style={{ marginBottom: 16 }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{cat}</div>
-                            <button onClick={() => openNewItem(cat, p.id)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("addExtraItem")}</button>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                              {cat}
+                              {ownCategory && <span style={{ marginInlineStart: 8, fontSize: 10, fontWeight: 500, textTransform: "none", letterSpacing: 0, color: theme.secondaryLight, border: `1px solid ${theme.secondary}`, borderRadius: 999, padding: "1px 7px" }}>{t("profileOwnCategoryBadge")}</span>}
+                            </div>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button onClick={() => openNewItem(cat, p.id)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("addExtraItem")}</button>
+                              {ownCategory && (
+                                <>
+                                  <button disabled={(p.extraCategories || []).indexOf(cat) === 0} onClick={() => moveProfileCategory(p.id, cat, -1)} title={t("moveCategoryUp")} aria-label={t("moveCategoryUp")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", opacity: (p.extraCategories || []).indexOf(cat) === 0 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▲</button>
+                                  <button disabled={(p.extraCategories || []).indexOf(cat) === (p.extraCategories || []).length - 1} onClick={() => moveProfileCategory(p.id, cat, 1)} title={t("moveCategoryDown")} aria-label={t("moveCategoryDown")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", opacity: (p.extraCategories || []).indexOf(cat) === (p.extraCategories || []).length - 1 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▼</button>
+                                </>
+                              )}
+                              {ownCategory && <button onClick={() => deleteProfileCategory(p.id, cat)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("profileDeleteCategory")}</button>}
+                            </div>
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                            {(menu[cat] || []).map((item) => (
-                              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5 }}>
-                                <MenuThumb item={item} size={28} />
-                                <span style={{ flex: 1 }}>{item.name}</span>
-                                <span style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "IBM Plex Mono, monospace" }}>{t("baseLabel")} {money(item.price)}</span>
-                                <input
-                                  type="number"
-                                  value={p.priceOverrides[item.id] !== undefined ? p.priceOverrides[item.id] : ""}
-                                  onChange={(e) => setProfilePriceOverride(p.id, item.id, e.target.value)}
-                                  placeholder={String(item.price)}
-                                  className="field"
-                                  style={{ width: 80 }}
-                                />
-                              </div>
-                            ))}
+                            {(menu[cat] || []).map((item) => {
+                              const removed = (p.hiddenItems || []).includes(item.id);
+                              return (
+                                <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, opacity: removed ? 0.55 : 1, flexWrap: "wrap" }}>
+                                  <MenuThumb item={item} size={28} />
+                                  <span style={{ flex: 1, minWidth: 120 }}>
+                                    {item.name}
+                                    {removed && <span style={{ marginInlineStart: 8, fontSize: 10.5, color: "#E3A79C" }}>{t("profileItemRemovedBadge")}</span>}
+                                  </span>
+                                  <span style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "IBM Plex Mono, monospace" }}>{t("baseLabel")} {money(item.price)}</span>
+                                  {removed ? (
+                                    <button onClick={() => restoreItemInProfile(p.id, item)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("profileRestoreItem")}</button>
+                                  ) : (
+                                    <>
+                                      <input
+                                        type="number"
+                                        value={p.priceOverrides[item.id] !== undefined ? p.priceOverrides[item.id] : ""}
+                                        onChange={(e) => setProfilePriceOverride(p.id, item.id, e.target.value)}
+                                        placeholder={String(item.price)}
+                                        className="field"
+                                        style={{ width: 80 }}
+                                      />
+                                      <button onClick={() => removeItemFromProfile(p.id, item)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("profileRemoveItem")}</button>
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })}
                             {((p.extraItems || {})[cat] || []).map((item) => (
-                              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, background: "var(--surface)", borderRadius: 6, padding: "6px 8px" }}>
-                                <MenuThumb item={item} size={28} />
-                                <span style={{ flex: 1 }}>{item.name} <span style={{ fontSize: 10.5, color: theme.secondaryLight }}>{t("extraLabel")}</span></span>
-                                <span style={{ fontSize: 11.5, fontFamily: "IBM Plex Mono, monospace", color: theme.secondary }}>{money(item.price)}</span>
-                                <button
-                                  onClick={() => setItemManualOut(item, !manualOutOfStock[item.id])}
-                                  style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${manualOutOfStock[item.id] ? "#4E7A47" : "#7A4A42"}`, background: "transparent", color: manualOutOfStock[item.id] ? "#9FCB8E" : "#E3A79C", cursor: "pointer" }}
-                                >
-                                  {manualOutOfStock[item.id] ? t("markAvailable") : t("markOutOfStock")}
-                                </button>
-                                <button onClick={() => openEditItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
-                                <button onClick={() => deleteMenuItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
+                              <div key={item.id} style={{ fontSize: 12.5, background: "var(--surface)", borderRadius: 6, padding: "6px 8px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                                  <MenuThumb item={item} size={28} />
+                                  <span style={{ flex: 1, minWidth: 120 }}>{item.name} <span style={{ fontSize: 10.5, color: theme.secondaryLight }}>{t("extraLabel")}</span></span>
+                                  <span style={{ fontSize: 11.5, fontFamily: "IBM Plex Mono, monospace", color: theme.secondary }}>{money(item.price)}</span>
+                                  <button
+                                    onClick={() => setItemManualOut(item, !manualOutOfStock[item.id])}
+                                    style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${manualOutOfStock[item.id] ? "#4E7A47" : "#7A4A42"}`, background: "transparent", color: manualOutOfStock[item.id] ? "#9FCB8E" : "#E3A79C", cursor: "pointer" }}
+                                  >
+                                    {manualOutOfStock[item.id] ? t("markAvailable") : t("markOutOfStock")}
+                                  </button>
+                                  <button onClick={() => openEditItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("edit")}</button>
+                                  <button onClick={() => deleteMenuItem(cat, item, p.id)} style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("delete")}</button>
+                                </div>
+                                <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 5, paddingInlineStart: 38 }}>
+                                  {(item.recipe || []).length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtRecipeQty(r.qty, ingredients[r.ingredientId]?.unit)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
+                                </div>
                               </div>
                             ))}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -8813,13 +10165,36 @@ function POSPrototype({ tenantId }) {
           {categories.map((cat) => (
             <div key={cat} style={{ marginBottom: 26 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Fraunces, serif" }}>{cat}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Fraunces, serif" }}>{cat}</div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button disabled={categories.indexOf(cat) === 0} onClick={() => moveCategory(cat, -1)} title={t("moveCategoryUp")} aria-label={t("moveCategoryUp")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: categories.indexOf(cat) === 0 ? "default" : "pointer", opacity: categories.indexOf(cat) === 0 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▲</button>
+                    <button disabled={categories.indexOf(cat) === categories.length - 1} onClick={() => moveCategory(cat, 1)} title={t("moveCategoryDown")} aria-label={t("moveCategoryDown")} style={{ width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: categories.indexOf(cat) === categories.length - 1 ? "default" : "pointer", opacity: categories.indexOf(cat) === categories.length - 1 ? 0.35 : 1, fontSize: 11, padding: 0 }}>▼</button>
+                  </div>
+                </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => openNewItem(cat)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("addItem")}</button>
                   <button onClick={() => deleteCategory(cat)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.red}`, background: "transparent", color: "#E3A79C", cursor: "pointer" }}>{t("deleteCategory")}</button>
                 </div>
               </div>
 
+              {mainCategories.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+                  <span style={{ fontSize: 11.5, color: "var(--text-faint)" }}>{t("categoryUnderLabel")}</span>
+                  {mainCategories.filter((m) => m.subs.includes(cat)).map((m) => (
+                    <span key={m.id} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, padding: "3px 6px 3px 10px", borderRadius: 999, border: `1px solid ${theme.secondary}`, color: theme.secondaryLight }}>
+                      {m.name}
+                      <button onClick={() => setMainCategories((prev) => removeSubFromMain(prev, m.id, cat))} aria-label={t("remove")} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 13, padding: "0 3px" }}>×</button>
+                    </span>
+                  ))}
+                  {mainCategories.some((m) => !m.subs.includes(cat)) && (
+                    <select value="" onChange={(e) => { if (e.target.value) setMainCategories((prev) => addSubToMain(prev, e.target.value, cat)); }} className="field" style={{ fontSize: 11.5, padding: "3px 8px" }}>
+                      <option value="">{t("categoryAddToMain")}</option>
+                      {mainCategories.filter((m) => !m.subs.includes(cat)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  )}
+                </div>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {(menu[cat] || []).map((item) => (
                   <div key={item.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px" }}>
@@ -8833,7 +10208,7 @@ function POSPrototype({ tenantId }) {
                             <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5, padding: "2px 8px", borderRadius: 999, background: "#3A2A28", color: "#E3A79C", fontWeight: 500 }}>{t("manuallyOutBadge")}</span>
                           )}
                           <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 6 }}>
-                            {item.recipe.length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtQty(r.qty)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
+                            {item.recipe.length === 0 ? t("noRecipeSet") : item.recipe.map((r) => `${fmtRecipeQty(r.qty, ingredients[r.ingredientId]?.unit)}${ingredients[r.ingredientId]?.unit || ""} ${ingredients[r.ingredientId]?.name || "?"}`).join(", ")}
                           </div>
                         </div>
                       </div>
@@ -8927,10 +10302,9 @@ function POSPrototype({ tenantId }) {
                     <div key={r.ingredientId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, background: "var(--bg)", borderRadius: 6, padding: "7px 10px" }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          value={recipeQtyDrafts[r.ingredientId] ?? String(r.qty)}
+                          type="text"
+                          inputMode="decimal"
+                          value={recipeQtyDrafts[r.ingredientId] ?? fmtRecipeQty(r.qty, ingredients[r.ingredientId]?.unit)}
                           onChange={(e) => editRecipeLineQty(r.ingredientId, e.target.value)}
                           onBlur={() => finishRecipeLineQtyEdit(r.ingredientId)}
                           className="field"
@@ -8956,16 +10330,25 @@ function POSPrototype({ tenantId }) {
                   />
                   <input
                     ref={recipeQtyInputRef}
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={recipeDraftQty}
                     onChange={(e) => setRecipeDraftQty(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") addRecipeLine(); }}
                     placeholder={t("qtyPlaceholder")}
                     className="field"
-                    style={{ width: 70 }}
+                    style={{ width: 82 }}
                   />
                   <button onClick={addRecipeLine} style={{ padding: "9px 12px", borderRadius: 7, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer", fontSize: 12 }}>{t("add")}</button>
                 </div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>{t("recipeQtyHint")}</div>
+                {recipeDraftIng && isCountUnit(ingredients[recipeDraftIng]?.unit) && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                    {QUICK_FRACTIONS.map(([value, glyph]) => (
+                      <button key={glyph} onClick={() => setRecipeDraftQty(String(Math.round(value * 10000) / 10000))} style={{ padding: "5px 11px", borderRadius: 999, border: `1px solid ${Math.abs(parseRecipeQty(recipeDraftQty) - value) < 0.0006 ? theme.secondary : "var(--border)"}`, background: Math.abs(parseRecipeQty(recipeDraftQty) - value) < 0.0006 ? "rgba(176,141,87,0.18)" : "transparent", color: "var(--text-primary)", fontSize: 13, cursor: "pointer" }}>{glyph}</button>
+                    ))}
+                  </div>
+                )}
                 {recipeListOpen && !recipeDraftIng && (
                   <div style={{ marginTop: 6, maxHeight: 190, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 7, background: "var(--bg)" }}>
                     {recipeSearchMatches().length === 0 ? (
@@ -9094,7 +10477,7 @@ function POSPrototype({ tenantId }) {
             {newIngUnit === "custom" && (
               <input type="text" value={newIngUnitCustom} onChange={(e) => setNewIngUnitCustom(e.target.value)} placeholder={t("customUnitPlaceholder")} className="field" style={{ flex: 1, minWidth: 100 }} />
             )}
-            <input type="number" value={newIngStock} onChange={(e) => setNewIngStock(e.target.value)} placeholder={t("startingStockPlaceholder")} className="field" style={{ flex: 1, minWidth: 110 }} />
+            <input type="number" step="any" inputMode="decimal" value={newIngStock} onChange={(e) => setNewIngStock(e.target.value)} placeholder={t("startingStockPlaceholder")} className="field" style={{ flex: 1, minWidth: 110 }} />
             <button onClick={addIngredient} style={{ padding: "9px 16px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("add")}</button>
           </div>
           <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: -12, marginBottom: 20 }}>
@@ -9114,7 +10497,7 @@ function POSPrototype({ tenantId }) {
                     </div>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 500 }}>{ing.name}</div>
-                      <span style={{ fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: tagColor.bg, color: tagColor.fg, fontWeight: 500 }}>{tagColor.text} &middot; {fmtQty(ing.stock)} {ing.unit}</span>
+                      <span style={{ fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: tagColor.bg, color: tagColor.fg, fontWeight: 500 }}>{tagColor.text} &middot; {fmtStock(ing.stock, ing.unit)} {ing.unit}</span>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -9122,9 +10505,9 @@ function POSPrototype({ tenantId }) {
                       <button onClick={() => updateIngredientStock(ing.id, -1)} title={t("stockDecreaseTooltip")} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 14 }}>&minus;</button>
                     )}
                     {isManager ? (
-                      <input className="stock-input" type="number" value={ing.stock} onChange={(e) => setIngredientStockValue(ing.id, e.target.value)} onBlur={(e) => commitIngredientStockValue(ing.id, e.target.value)} style={{ width: 64, textAlign: "center", background: "transparent", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }} />
+                      <input className="stock-input" type="number" step="any" inputMode="decimal" value={ing.stock} onChange={(e) => setIngredientStockValue(ing.id, e.target.value)} onBlur={(e) => commitIngredientStockValue(ing.id, e.target.value)} style={{ width: 64, textAlign: "center", background: "transparent", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }} />
                     ) : (
-                      <span style={{ width: 64, textAlign: "center", color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }}>{fmtQty(ing.stock)}</span>
+                      <span style={{ width: 64, textAlign: "center", color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, padding: "5px 0" }}>{fmtStock(ing.stock, ing.unit)}</span>
                     )}
                     <button onClick={() => updateIngredientStock(ing.id, 1)} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 14 }}>+</button>
                     <input
@@ -9240,7 +10623,7 @@ function POSPrototype({ tenantId }) {
                     const editing = editingReceiptId === r.id;
                     return (
                       <div key={r.id} style={{ background: "var(--surface)", border: `1px solid ${voided ? "#4A2E2C" : unpaid ? "#5B4F3F" : "var(--border)"}`, borderRadius: 10, padding: "14px 18px", opacity: voided ? 0.7 : 1 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
+                        <div onClick={() => setReceiptDetailId(r.id)} title={t("receiptDetailTapHint")} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, flexWrap: "wrap", gap: 6, cursor: "pointer" }}>
                           <span style={{ fontSize: 13, fontFamily: "IBM Plex Mono, monospace" }}>
                             {t("ticketHash", { n: r.ticketNo })} &middot; {new Date(r.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                             {r.table && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A2E3A", color: "#9CB0E3" }}>{r.table}</span>}
@@ -9253,7 +10636,7 @@ function POSPrototype({ tenantId }) {
                               </span>
                             )}
                             {r.assignedTo?.name && r.assignedTo.role !== "waiter" && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A2E3A", color: "#B0A8E3" }}>{t("assignedToBadge", { role: t("roleDelivery"), name: r.assignedTo.name })}</span>}
-                            {r.paymentMethod && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "var(--track)", color: "var(--text-muted)" }}>{t(`payment_${r.paymentMethod}`)}</span>}
+                            {r.paymentMethod && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "var(--track)", color: "var(--text-muted)" }}>{t(`payment_${receiptMethodOf(r)}`)}</span>}
                             {cancelled && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#33301F", color: "#E3C98A" }}>{t("cancelledBadge")}</span>}
                             {refunded && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#3A2A28", color: "#E3A79C" }}>{t("refundedBadge")}</span>}
                             {unpaid && <span title={t("unpaidOrderTooltip")} style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#5B4F3F", color: "#F0D9A0", fontWeight: 700 }}>{t("unpaidBadge")}</span>}
@@ -9265,6 +10648,9 @@ function POSPrototype({ tenantId }) {
                         )}
                         {r.discount?.reason && (
                           <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>{t("discountReasonLabel", { reason: r.discount.reason })}</div>
+                        )}
+                        {cancelled && r.cancelReason && (
+                          <div style={{ fontSize: 11, color: "#E3C98A", marginBottom: 6 }}>{t("cancelReasonLabel", { reason: r.cancelReason })}</div>
                         )}
                         {voided && Array.isArray(r.returnedAmounts) && r.returnedAmounts.length > 0 && (
                           <div style={{ fontSize: 11, color: "#E3C98A", marginBottom: 6 }}>{t("returnedViaLabel", { methods: r.returnedAmounts.map((a) => `${t(`payment_${a.method}`)} ${money(a.amount)}`).join(" + ") })}</div>
@@ -9327,7 +10713,7 @@ function POSPrototype({ tenantId }) {
                         )}
 
                         {!editing ? (
-                          <div style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: voided ? 0 : 10 }}>
+                          <div onClick={() => setReceiptDetailId(r.id)} title={t("receiptDetailTapHint")} style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: voided ? 0 : 10, cursor: "pointer" }}>
                             {r.items.map((it, idx) => (
                               <span key={idx}>
                                 {it.qty}&times; {it.name}
@@ -9335,6 +10721,7 @@ function POSPrototype({ tenantId }) {
                                 {idx < r.items.length - 1 ? ", " : ""}
                               </span>
                             ))}
+                            <span style={{ marginLeft: 8, color: theme.secondaryLight, whiteSpace: "nowrap" }}>{t("receiptDetailLink")}</span>
                           </div>
                         ) : (
                           <div style={{ marginBottom: 10 }}>
@@ -9342,12 +10729,13 @@ function POSPrototype({ tenantId }) {
                               <div key={index} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, marginBottom: 6 }}>
                                 <span>{it.name}{it.note && <em style={{ color: "#7C8A6E", fontSize: 11 }}> ({it.note})</em>}</span>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <button onClick={() => changeEditQty(index, -1, r.items[index]?.qty)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>−</button>
-                                  <span style={{ fontFamily: "IBM Plex Mono, monospace", minWidth: 14, textAlign: "center" }}>{it.qty}</span>
-                                  <button onClick={() => changeEditQty(index, 1, r.items[index]?.qty)} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>+</button>
+                                  {!itemsLockedFor(r) && <button onClick={() => changeEditQty(index, -1, r.items[index]?.qty, itemsLockedFor(r))} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>−</button>}
+                                  <span style={{ fontFamily: "IBM Plex Mono, monospace", minWidth: 14, textAlign: "center" }}>{itemsLockedFor(r) ? `${it.qty}×` : it.qty}</span>
+                                  {!itemsLockedFor(r) && <button onClick={() => changeEditQty(index, 1, r.items[index]?.qty, itemsLockedFor(r))} style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>+</button>}
                                 </div>
                               </div>
                             ))}
+                            {itemsLockedFor(r) && <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginBottom: 10 }}>{t("editItemsLockedHint")}</div>}
                             {hasFeature("discounts") && (
                               <div style={{ marginBottom: 10 }}>
                                 <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginBottom: 5 }}>{t("editDiscountTitle")}</div>
@@ -9367,7 +10755,26 @@ function POSPrototype({ tenantId }) {
                                 <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 4 }}>{t("editDiscountHint")}</div>
                                 {(() => {
                                   const v = Number(editDraftDiscount.value);
-                                  const preview = editedBillFor(r, editDraftItems, v > 0 ? { type: editDraftDiscount.type, value: v } : null);
+                                  const preview = editedBillFor(r, editDraftItems, v > 0 ? { type: editDraftDiscount.type, value: v } : null, editFeeFor(r));
+                                  return Math.abs(preview.total - r.total) >= 0.005 ? (
+                                    <div style={{ fontSize: 11.5, color: theme.secondaryLight, marginTop: 6, fontFamily: "IBM Plex Mono, monospace" }}>{t("editNewTotal", { new: money(preview.total), old: money(r.total) })}</div>
+                                  ) : null;
+                                })()}
+                              </div>
+                            )}
+                            {r.deliveryMethod === "delivery" && (deliveryZones.length > 0 || r.deliveryZoneLabel) && (
+                              <div style={{ marginBottom: 10 }}>
+                                <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginBottom: 5 }}>{t("deliveryAreaEditLabel")}</div>
+                                <select value={editZoneLabel} onChange={(e) => setEditZoneLabel(e.target.value)} className="field" style={{ width: "100%" }}>
+                                  {!r.deliveryZoneLabel && <option value="">{t("selectZonePlaceholder")}</option>}
+                                  {[...(r.deliveryZoneLabel && !deliveryZones.some((z) => z.label === r.deliveryZoneLabel) ? [{ id: "__current", label: r.deliveryZoneLabel, fee: r.deliveryFee || 0 }] : []), ...deliveryZones].map((z) => (
+                                    <option key={z.id} value={z.label}>{z.label} — {money(z.label === (r.deliveryZoneLabel || "") ? r.deliveryFee || 0 : z.fee)}</option>
+                                  ))}
+                                </select>
+                                <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 4 }}>{t("deliveryAreaEditHint")}</div>
+                                {editedZoneFor(r) && (() => {
+                                  const v = Number(editDraftDiscount.value);
+                                  const preview = editedBillFor(r, editDraftItems, v > 0 ? { type: editDraftDiscount.type, value: v } : null, editFeeFor(r));
                                   return Math.abs(preview.total - r.total) >= 0.005 ? (
                                     <div style={{ fontSize: 11.5, color: theme.secondaryLight, marginTop: 6, fontFamily: "IBM Plex Mono, monospace" }}>{t("editNewTotal", { new: money(preview.total), old: money(r.total) })}</div>
                                   ) : null;
@@ -9377,7 +10784,12 @@ function POSPrototype({ tenantId }) {
                             <div style={{ marginBottom: 10 }}>
                               <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginBottom: 5 }}>{t("paymentMethodEditLabel")}</div>
                               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                {PAYMENT_METHODS.map((m) => {
+                                {allMethods.filter((m) => {
+                                  // An order rung up on a delivery app's price list belongs to that app: switching it to cash/visa would put money in the till that the customer paid to the app.
+                                  const appOfOrder = r.priceList ? profileMethodId(r.priceList) : null;
+                                  if (appOfOrder) return m.id === appOfOrder;
+                                  return (!m.fromList && paymentMethodOn(paymentConfig, m.id)) || m.id === editPaymentMethod;
+                                }).map((m) => {
                                   const isCurrent = editPaymentMethod === m.id;
                                   return (
                                     <button
@@ -9401,6 +10813,9 @@ function POSPrototype({ tenantId }) {
                               </div>
                               {r.paymentMethod === "split" && (
                                 <div style={{ fontSize: 10.5, color: "#E3C98A", marginTop: 5 }}>{t("paymentMethodEditSplitNote")}</div>
+                              )}
+                              {r.priceList && (
+                                <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 5 }}>{t("paymentMethodEditAppNote", { list: r.priceList.name })}</div>
                               )}
                             </div>
                             <textarea
@@ -9442,7 +10857,7 @@ function POSPrototype({ tenantId }) {
                           </div>
                         )}
 
-                        {!voided && isManager && hasFeature("teamTracking") && dutyRoster.length > 0 && (
+                        {!voided && !viewingOnly && hasFeature("teamTracking") && dutyRoster.length > 0 && (
                           <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
                             <span style={{ fontSize: 10.5, color: "var(--text-faint)" }}>{t("reassignLabel")}</span>
                             <select
@@ -9711,7 +11126,7 @@ function POSPrototype({ tenantId }) {
                 <div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("paymentStatus")} — {t("statusPaid")}</div>
                   <select value={expenseEditor.paymentMethod} onChange={(e) => setExpenseEditor((p) => ({ ...p, paymentMethod: e.target.value }))} className="field" style={{ width: "100%", boxSizing: "border-box" }}>
-                    {PAYMENT_METHODS.map((m) => <option key={m.id} value={m.id}>{t(`payment_${m.id}`)}</option>)}
+                    {DIRECT_METHODS.map((m) => <option key={m.id} value={m.id}>{t(`payment_${m.id}`)}</option>)}
                   </select>
                 </div>
               )}
@@ -9796,11 +11211,20 @@ function POSPrototype({ tenantId }) {
             )}
           </div>
 
+          {dashboardSourceOffered && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: -12, marginBottom: 20, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{t("dashSourceLabel")}</span>
+              {dashboardSourceOptions.map((o) => (
+                <button key={o.id} onClick={() => setDashboardSource(o.id)} style={{ padding: "6px 14px", borderRadius: 999, border: `1px solid ${dashboardSource === o.id ? theme.secondary : "var(--border)"}`, background: dashboardSource === o.id ? "rgba(176,141,87,0.18)" : "transparent", color: dashboardSource === o.id ? theme.secondaryLight : "var(--text-muted)", fontSize: 12, fontWeight: dashboardSource === o.id ? 600 : 400, cursor: "pointer" }}>{o.label}</button>
+              ))}
+            </div>
+          )}
+
           {!dashboardMonthDataLoaded ? (
             <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
           ) : (
           <>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(6, 1fr)", gap: 12, marginBottom: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : dashboardSource === "all" ? "repeat(6, 1fr)" : "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
             {[
               {
                 label: t("periodRevenueLabel"),
@@ -9810,13 +11234,15 @@ function POSPrototype({ tenantId }) {
               },
               { label: t("periodOrdersLabel"), value: String(dashboardPeriodOrders) },
               { label: t("avgOrderValueLabel"), value: money(avgOrderValue) },
-              { label: t("expensesLabel"), value: money(dashboardExpenseTotal), accent: dashboardExpenseTotal > 0 ? "#E3A79C" : undefined },
-              {
-                label: t("netProfitLabel"),
-                value: money(netProfit),
-                accent: netProfit >= 0 ? "#9FCB8E" : "#E3A79C",
-                hint: t("netProfitHintDetailed", { revenue: money(dashboardPeriodRevenue), expenses: money(dashboardExpenseTotal) }),
-              },
+              ...(dashboardSource === "all" ? [
+                { label: t("expensesLabel"), value: money(dashboardExpenseTotal), accent: dashboardExpenseTotal > 0 ? "#E3A79C" : undefined },
+                {
+                  label: t("netProfitLabel"),
+                  value: money(netProfit),
+                  accent: netProfit >= 0 ? "#9FCB8E" : "#E3A79C",
+                  hint: t("netProfitHintDetailed", { revenue: money(dashboardPeriodRevenue), expenses: money(dashboardExpenseTotal) }),
+                },
+              ] : []),
               { label: t("discountsGivenLabel"), value: money(dashboardDiscountTotal) },
             ].map((card, i) => (
               <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
@@ -9908,7 +11334,7 @@ function POSPrototype({ tenantId }) {
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 18 }}>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMixTitle")}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {dashboardByMethod.map((m) => (
+                {dashboardByMethodShown.map((m) => (
                   <div key={m.id}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
                       <span>{t(`payment_${m.id}`)}</span>
@@ -9920,6 +11346,16 @@ function POSPrototype({ tenantId }) {
                   </div>
                 ))}
               </div>
+              {dashboardSource !== "all" && dashboardSource !== "restaurant" && dashboardReceipts.length > 0 && (
+                <div style={{ borderTop: "1px dashed var(--border)", marginTop: 14, paddingTop: 12 }}>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 8 }}>{t("dashAppPaidTitle", { app: t(`payment_${dashboardSource}`) })}</div>
+                  {Object.entries(dashboardAppPayments).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, k === "none" ? t("dashAppPaidNone") : t(`payment_${k}`)]).map(([k, label]) => (
+                    <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
+                      <span>{label}</span><span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(dashboardAppPayments[k])}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -9943,6 +11379,97 @@ function POSPrototype({ tenantId }) {
               ))}
             </div>
           </div>
+
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 18, marginTop: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 6 }}>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 17, fontWeight: 600 }}>{t("dlvRepTitle")}</div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                {dlvRepAgents.length > 1 && (
+                  <select className="field" value={dlvRepAgent} onChange={(e) => { setDlvRepAgent(e.target.value); setDlvRepOpenDay(null); }} style={{ minWidth: 150 }}>
+                    <option value="all">{t("dlvRepAllAgents")}</option>
+                    {dlvRepAgents.map((a) => <option key={a.id} value={a.id}>{dlvRepName(a)}</option>)}
+                  </select>
+                )}
+                {dlvRepShown.length > 0 && (
+                  <button onClick={printDeliveryReport} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 600 }}>{t("dlvRepPrint")}</button>
+                )}
+              </div>
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 14 }}>{t("dlvRepSubtitle")}</div>
+            {dlvRepShown.length === 0 ? (
+              <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("dlvRepEmpty")}</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {dlvRepShown.map((a) => {
+                  const cellStyle = { padding: "8px 10px", fontFamily: "IBM Plex Mono, monospace", fontSize: 12.5, textAlign: isRtl ? "left" : "right", whiteSpace: "nowrap" };
+                  const headStyle = { padding: "8px 10px", fontSize: 10.5, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4, textAlign: isRtl ? "left" : "right", whiteSpace: "nowrap", fontWeight: 500 };
+                  const numCells = (x) => (
+                    <>
+                      <td style={cellStyle}>{x.orders}</td>
+                      <td style={cellStyle}>{money(x.orderAmount)}</td>
+                      <td style={cellStyle}>{money(x.fees)}</td>
+                      <td style={cellStyle}>{money(x.riderShare)}</td>
+                      <td style={cellStyle}>{money(x.restaurantShare)}</td>
+                      <td style={cellStyle}>{money(x.cash)}</td>
+                    </>
+                  );
+                  return (
+                    <div key={a.id} style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 14px", background: "rgba(176,141,87,0.08)" }}>
+                        <span style={{ fontSize: 14, fontWeight: 600 }}>{dlvRepName(a)}</span>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{tCount("orderCount", a.orders)} · {t("dlvRepFees")} <b style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(a.fees)}</b></span>
+                      </div>
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
+                          <thead>
+                            <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                              <th style={{ ...headStyle, textAlign: isRtl ? "right" : "left" }}>{t("dlvRepDay")}</th>
+                              <th style={headStyle}>{t("dlvRepOrders")}</th>
+                              <th style={headStyle}>{t("dlvRepOrderAmount")}</th>
+                              <th style={headStyle}>{t("dlvRepFees")}</th>
+                              <th style={headStyle}>{t("dlvRepAgentShare")}</th>
+                              <th style={headStyle}>{t("dlvRepRestShare")}</th>
+                              <th style={headStyle}>{t("dlvRepCash")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {a.days.map((d) => {
+                              const rowKey = `${a.id}:${d.day}`;
+                              const open = dlvRepOpenDay === rowKey;
+                              return (
+                                <React.Fragment key={rowKey}>
+                                  <tr onClick={() => setDlvRepOpenDay(open ? null : rowKey)} style={{ borderTop: "1px solid var(--border)", cursor: "pointer", background: open ? "rgba(176,141,87,0.06)" : "transparent" }}>
+                                    <td style={{ padding: "8px 10px", fontSize: 12.5, whiteSpace: "nowrap" }}>{open ? "▾" : "▸"} {formatShortDate(d.day, isRtl)}{d.settled < d.orders && <span style={{ fontSize: 10.5, color: "#E3C98A", marginInlineStart: 8 }}>{t("dlvRepOpen")} {d.orders - d.settled}</span>}</td>
+                                    {numCells(d)}
+                                  </tr>
+                                  {open && d.list.map((o) => (
+                                    <tr key={o.r.id} style={{ borderTop: "1px dashed var(--border)", background: "rgba(0,0,0,0.12)" }}>
+                                      <td style={{ padding: "6px 10px 6px 26px", fontSize: 11.5, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{t("ticketNumber", { n: o.r.ticketNo })}{o.r.deliveryZoneLabel ? ` · ${o.r.deliveryZoneLabel}` : ""}{!o.settled ? ` · ${t("dlvRepOpen")}` : ""}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{receiptMethodOf(o.r) === "split" ? t("payment_split") : t(`payment_${receiptMethodOf(o.r)}`)}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.orderAmount)}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.fee)}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.share)}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.fee - o.share)}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.cash)}</td>
+                                    </tr>
+                                  ))}
+                                </React.Fragment>
+                              );
+                            })}
+                            <tr style={{ borderTop: "1px solid var(--border)", fontWeight: 700 }}>
+                              <td style={{ padding: "8px 10px", fontSize: 12.5 }}>{t("dlvRepTotal")}</td>
+                              {numCells(a)}
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{t("dlvRepEstimateNote")}</div>
+              </div>
+            )}
+          </div>
           </>
           )}
         </div>
@@ -9950,31 +11477,102 @@ function POSPrototype({ tenantId }) {
 
       {view === "customers" && (
         <div style={{ padding: isMobile ? "16px 14px" : isTablet ? "20px 20px" : "28px 32px", maxWidth: 780 }}>
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("customersTitle")}</div>
-            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("customersSubtitle")}</div>
+          <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("customersTitle")}</div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("customersSubtitle")}</div>
+            </div>
+            {isManager && customersLoaded && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={() => setCustomersImportOpen(true)} style={{ padding: "9px 16px", borderRadius: 7, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}>{t("customersImportBtn")}</button>
+                <button disabled={Object.keys(customers).length === 0} onClick={exportCustomers} style={{ padding: "9px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 13, fontWeight: 500, cursor: Object.keys(customers).length === 0 ? "default" : "pointer", opacity: Object.keys(customers).length === 0 ? 0.5 : 1, whiteSpace: "nowrap" }}>{t("customersExportBtn")}</button>
+              </div>
+            )}
           </div>
+          {customersImportOpen && isManager && <CustomersImportModal isRtl={isRtl} theme={theme} customers={customers} onApply={applyCustomersImport} onClose={() => setCustomersImportOpen(false)} />}
           {!customersLoaded ? (
             <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("loading")}</div>
           ) : Object.keys(customers).length === 0 ? (
             <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("noCustomersSaved")}</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {Object.values(customers).sort((a, b) => (b.lastOrder || "").localeCompare(a.lastOrder || "")).map((c) => (
-                <div key={c.phone} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 18px", flexWrap: "wrap", gap: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 3 }}>{c.name || t("unnamedCustomer")}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "IBM Plex Mono, monospace" }}>{c.phone}</div>
-                    {c.address && <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 3 }}>{c.address}</div>}
+          ) : (() => {
+            const digits = (s) => String(s || "").replace(/\D/g, "");
+            const raw = customerSearch.trim();
+            const q = raw.toLowerCase();
+            const qd = digits(raw);
+            const all = Object.values(customers).sort((a, b) => (b.lastOrder || "").localeCompare(a.lastOrder || ""));
+            const shown = q ? all.filter((c) => (c.name || "").toLowerCase().includes(q) || (c.phone || "").includes(raw) || (qd.length >= 3 && digits(c.phone).includes(qd))) : all;
+            const loc = isRtl ? "ar-EG" : "en-US";
+            const historyReady = monthsLoaded && monthKeys.every((mk) => receiptsByMonth[mk] !== undefined);
+            const allReceipts = Object.values(receiptsByMonth).flat();
+            const keyOf = (p) => digits(p) || String(p || "").trim(); // a "phone" with no digits (e.g. a delivery app's name) is matched as text
+            const historyOf = (c) => {
+              const pd = keyOf(c.phone);
+              return allReceipts.filter((r) => pd && r.customer && keyOf(r.customer.phone) === pd).sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+            };
+            return (
+              <>
+                <input type="text" value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} placeholder={t("customersSearchPlaceholder")} className="field" style={{ width: "100%", boxSizing: "border-box", marginBottom: 12 }} />
+                {shown.length === 0 ? (
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("customersNoMatch")}</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {shown.slice(0, 100).map((c) => {
+                      const open = openCustomerPhone === c.phone || (shown.length === 1 && q !== "");
+                      const orders = open ? historyOf(c) : [];
+                      const counted = orders.filter((r) => r.status === "completed");
+                      return (
+                        <div key={c.phone} style={{ background: "var(--surface)", border: `1px solid ${open ? theme.secondary : "var(--border)"}`, borderRadius: 10 }}>
+                          <div onClick={() => setOpenCustomerPhone(openCustomerPhone === c.phone ? null : c.phone)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", flexWrap: "wrap", gap: 10, cursor: "pointer" }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 3 }}>{c.name || t("unnamedCustomer")}</div>
+                              <div style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "IBM Plex Mono, monospace" }}>{c.phone}</div>
+                              {c.address && <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 3 }}>{c.address}</div>}
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: 13, color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{tCount("orderCount", c.orderCount)}</div>
+                              <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 3 }}>{t("lastOrderDate", { date: c.lastOrder ? new Date(c.lastOrder).toLocaleDateString(loc, { month: "short", day: "numeric", year: "numeric" }) : "—" })}</div>
+                            </div>
+                          </div>
+                          {open && (
+                            <div style={{ borderTop: "1px solid var(--border)", padding: "12px 18px 14px" }}>
+                              {!historyReady ? (
+                                <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("custHistoryLoading")}</div>
+                              ) : orders.length === 0 ? (
+                                <div style={{ fontSize: 12.5, color: "var(--text-faint)" }}>{t("custHistoryNone")}</div>
+                              ) : (
+                                <>
+                                  <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 8 }}>{t("custHistorySummary", { n: counted.length, total: money(counted.reduce((s, r) => s + r.total, 0)), since: new Date(orders[orders.length - 1].timestamp).toLocaleDateString(loc, { month: "short", day: "numeric", year: "numeric" }) })}</div>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    {orders.map((r) => (
+                                      <div key={r.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: "9px 12px", opacity: r.status === "completed" ? 1 : 0.65 }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12.5, marginBottom: 3 }}>
+                                          <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{t("ticketHash", { n: r.ticketNo })} · {new Date(r.timestamp).toLocaleString(loc, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+                                          <span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(r.total)}</span>
+                                        </div>
+                                        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 3 }}>
+                                          {r.tableId === "delivery" ? `${t("deliveryLabel")}${r.deliveryZoneLabel ? ` · ${r.deliveryZoneLabel}` : ""}` : r.table || t("takeawayLabel")}
+                                          {r.status === "cancelled" && ` · ${t("cancelledBadge")}`}
+                                          {r.status === "refunded" && ` · ${t("refundedBadge")}`}
+                                          {r.status === "completed" && r.paid === false && ` · ${t("unpaidBadge")}`}
+                                        </div>
+                                        <div style={{ fontSize: 11.5, color: "var(--text-faint)", lineHeight: 1.45 }}>{(r.items || []).map((it) => `${it.qty}× ${it.name}`).join(", ")}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {orders.some((r) => r.status !== "completed") && <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>{t("custHistoryCountedNote")}</div>}
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {shown.length > 100 && <div style={{ fontSize: 12, color: "var(--text-faint)", textAlign: "center", padding: 6 }}>{t("customersShowingFirst", { n: 100, total: shown.length })}</div>}
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 13, color: theme.secondaryLight, fontFamily: "IBM Plex Mono, monospace" }}>{tCount("orderCount", c.orderCount)}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 3 }}>{t("lastOrderDate", { date: c.lastOrder ? new Date(c.lastOrder).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric", year: "numeric" }) : "—" })}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -10011,7 +11609,7 @@ function POSPrototype({ tenantId }) {
         const Lines = ({ lines }) => (
           <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>
             {lines.map((l, i) => (
-              <div key={i} style={{ fontWeight: l.strong ? 600 : 400, color: l.strong ? "var(--text-primary)" : "var(--text-muted)", marginTop: i ? 4 : 0, paddingInlineStart: l.bullet ? 14 : 0, position: "relative" }}>
+              <div key={i} style={{ fontWeight: l.strong ? 600 : 400, color: l.warn ? "#E3C98A" : l.strong ? "var(--text-primary)" : "var(--text-muted)", marginTop: i ? 4 : 0, paddingInlineStart: l.bullet ? 14 : 0, position: "relative" }}>
                 {l.bullet && <span style={{ position: "absolute", insetInlineStart: 2 }}>•</span>}
                 {l.text}
               </div>
@@ -10064,7 +11662,8 @@ function POSPrototype({ tenantId }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12.5, color: "var(--text-muted)" }}>
                     {cd.byMethod.map((m) => <span key={m.id}>{lbl(m.id)} <b style={{ color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace" }}>{money(m.total)}</b></span>)}
                     {cd.discounts.n > 0 && <span>{t("cdDiscounts", { n: cd.discounts.n, amount: money(cd.discounts.total) })}</span>}
-                    {cd.voided.n > 0 && <span>{t("cdVoided", { n: cd.voided.n, amount: money(cd.voided.total) })}</span>}
+                    <span>{t("cdCancelled", { n: cd.cancelled.n })} <b style={{ color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace" }}>{money(cd.cancelled.total)}</b></span>
+                    {cd.refunded.n > 0 && <span>{t("cdRefunded", { n: cd.refunded.n })} <b style={{ color: "var(--text-primary)", fontFamily: "IBM Plex Mono, monospace" }}>{money(cd.refunded.total)}</b></span>}
                   </div>
                 </div>
 
@@ -10103,7 +11702,11 @@ function POSPrototype({ tenantId }) {
                               <>
                                 <div style={num}>{d.opening !== null ? money(d.opening) : "—"}</div>
                                 <div style={num}>{money(d.cashIn)}</div>
-                                <div style={num}>{money(d.paidOut)}</div>
+                                <div style={num}>
+                                  {money(d.paidOut)}
+                                  {d.riderPay > 0 && <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("cdRiderSub", { amount: money(d.riderPay) })}</div>}
+                                  {d.cashReturned > 0 && <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("cdReturnedSub", { amount: money(d.cashReturned) })}</div>}
+                                </div>
                                 <div style={num}>
                                   {d.expected !== null ? money(d.expected) : "—"}
                                   {d.collected > 0 && <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("cdCollectedSub", { amount: money(d.collected) })}</div>}
@@ -10123,7 +11726,11 @@ function POSPrototype({ tenantId }) {
                             <div style={{ fontSize: 13, fontWeight: 700, ...cellTop }}>{t("cdWholeDay")}</div>
                             <div style={{ ...num, fontWeight: 700, ...cellTop }}>{cd.dayTotals.opening !== null ? money(cd.dayTotals.opening) : "—"}</div>
                             <div style={{ ...num, fontWeight: 700, ...cellTop }}>{money(cd.dayTotals.cashIn)}</div>
-                            <div style={{ ...num, fontWeight: 700, ...cellTop }}>{money(cd.dayTotals.paidOut)}</div>
+                            <div style={{ ...num, fontWeight: 700, ...cellTop }}>
+                              {money(cd.dayTotals.paidOut)}
+                              {cd.dayTotals.riderPay > 0 && <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-faint)" }}>{t("cdRiderSub", { amount: money(cd.dayTotals.riderPay) })}</div>}
+                              {cd.dayTotals.returned > 0 && <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-faint)" }}>{t("cdReturnedSub", { amount: money(cd.dayTotals.returned) })}</div>}
+                            </div>
                             <div style={{ ...num, fontWeight: 700, ...cellTop }}>
                               {cd.dayTotals.expectedEnd !== null ? money(cd.dayTotals.expectedEnd) : "—"}
                               {cd.dayTotals.collected > 0 && <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-faint)" }}>{t("cdCollectedSub", { amount: money(cd.dayTotals.collected) })}</div>}
@@ -10190,6 +11797,14 @@ function POSPrototype({ tenantId }) {
                     </div>
                   )}
                 </div>
+
+                {cd.drawers.some((d) => !d.loading && d.settled && d.settled.n > 0) && (
+                  <div style={card}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      {cd.drawers.filter((d) => !d.loading && d.settled && d.settled.n > 0).map((d) => <Lines key={`s_${d.key}`} lines={cdSettledLines(d)} />)}
+                    </div>
+                  </div>
+                )}
 
                 <div style={card}>
                   <div style={h}>{t("cdAlsoCheck")}</div>
@@ -10307,7 +11922,7 @@ function POSPrototype({ tenantId }) {
                 )}
                 {shiftCancelled.length > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: shiftRefunded.length > 0 ? 6 : 8, color: "#E3C98A" }}>
-                    <span>{t("cancelledCountNote", { n: shiftCancelled.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>—</span>
+                    <span>{t("cancelledCountNote", { n: shiftCancelled.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(shiftCancelledTotal)}</span>
                   </div>
                 )}
                 {shiftDiscountTotal > 0 && (
@@ -10368,6 +11983,11 @@ function POSPrototype({ tenantId }) {
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
                     <span>{t("cashSalesLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(shiftCashSalesTotal)}</span>
                   </div>
+                  {shiftAppCashTotal > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
+                      <span>{t("appCashLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(shiftAppCashTotal)}</span>
+                    </div>
+                  )}
                   {shiftUnsettledDeliveryCash > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6, color: "#F0D9A0" }}>
                       <span title={t("unsettledDeliveryCashHint")}>{t("unsettledDeliveryCashLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(shiftUnsettledDeliveryCash)}</span>
@@ -10376,6 +11996,11 @@ function POSPrototype({ tenantId }) {
                   {shiftCashRefundsTotal > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6, color: "#E3A79C" }}>
                       <span>{t("cashRefundsLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftCashRefundsTotal)}</span>
+                    </div>
+                  )}
+                  {shiftRiderPayTotal > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6, color: "#E3A79C" }}>
+                      <span>{t("riderPayLabel")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(shiftRiderPayTotal)}</span>
                     </div>
                   )}
 
@@ -10504,16 +12129,75 @@ function POSPrototype({ tenantId }) {
                               </div>
                             </div>
                           )}
-                          <button
-                            onClick={() => settleDeliveryCash(p)}
-                            style={{ marginTop: 10, fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: "#FBF8F2", cursor: "pointer", fontWeight: 600 }}
-                          >
-                            {t("settleDeliveryCash")}
-                          </button>
+                          <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button
+                              onClick={() => printRiderReportFor([p])}
+                              style={{ fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontWeight: 600 }}
+                            >
+                              {t("riderReportPrint")}
+                            </button>
+                            <button
+                              onClick={() => settleDeliveryCash(p)}
+                              style={{ fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: "#8A6A2E", color: "#FBF8F2", cursor: "pointer", fontWeight: 600 }}
+                            >
+                              {t("settleDeliveryCash")}
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {platformOwedByApp.length > 0 && (
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                    <div style={{ fontFamily: "Fraunces, serif", fontSize: 17, fontWeight: 600 }}>{t("platformOwedTitle")}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("platformOwedTotal")} <b style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 16, color: theme.secondaryLight }}>{money(platformOwedGrandTotal)}</b></div>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "4px 0 14px" }}>{t("platformOwedSubtitle")} {platformWindowLoaded ? t("platformOwedWindowNote") : t("platformOwedLoading")}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {platformOwedByApp.map((app) => (
+                      <div key={app.id} style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(176,141,87,0.08)" }}>
+                          <span style={{ fontSize: 14, fontWeight: 600 }}>{t(`payment_${app.id}`)}</span>
+                          <span style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 14, fontWeight: 600 }}>{money(app.owed)}</span>
+                        </div>
+                        {app.months.map((mo) => {
+                          const rowKey = `${app.id}:${mo.key}`;
+                          const open = platformOpenKey === rowKey;
+                          return (
+                            <div key={rowKey} style={{ borderTop: "1px solid var(--border)", padding: "10px 14px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                                <div>
+                                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{monthLabel(mo.key)}</div>
+                                  <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>{tCount("orderCount", mo.orders.length)} · <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(mo.owed)}</span></div>
+                                </div>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <button onClick={() => setPlatformOpenKey(open ? null : rowKey)} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{open ? t("platformOwedHide") : t("platformOwedShow")}</button>
+                                  <button onClick={() => markPlatformReceived(app, mo.orders)} style={{ fontSize: 11.5, padding: "6px 12px", borderRadius: 6, border: "none", background: theme.primary, color: "#FBF8F2", fontWeight: 600, cursor: "pointer" }}>{t("platformMarkReceived")}</button>
+                                </div>
+                              </div>
+                              {open && (
+                                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                                  {mo.orders.map((x) => (
+                                    <div key={x.r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, fontSize: 12.5, padding: "5px 0", borderTop: "1px dashed var(--border)" }}>
+                                      <span style={{ color: "var(--text-muted)" }}>{t("ticketNumber", { n: x.r.ticketNo })} · {new Date(x.r.timestamp).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { day: "numeric", month: "short" })}</span>
+                                      <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                        <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(x.amount)}</span>
+                                        <button onClick={() => markPlatformReceived(app, [x])} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>{t("platformMarkReceived")}</button>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -10575,7 +12259,9 @@ function POSPrototype({ tenantId }) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
                 {tableIds.map((id) => {
                   const checkoutReq = checkoutRequestForTable(id);
-                  const occupied = tableItemCount(id) > 0 || !!checkoutReq;
+                  const hasOpenCart = tableItemCount(id) > 0 || !!checkoutReq;
+                  const unpaidHere = unpaidInvoicesForTable(id);
+                  const occupied = hasOpenCart || unpaidHere.length > 0;
                   const isActive = activeTableId === id;
                   const pendingHere = pendingOrdersForTable(id);
                   return (
@@ -10604,6 +12290,19 @@ function POSPrototype({ tenantId }) {
                           {t("billRequestedBadge", { method: t(`payment_${checkoutReq.paymentMethod}`) })}
                         </div>
                       )}
+                      {unpaidHere.map((inv) => (
+                        <div key={inv.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", marginBottom: 8 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                            <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{t("tableUnpaidInvoice", { n: inv.ticketNo })} · {new Date(inv.timestamp).toLocaleDateString(isRtl ? "ar-EG" : "en-US", { day: "numeric", month: "short" })}</span>
+                            <span style={{ fontFamily: "IBM Plex Mono, monospace", color: theme.secondaryLight }}>{money(inv.total)}</span>
+                          </div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 6 }}>{inv.items.map((it) => `${it.qty}× ${it.name}`).join(", ")}</div>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <button onClick={() => markReceiptPaid(inv)} style={{ fontSize: 11, padding: "5px 9px", borderRadius: 6, border: "1px solid #8EB8D6", background: "rgba(142,184,214,0.15)", color: "#8EB8D6", cursor: "pointer", fontWeight: 600 }}>{t("markAsPaid")}</button>
+                            <button onClick={() => { switchTable(id); setAddTargetId(inv.id); setView("order"); }} style={{ fontSize: 11, padding: "5px 9px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}>{t("tableAddItems")}</button>
+                          </div>
+                        </div>
+                      ))}
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {pendingHere.length > 0 ? (
                           <button
@@ -10612,7 +12311,7 @@ function POSPrototype({ tenantId }) {
                           >
                             {t("reviewOrder")}
                           </button>
-                        ) : (
+                        ) : unpaidHere.length > 0 && !hasOpenCart ? null : (
                           <button
                             onClick={() => { switchTable(id); setView("order"); }}
                             style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: `1px solid ${theme.secondary}`, background: "transparent", color: theme.secondaryLight, cursor: "pointer" }}
@@ -10620,7 +12319,7 @@ function POSPrototype({ tenantId }) {
                             {t("openTicket")}
                           </button>
                         )}
-                        {occupied && (
+                        {hasOpenCart && (
                           <button
                             onClick={() => openPayTableModal(id)}
                             style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid #8EB8D6", background: "rgba(142,184,214,0.15)", color: "#8EB8D6", cursor: "pointer", fontWeight: 600 }}
@@ -10771,6 +12470,85 @@ function POSPrototype({ tenantId }) {
           </div>
           </>
           )}
+
+          {hasFeature("teamTracking") && (
+          <div style={{ marginTop: 32 }}>
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600, marginBottom: 4 }}>{t("riderReportTitle")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14 }}>{t("riderReportSubtitle")}</div>
+            {riderReportRiders.length === 0 ? (
+              <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("riderReportNoRiders")}</div>
+            ) : (
+              <>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+                  {riderReportRiders.map((p) => {
+                    const on = riderReportSelected.some((x) => x.id === p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setRiderReportIds(on ? riderReportSelected.filter((x) => x.id !== p.id).map((x) => x.id) : [...riderReportSelected.map((x) => x.id), p.id])}
+                        style={{ padding: "7px 14px", borderRadius: 999, border: `1px solid ${on ? theme.secondary : "var(--border)"}`, background: on ? "rgba(176,141,87,0.18)" : "transparent", color: on ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: on ? 600 : 400, cursor: "pointer" }}
+                      >
+                        {on ? "✓ " : ""}{p.name}
+                        {p.orders > 0 && <span style={{ marginLeft: 6, fontSize: 10.5, background: theme.secondary, color: COLORS.ink, borderRadius: 999, padding: "1px 6px" }}>{p.orders}</span>}
+                      </button>
+                    );
+                  })}
+                  <button onClick={() => setRiderReportIds(riderReportSelected.length === riderReportRiders.length ? [] : riderReportRiders.map((p) => p.id))} style={{ fontSize: 11.5, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>
+                    {riderReportSelected.length === riderReportRiders.length ? t("riderReportClear") : t("riderReportSelectAll")}
+                  </button>
+                  <button
+                    onClick={printRiderReport}
+                    disabled={riderReportPrintable.length === 0}
+                    style={{ marginLeft: "auto", padding: "9px 18px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: riderReportPrintable.length === 0 ? "default" : "pointer", opacity: riderReportPrintable.length === 0 ? 0.45 : 1 }}
+                  >
+                    {t("riderReportPrint")}
+                  </button>
+                </div>
+
+                {riderReportSelected.length === 0 && <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("riderReportSelectOne")}</div>}
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {riderReportSelected.map((p) => {
+                    const rows = riderReportRowsOf(p);
+                    return (
+                      <div key={p.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
+                        <div style={{ padding: "12px 16px", fontSize: 15, fontWeight: 600, background: "rgba(176,141,87,0.08)" }}>{p.name}</div>
+                        {rows.length === 0 ? (
+                          <div style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-faint)" }}>{t("riderReportEmpty", { name: p.name })}</div>
+                        ) : (
+                          <>
+                            {rows.map(({ r, fee, amount, method }, i) => (
+                              <div key={r.id || `${r.timestamp}-${i}`} style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "12px 16px", borderTop: "1px solid var(--border)" }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 11, color: "var(--text-faint)", marginBottom: 2 }}>
+                                    {t("ticketNumber", { n: r.ticketNo })} · {new Date(r.timestamp).toLocaleString(isRtl ? "ar-EG" : "en-US", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })} · {method}
+                                  </div>
+                                  <div style={{ fontSize: 14, fontWeight: 600 }}>{r.customer?.name || t("riderReportNoName")}{r.customer?.phone ? <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 12 }}> · {r.customer.phone}</span> : null}</div>
+                                  {r.customer?.address && <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{r.customer.address}</div>}
+                                </div>
+                                <div style={{ textAlign: "right", flexShrink: 0, fontFamily: "IBM Plex Mono, monospace" }}>
+                                  <div style={{ fontSize: 14, fontWeight: 600 }}>{money(amount)}</div>
+                                  <div style={{ fontSize: 11.5, color: theme.secondaryLight, marginTop: 2 }}>+ {money(fee)}</div>
+                                </div>
+                              </div>
+                            ))}
+                            <div style={{ borderTop: "1px solid var(--border)", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 4, fontSize: 13, background: "rgba(176,141,87,0.07)" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("riderReportOrders")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{rows.length}</span></div>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("riderReportOrdersTotal")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(riderReportOrdersTotalOf(rows))}</span></div>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("riderReportFeesTotal")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(riderReportFeesTotalOf(rows))}</span></div>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, paddingTop: 6, borderTop: "1px dashed var(--border)" }}><span>{t("deliveryReconciliationCash")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(p.cashTotal)}</span></div>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("riderReportRiderShare")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(p.feesTotal)}</span></div>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 14.5, marginTop: 4 }}><span>{p.net < 0 ? t("deliveryReconciliationOwedToAgent") : t("deliveryReconciliationOwed")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(Math.abs(p.net))}</span></div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+          )}
         </div>
       )}
 
@@ -10843,7 +12621,7 @@ function POSPrototype({ tenantId }) {
         const modalService = Math.round(modalSubtotal * (effectiveServicePercent / 100) * 100) / 100;
         const modalVat = Math.round((modalSubtotal + modalService) * (effectiveVatPercent / 100) * 100) / 100;
         const modalTotal = modalSubtotal + modalService + modalVat;
-        const modalSplitEntered = PAYMENT_METHODS.reduce((s, m) => s + (Number(payTableModal.splitAmounts?.[m.id]) || 0), 0);
+        const modalSplitEntered = allDirectMethods.reduce((s, m) => s + (Number(payTableModal.splitAmounts?.[m.id]) || 0), 0);
         const modalSplitRemaining = Math.round((modalTotal - modalSplitEntered) * 100) / 100;
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setPayTableModal(null)}>
@@ -10868,7 +12646,7 @@ function POSPrototype({ tenantId }) {
               <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {PAYMENT_METHODS.map((m) => (
+                  {enabledDirectMethods.map((m) => (
                     <button
                       key={m.id}
                       onClick={() => setPayTableModal((p) => ({ ...p, paymentMethod: m.id }))}
@@ -10886,7 +12664,7 @@ function POSPrototype({ tenantId }) {
                 </div>
                 {payTableModal.paymentMethod === "split" && (
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                    {PAYMENT_METHODS.map((m) => (
+                    {enabledDirectMethods.map((m) => (
                       <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                         <span style={{ fontSize: 12.5 }}>{t(`payment_${m.id}`)}</span>
                         <input
@@ -11226,7 +13004,7 @@ function POSPrototype({ tenantId }) {
                 const live = shiftLiveStats(s);
                 const shownOrders = live ? live.orders : s.orders;
                 const shownRevenue = live ? live.revenue : s.revenue;
-                const split = live ? PAYMENT_METHODS.filter((m) => live.byMethod[m.id] > 0).map((m) => `${t(`payment_${m.id}`)} ${money(live.byMethod[m.id])}`).join(" · ") : "";
+                const split = live ? allMethods.filter((m) => live.byMethod[m.id] > 0).map((m) => `${t(`payment_${m.id}`)} ${money(live.byMethod[m.id])}`).join(" · ") : "";
                 return (
                 <button
                   key={s.id}
@@ -11282,7 +13060,7 @@ function POSPrototype({ tenantId }) {
         const discountTotal = completed.reduce((sum, r) => sum + (r.discountAmount || 0), 0);
         const discountedCount = completed.filter((r) => (r.discountAmount || 0) > 0).length;
         const methodAmounts = completed.flatMap(receiptMethodAmounts);
-        const byMethod = PAYMENT_METHODS.map((m) => ({ ...m, total: methodAmounts.filter((a) => a.method === m.id).reduce((sum, a) => sum + a.amount, 0) })).filter((m) => m.total > 0);
+        const byMethod = allMethods.map((m) => ({ ...m, total: methodAmounts.filter((a) => a.method === m.id).reduce((sum, a) => sum + a.amount, 0) })).filter((m) => m.total > 0);
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }} onClick={() => setViewingShiftDetail(null)}>
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 24, width: "100%", maxWidth: 480, maxHeight: "85vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
@@ -11337,7 +13115,9 @@ function POSPrototype({ tenantId }) {
                         </div>
                       )}
                       {cancelled.length > 0 && (
-                        <div style={{ color: "#E3C98A" }}>{t("cancelledCountNote", { n: cancelled.length })}</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", color: "#E3C98A" }}>
+                          <span>{t("cancelledCountNote", { n: cancelled.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(cancelled.reduce((s, r) => s + r.total, 0))}</span>
+                        </div>
                       )}
                       {discountTotal > 0 && (
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -11435,13 +13215,119 @@ function POSPrototype({ tenantId }) {
         </div>
       )}
 
+      {receiptDetail && (() => {
+        const r = receiptDetail;
+        const cancelled = r.status === "cancelled";
+        const refunded = r.status === "refunded";
+        const voided = cancelled || refunded;
+        const unpaid = !voided && r.paid === false;
+        const when = (iso) => (iso ? new Date(iso).toLocaleString(isRtl ? "ar-EG" : "en-US", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) : "");
+        const line = (label, value, opts = {}) => (
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: opts.big ? 16 : 13, fontWeight: opts.big ? 700 : 400, marginTop: opts.big ? 8 : 4, color: opts.color }}>
+            <span>{label}</span>
+            <span style={{ fontFamily: "IBM Plex Mono, monospace", whiteSpace: "nowrap" }}>{value}</span>
+          </div>
+        );
+        const later = allMethods.find((m) => m.platform && m.id === receiptMethodOf(r));
+        const waiter = r.assignedTo?.role === "waiter" ? r.assignedTo.name : r.servedBy?.name;
+        const section = (title, children) => (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed #C9C2B2" }}>
+            <div style={{ fontSize: 11, color: COLORS.charcoalSoft, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>{title}</div>
+            {children}
+          </div>
+        );
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 16 }} onClick={() => setReceiptDetailId(null)}>
+            <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 22, width: "100%", maxWidth: 440, maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 600 }}>{t("ticketHash", { n: r.ticketNo })}</div>
+                <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 18, fontWeight: 700, textDecoration: voided ? "line-through" : "none" }}>{money(r.total)}</div>
+              </div>
+              <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginTop: 2 }}>{when(r.timestamp)}</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                <span style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 999, background: "#E8E2D2" }}>{r.table || t("takeawayLabel")}</span>
+                {r.deliveryMethod && <span style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 999, background: "#E8E2D2" }}>{r.deliveryMethod === "pickup" ? t("pickupBadge") : t("deliveryBadge", { zone: r.deliveryZoneLabel })}</span>}
+                {cancelled && <span style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 999, background: "#F0E3B8" }}>{t("cancelledBadge")}</span>}
+                {refunded && <span style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 999, background: "#F0CFC9" }}>{t("refundedBadge")}</span>}
+                {unpaid && <span style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 999, background: "#F0E3B8", fontWeight: 700 }}>{t("unpaidBadge")}</span>}
+              </div>
+              {(waiter || (r.assignedTo && r.assignedTo.role !== "waiter") || r.eta) && (
+                <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginTop: 8, lineHeight: 1.6 }}>
+                  {waiter && <div>{t("servedByLabel", { name: waiter })}</div>}
+                  {r.assignedTo && r.assignedTo.role !== "waiter" && <div>{t("assignedToBadge", { role: t("roleDelivery"), name: r.assignedTo.name })}</div>}
+                  {r.eta && <div>{t("kitchenEta", { text: r.eta })}</div>}
+                </div>
+              )}
+
+              {r.customer && (r.customer.name || r.customer.phone || r.customer.address) && section(t("receiptDetailCustomer"), (
+                <div style={{ fontSize: 13.5, lineHeight: 1.55 }}>
+                  {r.customer.name && <div style={{ fontWeight: 600 }}>{r.customer.name}</div>}
+                  {r.customer.phone && <div>{r.customer.phone}</div>}
+                  {r.customer.address && <div style={{ color: COLORS.charcoalSoft }}>{r.customer.address}</div>}
+                </div>
+              ))}
+
+              {section(t("receiptDetailItems"), (
+                <div>
+                  {r.items.map((it, idx) => (
+                    <div key={idx} style={{ marginBottom: 6 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13.5 }}>
+                        <span>{it.qty}&times; {it.name}</span>
+                        <span style={{ fontFamily: "IBM Plex Mono, monospace", whiteSpace: "nowrap" }}>{money(it.price * it.qty)}</span>
+                      </div>
+                      {it.note && <div style={{ fontSize: 12, color: COLORS.charcoalSoft, fontStyle: "italic" }}>{it.note}</div>}
+                    </div>
+                  ))}
+                </div>
+              ))}
+
+              <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed #C9C2B2" }}>
+                {line(t("subtotal"), money(r.subtotal))}
+                {r.discount && line(`${t("discount")}${r.discount.type === "percent" ? ` (${r.discount.value}%)` : ""}`, `-${money(r.discountAmount || 0)}`)}
+                {r.discount?.reason && <div style={{ fontSize: 11.5, color: COLORS.charcoalSoft }}>{t("discountReasonLabel", { reason: r.discount.reason })}</div>}
+                {r.serviceRate > 0 && line(`${t("serviceCharge")} (${r.serviceRate}%)`, money(r.serviceAmount || 0))}
+                {r.vatRate > 0 && line(`${t("vat")} (${r.vatRate}%)`, money(r.vatAmount || 0))}
+                {r.deliveryMethod === "delivery" && r.deliveryFee > 0 && line(t("deliveryFeeLineLabel"), money(r.deliveryFee))}
+                {line(t("total"), money(r.total), { big: true })}
+                {r.splitCount > 1 && <div style={{ fontSize: 12, color: COLORS.charcoalSoft, marginTop: 4 }}>{t("splitLabel", { n: r.splitCount })} · {t("eachPays", { amount: money(r.total / r.splitCount) })}</div>}
+              </div>
+
+              {section(t("receiptDetailPayment"), (
+                <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>
+                  {r.paymentMethod === "split" && Array.isArray(r.splitPayments)
+                    ? r.splitPayments.map((sp) => <div key={sp.method}>{t("paidVia", { method: t(`payment_${sp.method}`) })} — {money(sp.amount)}</div>)
+                    : <div>{t("paidVia", { method: t(`payment_${receiptMethodOf(r)}`) })}</div>}
+                  {r.paid === false ? <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailNotPaid")}</div> : r.paidAt && <div style={{ color: COLORS.charcoalSoft }}>{t("receiptDetailPaidAt", { time: when(r.paidAt) })}</div>}
+                  {later && !voided && (r.platformSettled
+                    ? <div style={{ color: "#3F5B45", fontWeight: 600 }}>{t("receiptDetailPlatformReceived", { app: t(`payment_${later.id}`), time: when(r.platformSettledAt) })}{r.platformSettledMethod ? ` · ${t(`payment_${r.platformSettledMethod}`)}` : ""}</div>
+                    : <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailPlatformOwed", { app: t(`payment_${later.id}`) })}</div>)}
+                  {later && r.appPayment && <div style={{ color: "var(--text-muted)" }}>{t("appPaidByLabel", { app: t(`payment_${later.id}`) })} {t(`payment_${r.appPayment}`)}</div>}
+                  {r.tableId === "delivery" && r.assignedTo && !voided && (r.deliverySettled
+                    ? <div style={{ color: "#3F5B45", fontWeight: 600 }}>{t("receiptDetailDeliverySettled", { time: when(r.deliverySettledAt) })}</div>
+                    : <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailDeliveryOpen", { name: r.assignedTo.name })}</div>)}
+                  {voided && <div style={{ color: COLORS.charcoalSoft }}>{t(cancelled ? "receiptDetailCancelledAt" : "receiptDetailRefundedAt", { time: when(cancelled ? r.cancelledAt : r.refundedAt), name: (cancelled ? r.cancelledBy : r.refundedBy)?.name || "—" })}</div>}
+                  {cancelled && r.cancelReason && <div style={{ color: COLORS.charcoalSoft }}>{t("cancelReasonLabel", { reason: r.cancelReason })}</div>}
+                  {voided && Array.isArray(r.returnedAmounts) && r.returnedAmounts.length > 0 && <div style={{ color: COLORS.charcoalSoft }}>{t("returnedViaLabel", { methods: r.returnedAmounts.map((a) => `${t(`payment_${a.method}`)} ${money(a.amount)}`).join(" + ") })}</div>}
+                </div>
+              ))}
+
+              <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
+                <button onClick={() => printSavedReceipt(r)} style={{ flex: 1, minWidth: 110, padding: "10px 0", borderRadius: 8, border: `1px solid ${theme.primary}`, background: "transparent", color: theme.primary, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("printReceipt")}</button>
+                <button onClick={() => printKitchenTicket(kitchenTicketFromReceipt(r))} style={{ flex: 1, minWidth: 110, padding: "10px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("kitchenTicketButton")}</button>
+                <button onClick={() => setReceiptDetailId(null)} style={{ flex: 1, minWidth: 80, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("close")}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {returnDialog && (() => {
         const r = returnDialog.receipt;
         const wasPaid = r.paid !== false;
         const isSplit = r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0;
         const options = [
           ...(isSplit ? [{ id: "same", label: `${t("returnMethodSplit")}: ${r.splitPayments.map((sp) => `${t(`payment_${sp.method}`)} ${money(sp.amount)}`).join(" + ")}` }] : []),
-          ...PAYMENT_METHODS.map((m) => ({ id: m.id, label: t(`payment_${m.id}`) })),
+          ...allMethods.map((m) => ({ id: m.id, label: t(`payment_${m.id}`) })),
         ];
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setReturnDialog(null)}>
@@ -11467,6 +13353,19 @@ function POSPrototype({ tenantId }) {
               ) : (
                 <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 18, textAlign: "center" }}>{t("returnNothingToReturn")}</div>
               )}
+              {returnDialog.action === "cancel" && (
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ fontSize: 11.5, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("cancelReasonTitle")}</div>
+                  <input
+                    type="text"
+                    value={returnDialog.reason || ""}
+                    onChange={(e) => setReturnDialog((d) => ({ ...d, reason: e.target.value }))}
+                    placeholder={t("cancelReasonPlaceholder")}
+                    maxLength={160}
+                    style={{ width: "100%", boxSizing: "border-box", fontSize: 13, padding: "9px 10px", borderRadius: 8, border: "1px solid #C9C2B2", background: "#FFFFFF", color: "#111111" }}
+                  />
+                </div>
+              )}
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setReturnDialog(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("cancel")}</button>
                 <button onClick={confirmReturnDialog} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("confirmAction")}</button>
@@ -11475,6 +13374,25 @@ function POSPrototype({ tenantId }) {
           </div>
         );
       })()}
+
+      {settleReminderOpen && !closingCountOpen && settleReminderGroups.length > 0 && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }}>
+          <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 24, width: "100%", maxWidth: 380 }}>
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 600, marginBottom: 6, textAlign: "center" }}>{t("settleReminderTitle")}</div>
+            <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 14, lineHeight: 1.5, textAlign: "center" }}>{t("settleReminderBody")}</div>
+            <div style={{ border: "1px solid #C9C2B2", borderRadius: 10, overflow: "hidden", marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 12px", background: "rgba(176,141,87,0.14)", fontSize: 14, fontWeight: 700 }}>
+                <span>{t("settleReminderTotal")} · {tCount("orderCount", settleReminderOrders)}</span>
+                <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(settleReminderTotal)}</span>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={startClosingCount} style={{ flex: 1, padding: "11px 6px", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 12.5, cursor: "pointer" }}>{t("settleReminderCloseAnyway")}</button>
+              <button onClick={() => { setSettleReminderOpen(false); setView("shift"); }} style={{ flex: 1, padding: "11px 6px", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("settleReminderSettleNow")}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {closingCountOpen && (() => {
         const n = parseFloat(closingCountDraft);
@@ -11504,6 +13422,93 @@ function POSPrototype({ tenantId }) {
           </div>
         );
       })()}
+
+      {platformReceiveDlg && (() => {
+        const app = platformOwedByApp.find((a) => a.id === platformReceiveDlg.appId);
+        if (!app) return null;
+        const allEntries = app.orders;
+        const entries = allEntries.filter((x) => settlePick[x.r.id]);
+        const total = round2(entries.reduce((s, x) => s + x.amount, 0));
+        const appName = t(`payment_${app.id}`);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setPlatformReceiveDlg(null)}>
+            <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 22, width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("platformReceiveTitle", { app: appName })}</div>
+              <div style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 10, color: "#4A453D" }}>{t("platformReceiveBody", { app: appName })}</div>
+              {settleListControls(allEntries.map((x) => x.r))}
+              <div style={{ marginBottom: 12 }}>{allEntries.map((x) => settleOrderRow(x.r, x.amount))}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: "flex", justifyContent: "space-between" }}><span>{t("settleSelectedCount", { n: entries.length, m: allEntries.length })}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(total)}</span></div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {enabledDirectMethods.map((m) => (
+                  <button
+                    key={m.id}
+                    disabled={entries.length === 0}
+                    onClick={() => { setPlatformReceiveDlg(null); confirmPlatformReceived(app, entries, m.id); }}
+                    style={{ padding: "11px 0", borderRadius: 8, border: m.id === "cash" || m.id === "visa" ? "none" : "1px solid #C9C2B2", background: m.id === "cash" || m.id === "visa" ? theme.primary : "transparent", color: m.id === "cash" || m.id === "visa" ? "#FBF8F2" : COLORS.charcoal, fontSize: 13.5, fontWeight: 600, cursor: entries.length === 0 ? "not-allowed" : "pointer", opacity: entries.length === 0 ? 0.45 : 1 }}
+                  >{t(`payment_${m.id}`)}</button>
+                ))}
+              </div>
+              <div style={{ fontSize: 11.5, color: "#7A7468", lineHeight: 1.5, marginTop: 12 }}>{t("platformReceiveCashNote")}</div>
+              <button onClick={() => setPlatformReceiveDlg(null)} style={{ marginTop: 8, padding: "8px 0", border: "none", background: "transparent", color: "#7A7468", fontSize: 12.5, cursor: "pointer" }}>{t("cancel")}</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {riderSettleDlg && (() => {
+        const rider = deliveryReconciliation.find((p) => p.id === riderSettleDlg.riderId);
+        if (!rider) return null;
+        const rows = [...rider.orderList].sort((a, b) => (a.timestamp < b.timestamp ? -1 : 1));
+        const chosen = rows.filter((r) => settlePick[r.id]);
+        const cash = round2(chosen.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((sum, a) => sum + a.amount, 0));
+        const fees = round2(chosen.reduce((sum, r) => sum + agentFeeShare(r.deliveryFee || 0), 0));
+        const net = round2(cash - fees);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setRiderSettleDlg(null)}>
+            <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 22, width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t("riderSettleTitle", { name: rider.name })}</div>
+              <div style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 10, color: "#4A453D" }}>{t("riderSettleBody")}</div>
+              {settleListControls(rows)}
+              <div style={{ marginBottom: 12 }}>{rows.map((r) => settleOrderRow(r, r.total))}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12.5, marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationCash")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(cash)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("deliveryReconciliationFees")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(fees)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, borderTop: "1px dashed #C9C2B2", paddingTop: 5, marginTop: 3 }}>
+                  <span>{net < 0 ? t("deliveryReconciliationOwedToAgent") : t("deliveryReconciliationOwed")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(Math.abs(net))}</span>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setRiderSettleDlg(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{t("cancel")}</button>
+                <button
+                  disabled={chosen.length === 0}
+                  onClick={() => { setRiderSettleDlg(null); settleDeliveryOrders(rider, chosen); }}
+                  style={{ flex: 2, padding: "11px 0", borderRadius: 8, border: "none", background: "#8A6A2E", color: "#FBF8F2", fontSize: 13.5, fontWeight: 600, cursor: chosen.length === 0 ? "not-allowed" : "pointer", opacity: chosen.length === 0 ? 0.45 : 1 }}
+                >{t("settleNowButton", { n: chosen.length })}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {moveOrderPrompt && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setMoveOrderPrompt(null)}>
+          <div style={{ background: COLORS.paper, color: COLORS.charcoal, borderRadius: 14, padding: 24, width: "100%", maxWidth: 360, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>{t("moveOrderTitle", { to: tableLabel(moveOrderPrompt.to) })}</div>
+            <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 18 }}>{t("moveOrderBody", { from: tableLabel(moveOrderPrompt.from), to: tableLabel(moveOrderPrompt.to), n: moveOrderPrompt.count })}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                onClick={() => { const p = moveOrderPrompt; setMoveOrderPrompt(null); switchTable(p.to, { moveItems: true }); }}
+                style={{ padding: "11px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
+              >{t("moveOrderMove", { to: tableLabel(moveOrderPrompt.to) })}</button>
+              <button
+                onClick={() => { const p = moveOrderPrompt; setMoveOrderPrompt(null); switchTable(p.to); }}
+                style={{ padding: "11px 0", borderRadius: 8, border: "1px solid #C9C2B2", background: "transparent", color: COLORS.charcoal, fontSize: 13, fontWeight: 500, cursor: "pointer" }}
+              >{t("moveOrderKeep", { from: tableLabel(moveOrderPrompt.from) })}</button>
+              <button onClick={() => setMoveOrderPrompt(null)} style={{ padding: "8px 0", border: "none", background: "transparent", color: "#7A7468", fontSize: 12.5, cursor: "pointer" }}>{t("cancel")}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmDialog && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 20 }} onClick={() => setConfirmDialog(null)}>
@@ -11721,21 +13726,70 @@ function POSPrototype({ tenantId }) {
               </div>
 
               <div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("kitchenSettingTitle")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("autoPrintTitle")}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {KITCHEN_MODES.map((mode) => (
+                  {[["none", "autoPrintNone"], ["receipt", "autoPrintReceipt"], ["kitchen", "autoPrintKitchen"], ["both", "autoPrintBoth"]].map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      onClick={() => changeAutoPrint(mode)}
+                      style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${autoPrint === mode ? theme.secondary : "var(--border)"}`, background: autoPrint === mode ? "rgba(176,141,87,0.18)" : "transparent", color: autoPrint === mode ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                    >
+                      {t(label)}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("autoPrintHint")}</div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("autoPrintSetupHint")}</div>
+                <button onClick={downloadAutoPrintSetup} style={{ marginTop: 10, padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("autoPrintSetupButton")}</button>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("drawerTitle")}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[["off", "drawerOff"], ["manual", "drawerManual"], ["auto", "drawerAuto"]].map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      onClick={() => changeDrawerMode(mode)}
+                      style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${drawerMode === mode ? theme.secondary : "var(--border)"}`, background: drawerMode === mode ? "rgba(176,141,87,0.18)" : "transparent", color: drawerMode === mode ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                    >
+                      {t(label)}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("drawerHint")}</div>
+                {drawerMode !== "off" && (
+                  <>
+                    <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("drawerSetup")}</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+                      <a href="/drawer-helper/POS-Drawer-Helper.bat" download style={{ padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 12.5, textDecoration: "none" }}>{t("drawerDownload")}</a>
+                      <button onClick={checkDrawerHelper} style={{ padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("drawerCheck")}</button>
+                      <button onClick={() => openCashDrawer(false)} style={{ padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("drawerTest")}</button>
+                    </div>
+                    {drawerHelper && (
+                      <div style={{ fontSize: 12, marginTop: 8, color: drawerHelper.ok ? "#9FCB8E" : "#E3A08A" }}>
+                        {drawerHelper.ok ? t("drawerHelperOk", { printer: drawerHelper.printer }) : t("drawerHelperMissing")}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("kitchenWhereTitle")}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {KITCHEN_MODES.filter((mode) => mode !== "off").map((mode) => (
                     <button
                       key={mode}
                       onClick={() => changeKitchenMode(mode)}
-                      style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${kitchenMode === mode ? theme.secondary : "var(--border)"}`, background: kitchenMode === mode ? "rgba(176,141,87,0.18)" : "transparent", color: kitchenMode === mode ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+                      style={{ padding: "8px 16px", borderRadius: 7, border: `1px solid ${(kitchenMode === "off" ? "here" : kitchenMode) === mode ? theme.secondary : "var(--border)"}`, background: (kitchenMode === "off" ? "here" : kitchenMode) === mode ? "rgba(176,141,87,0.18)" : "transparent", color: (kitchenMode === "off" ? "here" : kitchenMode) === mode ? theme.secondaryLight : "var(--text-muted)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
                     >
                       {t(`kitchenMode${mode.charAt(0).toUpperCase()}${mode.slice(1)}`)}
                     </button>
                   ))}
                 </div>
-                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t(`kitchenHint_${kitchenMode}`)}</div>
-                {kitchenMode !== "off" && kitchenMode !== "send" && <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("kitchenSilentTip")}</div>}
-                {kitchenMode !== "off" && (
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t(`kitchenHint_${kitchenMode === "off" ? "here" : kitchenMode}`)}</div>
+                {kitchenMode !== "send" && <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>{t("kitchenSilentTip")}</div>}
+                {(kitchenMode === "station" || autoPrint === "kitchen" || autoPrint === "both") && (
                   <button onClick={printKitchenTestTicket} style={{ marginTop: 10, padding: "8px 16px", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: 12.5, cursor: "pointer" }}>{t("kitchenTestPrint")}</button>
                 )}
                 {kitchenMode === "station" && (
@@ -11814,6 +13868,84 @@ function POSPrototype({ tenantId }) {
                     </div>
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>{t("taxesOrderNote")}</div>
+                </div>
+              )}
+
+              {isManager && (
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("paymentSettingsTitle")}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginBottom: 12, lineHeight: 1.5 }}>{t("paymentSettingsHint")}</div>
+                  {paymentConfigLoadFailed && <div style={{ fontSize: 11.5, color: "#E3A79C", marginBottom: 10 }}>{t("paymentSettingsLoadFailed")}</div>}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {allMethods.filter((m) => !m.fromList).map((m) => {
+                      const on = paymentMethodOn(paymentConfig, m.id);
+                      const locked = m.id === "cash" || paymentConfigLoadFailed;
+                      const defaultName = m.custom ? m.label : (STRINGS[lang] && STRINGS[lang][`payment_${m.id}`]) || m.label;
+                      return (
+                        <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 12px", flexWrap: "wrap" }}>
+                          <button
+                            disabled={locked}
+                            onClick={() => setPaymentConfig((prev) => ({ ...prev, enabled: { ...prev.enabled, [m.id]: !on } }))}
+                            style={{ width: 64, padding: "6px 0", borderRadius: 999, border: `1px solid ${on ? "#3F5B45" : "var(--border)"}`, background: on ? "#22301F" : "transparent", color: on ? "#9FCB8E" : "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: locked ? "default" : "pointer", opacity: m.id === "cash" ? 0.7 : 1 }}
+                          >
+                            {on ? t("paymentSettingsOn") : t("paymentSettingsOff")}
+                          </button>
+                          <input
+                            type="text"
+                            maxLength={24}
+                            disabled={paymentConfigLoadFailed}
+                            value={m.custom ? m.label : paymentConfig.names[m.id] || ""}
+                            placeholder={defaultName}
+                            onChange={(e) => {
+                              const v = e.target.value.slice(0, 24);
+                              setPaymentConfig((prev) => {
+                                if (m.custom) return { ...prev, custom: prev.custom.map((c) => (c.id === m.id ? { ...c, name: v } : c)) };
+                                const names = { ...prev.names };
+                                if (v.trim()) names[m.id] = v; else delete names[m.id];
+                                return { ...prev, names };
+                              });
+                            }}
+                            className="field"
+                            style={{ flex: 1, minWidth: 140 }}
+                          />
+                          {m.id === "cash" && <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{t("paymentSettingsAlwaysOn")}</span>}
+                          {m.platform && <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{m.custom ? t("paymentSettingsPaidLater") : t("paymentSettingsDeliveryApp")}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {paymentConfig.custom.length < MAX_CUSTOM_PAYMENT_METHODS && (
+                    <div style={{ marginTop: 14, background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: 10, padding: 12 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 8 }}>{t("paymentSettingsAddTitle")}</div>
+                      <input type="text" maxLength={24} value={newPayName} onChange={(e) => setNewPayName(e.target.value)} placeholder={t("paymentSettingsNewName")} disabled={paymentConfigLoadFailed} className="field" style={{ width: "100%", boxSizing: "border-box", marginBottom: 8 }} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+                        {[[false, "paymentSettingsKindNow", "paymentSettingsKindNowHint"], [true, "paymentSettingsKindLater", "paymentSettingsKindLaterHint"]].map(([later, label, hint]) => (
+                          <button
+                            key={label}
+                            onClick={() => setNewPayLater(later)}
+                            style={{ textAlign: isRtl ? "right" : "left", padding: "8px 12px", borderRadius: 8, border: `1px solid ${newPayLater === later ? theme.secondary : "var(--border)"}`, background: newPayLater === later ? "rgba(176,141,87,0.18)" : "transparent", color: "var(--text-primary)", cursor: "pointer" }}
+                          >
+                            <div style={{ fontSize: 12.5, fontWeight: 600 }}>{t(label)}</div>
+                            <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 2 }}>{t(hint)}</div>
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        disabled={paymentConfigLoadFailed || !newPayName.trim()}
+                        onClick={() => {
+                          const name = newPayName.trim().slice(0, 24);
+                          if (!name) return;
+                          const id = `x_${Date.now().toString(36)}`;
+                          setPaymentConfig((prev) => ({ ...prev, custom: [...prev.custom, { id, name, later: newPayLater }] }));
+                          setNewPayName("");
+                          flashNotice(t("notice_paymentMethodAdded", { name }));
+                        }}
+                        style={{ padding: "9px 18px", borderRadius: 7, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 13, fontWeight: 600, cursor: !newPayName.trim() || paymentConfigLoadFailed ? "default" : "pointer", opacity: !newPayName.trim() || paymentConfigLoadFailed ? 0.45 : 1 }}
+                      >
+                        {t("paymentSettingsAdd")}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -11902,16 +14034,17 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
   // settings and branding (see app/t/[tenantId]/page.jsx) so the page never flashes the original
   // layout first. Restaurants that haven't published it get null here and nothing below changes.
   const siteBoot = bootstrap && bootstrap.settings ? bootstrap : null;
+  const [bootCache] = useState(() => readBoot(tenantId));
   const [lang, setLangState] = useState(siteBoot ? (siteBoot.settings.defaultLang === "en" ? "en" : "ar") : "ar");
   const langChosenRef = useRef(false);
   const setLang = (code) => {
     langChosenRef.current = true;
     setLangState(code);
   };
-  const [restaurantName, setRestaurantName] = useState(siteBoot?.brand?.name || "Ember & Vine");
-  const [logoUrl, setLogoUrl] = useState(siteBoot?.brand?.logo || null);
-  const [primaryColor, setPrimaryColor] = useState(siteBoot?.brand?.primary || COLORS.burgundy);
-  const [secondaryColor, setSecondaryColor] = useState(siteBoot?.brand?.secondary || COLORS.brass);
+  const [restaurantName, setRestaurantName] = useState(siteBoot?.brand?.name || bootCache?.name || "");
+  const [logoUrl, setLogoUrl] = useState(siteBoot?.brand?.logo || bootCache?.logo || null);
+  const [primaryColor, setPrimaryColor] = useState(siteBoot?.brand?.primary || bootCache?.primary || COLORS.burgundy);
+  const [secondaryColor, setSecondaryColor] = useState(siteBoot?.brand?.secondary || bootCache?.secondary || COLORS.brass);
   const [mapsLink, setMapsLink] = useState(siteBoot?.brand?.mapsLink || "");
   const [phoneNumber, setPhoneNumber] = useState(siteBoot?.brand?.phone || "");
   const [siteSettings, setSiteSettings] = useState(siteBoot ? mergeSiteSettings(siteBoot.settings) : null);
@@ -11930,6 +14063,7 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
   const [loaded, setLoaded] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false); // the "Request the bill" modal, table QR view only
   const [checkoutMethod, setCheckoutMethod] = useState("cash");
+  const [payConfig, setPayConfig] = useState({ enabled: {}, names: {}, custom: [] }); // the restaurant's Settings > Payment methods
   const [checkoutTab, setCheckoutTab] = useState(null); // { items } | null — this table's confirmed running order, fetched on demand
   const [checkoutUnpaidReceipts, setCheckoutUnpaidReceipts] = useState([]); // receipts staff already saved for this table but haven't collected payment for yet
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -11975,6 +14109,21 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
   const [ccCustomers, setCcCustomers] = useState({});
   const [ccShowSuggestions, setCcShowSuggestions] = useState(false);
   const [ccRecognized, setCcRecognized] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await getSharedWithRetry(storage, "payment-methods-config");
+        if (!cancelled) setPayConfig(paymentConfigFrom(r?.value));
+      } catch (e) {
+        // keeps the defaults: every direct method offered, under its usual name
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [storage]);
 
   useEffect(() => {
     if (!callCenter) return;
@@ -12116,15 +14265,16 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
       if (!value) return;
       if (key === "restaurant-branding") {
         const b = JSON.parse(value);
-        setRestaurantName(b.name || "Ember & Vine");
+        setRestaurantName(b.name || "");
         setLogoUrl(b.logo || null);
         setPrimaryColor(b.primary || COLORS.burgundy);
         setSecondaryColor(b.secondary || COLORS.brass);
         setMapsLink(b.mapsLink || "");
         setPhoneNumber(b.phone || "");
+        if (b.name) writeBoot(tenantId, { name: b.name, logo: b.logo && b.logo.length < 650000 ? b.logo : null, primary: b.primary || COLORS.burgundy, secondary: b.secondary || COLORS.brass });
       } else if (key === "menu-config") {
         const m = JSON.parse(value);
-        setCategories(m.categories || []);
+        setCategories(orderCategoriesByMain(m.categories || [], cleanMains(m.mainCategories)));
         // Strip anything beyond name/tag/price before it ever reaches component state — recipe data
         // (ingredient IDs and quantities) rides along in the same shared record for the staff app's use,
         // but this view has no reason to hold onto it.
@@ -12231,6 +14381,17 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
   };
   const isRtl = lang === "ar";
   const theme = { primary: primaryColor, secondary: secondaryColor, secondaryLight: lighten(secondaryColor, 0.42) };
+  // A name the restaurant gave a payment method in Settings replaces the built-in one.
+  const tBase = t;
+  const tPay = (key, vars) => {
+    if (key.startsWith("payment_")) {
+      const pid = key.slice(8);
+      const given = customPaymentOf(payConfig, pid)?.name || payConfig.names[pid];
+      if (given) return given;
+      if (isCustomMethodId(pid)) return (STRINGS[lang] && STRINGS[lang].paymentOther) || "Other";
+    }
+    return tBase(key, vars);
+  };
 
   const allItems = useMemo(() => {
     const map = {};
@@ -12454,7 +14615,7 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
                 <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 600, marginBottom: 8 }}>{t("checkoutRequestedTitle")}</div>
                 <div style={{ fontSize: 13, color: COLORS.charcoalSoft, marginBottom: 6, lineHeight: 1.5 }}>{t("checkoutRequestedBody")}</div>
                 <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 22, margin: "14px 0" }}>{money(checkoutTotal)}</div>
-                <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 20 }}>{t(`payment_${checkoutMethod}`)}</div>
+                <div style={{ fontSize: 12.5, color: COLORS.charcoalSoft, marginBottom: 20 }}>{tPay(`payment_${checkoutMethod}`)}</div>
                 <button onClick={() => setCheckoutOpen(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 8, border: "none", background: theme.primary, color: "#FBF8F2", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{t("orderSentOk")}</button>
               </div>
             ) : (
@@ -12502,13 +14663,13 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
                     <div style={{ marginTop: 16 }}>
                       <div style={{ fontSize: 11, color: COLORS.charcoalSoft, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>{t("paymentMethodLabel")}</div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {PAYMENT_METHODS.map((m) => (
+                        {[...DIRECT_METHODS, ...payConfig.custom.filter((c) => !c.later).map((c) => ({ id: c.id }))].filter((m) => paymentMethodOn(payConfig, m.id)).map((m) => (
                           <button
                             key={m.id}
                             onClick={() => setCheckoutMethod(m.id)}
                             style={{ flex: "1 1 70px", padding: "9px 0", borderRadius: 7, border: `1px solid ${checkoutMethod === m.id ? theme.secondary : "#DCD5C4"}`, background: checkoutMethod === m.id ? "rgba(176,141,87,0.18)" : "transparent", color: checkoutMethod === m.id ? "#8A6A2E" : COLORS.charcoal, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
                           >
-                            {t(`payment_${m.id}`)}
+                            {tPay(`payment_${m.id}`)}
                           </button>
                         ))}
                       </div>
@@ -12531,6 +14692,14 @@ function CustomerMenuView({ tableId, tenantId, callCenter = false, preview = fal
       )}
     </>
   );
+
+  // A device that has never seen this restaurant waits for its real details instead of showing stock ones.
+  // A restaurant that never set its own name shows the one it was registered under.
+  useEffect(() => {
+    if (!loaded || restaurantName) return;
+    fetch(`/api/pos/${encodeURIComponent(tenantId)}/status`).then((r) => r.json()).then((st) => { if (st?.restaurant_name) setRestaurantName((cur) => cur || st.restaurant_name); }).catch(() => {});
+  }, [loaded]);
+  if (!loaded && !siteBoot && !bootCache) return <BootLoader />;
 
   // The published website look. Everything it shows and does comes from the state above, so ordering
   // behaves exactly like the original page — only the presentation is different.

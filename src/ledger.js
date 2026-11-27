@@ -19,13 +19,29 @@
 //  * A SHIFT belongs to the business day in which its midpoint falls. Its orders are the ones its employee
 //    created between clock-in and clock-out. Orders created outside every shift are reported as such.
 //  * Totals saved at clock-out are a historical record only; screens always recompute from the orders.
+//  * An order paid through a DELIVERY APP (Talabat, Elmenus) is a sale like any other, but no money reaches the
+//    drawer or the bank until the app pays the restaurant, usually at the end of the month. Until someone marks it
+//    received (platformSettled) it is money the app OWES the restaurant — see platformOwed.
 
 export const PAYMENT_METHODS = [
   { id: "cash", label: "Cash" },
   { id: "visa", label: "Visa" },
   { id: "instapay", label: "InstaPay" },
   { id: "wallet", label: "Wallet" },
+  // Delivery apps pay the restaurant later (see platformOwed). Whole-order choices only: never split, never
+  // part of the electronic-balance reconciliation.
+  { id: "talabat", label: "Talabat", platform: true },
+  { id: "elmenus", label: "Elmenus", platform: true },
 ];
+export const DIRECT_METHODS = PAYMENT_METHODS.filter((m) => !m.platform);
+export const PLATFORM_METHODS = PAYMENT_METHODS.filter((m) => m.platform);
+export const isPlatformMethod = (id) => PLATFORM_METHODS.some((m) => m.id === id);
+// A delivery person who is really a delivery app (a roster entry named after it): its orders belong under the app's
+// payment method, not under a rider who hands cash in.
+export const DELIVERY_APP_NAME = /talabat|طلبات|elmenus|المنيوس|jahez|جاهز|mrsool|مرسول|breadfast|careem|كريم|uber ?eats|اوبر|أوبر|glovo|instashop/i;
+// A restaurant can add its own payment methods in Settings. Their ids start with "x_"; whether one is paid at once or
+// paid later by an app is the restaurant's setting, not something stored on the order.
+export const isCustomMethodId = (id) => typeof id === "string" && /^x_[a-z0-9]+$/.test(id);
 
 export const round2 = (n) => Math.round(n * 100) / 100;
 
@@ -80,8 +96,21 @@ export const storageMonthKeysFor = (reportingMonthKeys) => Array.from(new Set(re
 // ---- one receipt ----
 // A receipt paid across more than one method stores paymentMethod "split" plus a breakdown; every other
 // receipt effectively has one "split" of just its own total. Always read amounts through this.
+// Every price list is a delivery app's menu (Talabat, Elmenus, ...): an order rung up on it is paid through that app.
+// A list named after Talabat or Elmenus uses the built-in method of that name; any other list gets a payment type of its own.
+export const profileAppMethodId = (p) => {
+  const name = String(p?.name || "");
+  if (/talabat|طلبات/i.test(name)) return "talabat";
+  if (/elmenus|el menus|المنيوس|منيوس/i.test(name)) return "elmenus";
+  return `x_l${String(p?.id || "").replace(/[^a-z0-9]/gi, "").toLowerCase()}`;
+};
+// An order saved from a price list carries `appPayment` (how the customer paid the app). It belongs to that app even if
+// someone later edited its payment method to cash/visa/wallet — the customer paid the app, not the till.
+export const receiptMethodOf = (r) => (r.priceList && r.appPayment ? profileAppMethodId(r.priceList) : r.paymentMethod);
 export const receiptMethodAmounts = (r) =>
-  r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0
+  r.priceList && r.appPayment
+    ? [{ method: profileAppMethodId(r.priceList), amount: r.total }]
+    : r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0
     ? r.splitPayments
     : [{ method: r.paymentMethod, amount: r.total }];
 export const returnTimeOf = (r) => (r.status === "cancelled" ? r.cancelledAt : r.status === "refunded" ? r.refundedAt : null);
@@ -97,8 +126,9 @@ export const cashTimeOf = (r) => (r.tableId === "delivery" && r.deliverySettledA
 export const summarize = (completed) => {
   const methodAmounts = completed.flatMap(receiptMethodAmounts);
   const byMethod = {};
-  PAYMENT_METHODS.forEach((m) => {
-    byMethod[m.id] = methodAmounts.filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0);
+  // The built-in methods always appear (even at 0); any other method found on an order — one the restaurant added — appears too.
+  [...PAYMENT_METHODS.map((m) => m.id), ...new Set(methodAmounts.map((a) => a.method).filter((id) => !PAYMENT_METHODS.some((m) => m.id === id)))].forEach((id) => {
+    byMethod[id] = methodAmounts.filter((a) => a.method === id).reduce((s, a) => s + a.amount, 0);
   });
   const discounted = completed.filter((r) => (r.discountAmount || 0) > 0);
   const unpaid = completed.filter((r) => r.paid === false);
@@ -112,6 +142,19 @@ export const summarize = (completed) => {
   };
 };
 
+// ---- money owed by delivery apps ----
+// For each delivery app: the paid, completed orders sold through it that it has not yet paid the restaurant for,
+// with the amount each one carries for that app, and the total owed. `orders` is any list of receipts; `apps` is
+// the list of paid-later methods ({ id, label }) — the built-in delivery apps unless the restaurant added more.
+export const platformOwed = (orders, apps = PLATFORM_METHODS) =>
+  apps.map((m) => {
+    const list = orders
+      .filter((r) => r.status === "completed" && r.paid !== false && !r.platformSettled)
+      .map((r) => ({ r, amount: round2(receiptMethodAmounts(r).filter((a) => a.method === m.id).reduce((s, a) => s + a.amount, 0)) }))
+      .filter((x) => x.amount > 0);
+    return { id: m.id, label: m.label, orders: list, owed: round2(list.reduce((s, x) => s + x.amount, 0)) };
+  });
+
 // ---- the cash drawer ----
 // Cash that moved inside a time window: received (paid in the window), paid back out to customers, and
 // paid out as expenses. `inWin` decides whether a timestamp is inside the window.
@@ -120,12 +163,24 @@ export const cashFlows = (pool, expensePool, inWin) => {
   const cashIn = cashOrders.flatMap(receiptMethodAmounts).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
   const cashReturned = pool.filter((r) => returnTimeOf(r) && inWin(returnTimeOf(r)) && r.paid !== false && notHeldByRider(r)).flatMap(returnAmountsOf).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
   const cashExpenses = expensePool.filter((e) => e.status === "paid" && e.paymentMethod === "cash" && inWin(e.recordedAt || `${e.date}T00:00:00.000Z`)).reduce((s, e) => s + e.amount, 0);
+  // When a delivery rider settles up, the drawer receives what they collected MINUS what they keep as their share of
+  // the delivery fees (and pays them out of the drawer when the restaurant owes them). The share is saved on each
+  // settled order (riderFeeShare) at that moment; settlements made before it was saved leave the drawer as they were.
+  const riderPay = Math.round(pool.filter((r) => r.tableId === "delivery" && r.deliverySettled && r.status === "completed" && r.paid !== false && Number(r.riderFeeShare) > 0 && r.deliverySettledAt && inWin(r.deliverySettledAt)).reduce((s, r) => s + Number(r.riderFeeShare), 0) * 100) / 100;
   const who = {};
   cashOrders.forEach((r) => {
     const cash = receiptMethodAmounts(r).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0);
     if (cash > 0) who[r.servedBy?.name || "—"] = (who[r.servedBy?.name || "—"] || 0) + cash;
   });
-  return { cashIn, cashReturned, cashExpenses, paidOut: cashReturned + cashExpenses, who };
+  // A delivery app (Talabat, Elmenus, a price list's app) that pays the restaurant IN CASH puts that cash in the drawer of
+  // the shift in which the orders were marked received. (Paid by visa or another method, it never touches the drawer.)
+  const appCashOrders = pool.filter((r) => r.platformSettled && r.platformSettledMethod === "cash" && r.status === "completed" && r.paid !== false && r.platformSettledAt && inWin(r.platformSettledAt));
+  const appCash = round2(appCashOrders.reduce((s, r) => s + r.total, 0));
+  appCashOrders.forEach((r) => {
+    const name = r.platformSettledBy?.name || "—";
+    who[name] = (who[name] || 0) + r.total;
+  });
+  return { cashIn: cashIn + appCash, appCash, cashReturned, cashExpenses, riderPay, paidOut: cashReturned + cashExpenses + riderPay, who };
 };
 
 // Finds the set of recorded events whose combined effect best accounts for a gap.
@@ -190,7 +245,7 @@ export function createLedger(data) {
     const completed = all.filter((r) => r.status === "completed");
     const voided = all.filter((r) => r.status === "cancelled" || r.status === "refunded");
     const expenses = expensesInDays(startDay, endDay);
-    return { startDay, endDay, all, completed, voided, ...summarize(completed), voidedTotal: voided.reduce((s, r) => s + r.total, 0), expenses, expenseTotal: expenses.reduce((s, e) => s + e.amount, 0) };
+    return { startDay, endDay, all, completed, voided, ...summarize(completed), voidedTotal: voided.reduce((s, r) => s + r.total, 0), cancelledOrders: voided.filter((r) => r.status === "cancelled"), refundedOrders: voided.filter((r) => r.status === "refunded"), expenses, expenseTotal: expenses.reduce((s, e) => s + e.amount, 0) };
   };
 
   // ---- shifts ----
@@ -202,6 +257,11 @@ export function createLedger(data) {
     return [...logged, ...open].sort((a, b) => a.clockIn.localeCompare(b.clockIn));
   };
   // A shift belongs to the business day that most of it falls in — the day of its midpoint.
+  // Whether a shift's closing count can be compared with the next opening of `day`: it belongs to that day, or it was left
+  // open for more than 24 hours (a missed clock-out) and was finally closed on that day — such a shift's midpoint falls
+  // on some earlier day, which used to hide the handover between it and the next shift.
+  const closedOnDay = (sh, day, nowMs) =>
+    shiftDayOf(sh, nowMs) === day || (!!sh.clockOut && new Date(sh.clockOut).getTime() - new Date(sh.clockIn).getTime() > 24 * 3600 * 1000 && bizDay(sh.clockOut) === day);
   const shiftDayOf = (sh, nowMs) => bizDay(new Date((new Date(sh.clockIn).getTime() + new Date(sh.clockOut || new Date(nowMs).toISOString()).getTime()) / 2).toISOString());
 
   // Receipts a shift's own employee created during it. Null until the months it touches have loaded.
@@ -304,7 +364,7 @@ export function createLedger(data) {
     const nowIso = new Date(nowMs).toISOString();
     const { completed, voided, expenseTotal } = p;
     const dayCompleted = completed;
-    const byMethod = PAYMENT_METHODS.map((m) => ({ id: m.id, total: p.byMethod[m.id] })).filter((m) => m.total > 0);
+    const byMethod = Object.keys(p.byMethod).map((id) => ({ id, total: p.byMethod[id] })).filter((m) => m.total > 0);
     const priceOf = priceMaps();
     const poolFor = (a, b) => {
       const keys = monthKeysInRange(storageMonthOf(a), storageMonthOf(b));
@@ -359,15 +419,39 @@ export function createLedger(data) {
       expenses.filter((e) => e.status === "paid" && e.paymentMethod === "cash" && e.date === day && !insideAnyShift(e.recordedAt || `${e.date}T00:00:00.000Z`)).forEach((e) => {
         events.push({ kind: "looseExpense", what: e.category, amount: -e.amount });
       });
+      // Delivery cash settled during this shift: what riders handed in (and kept) when the shift's person settled them
+      // up. Settlements that look unusual are flagged, and the cash they brought in is offered to the gap explainer —
+      // if that cash never really reached the drawer, it is exactly the kind of shortage a closing count shows.
+      const settledOrders = pool
+        .filter((r) => r.tableId === "delivery" && r.deliverySettled && r.status === "completed" && r.paid !== false && r.deliverySettledAt && inWin(r.deliverySettledAt))
+        .map((r) => {
+          const cash = round2(receiptMethodAmounts(r).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0));
+          const rider = r.assignedTo?.name || null;
+          const orderDay = bizDay(r.timestamp);
+          const flags = [];
+          if (orderDay < day) flags.push("old");
+          if (rider && DELIVERY_APP_NAME.test(rider)) flags.push("app");
+          if (cash === 0) flags.push("noCash");
+          return { n: r.ticketNo, total: r.total, cash, share: Number(r.riderFeeShare) > 0 ? Number(r.riderFeeShare) : 0, rider, orderDay, at: r.deliverySettledAt, flags };
+        })
+        .sort((a, b) => a.at.localeCompare(b.at));
+      const settled = {
+        n: settledOrders.length,
+        cash: round2(settledOrders.reduce((s, o) => s + o.cash, 0)),
+        share: round2(settledOrders.reduce((s, o) => s + o.share, 0)),
+        orders: settledOrders,
+        flagged: settledOrders.filter((o) => o.flags.length > 0),
+      };
+      settled.flagged.filter((o) => o.cash > 0).forEach((o) => events.push({ kind: "settledCash", n: o.n, amount: -o.cash, rider: o.rider, orderDay: o.orderDay, flags: o.flags }));
       const solve = gap !== null && Math.abs(gap) >= 0.01 ? solveGap(gap, events) : null;
-      return { ...sh, ...flows, expected, gap, gapAtClosing, events, solve, collected: dayCollected, impliedCollection };
+      return { ...sh, ...flows, expected, gap, gapAtClosing, events, solve, settled, collected: dayCollected, impliedCollection };
     });
 
     // The cash that moved between one shift's closing count and the next one's opening count — but only within
     // one business day. Cash is often collected when the day ends, so the first shift of a day is deliberately NOT
     // compared with the last shift of the day before.
     drawers.forEach((d) => {
-      const prev = [...shifts].reverse().find((x) => x.clockOut && x.clockOut <= d.clockIn && x.counted !== null && shiftDayOf(x, nowMs) === day);
+      const prev = [...shifts].reverse().find((x) => x.clockOut && x.clockOut <= d.clockIn && x.counted !== null && closedOnDay(x, day, nowMs));
       d.prevName = prev ? prev.name : null;
       d.prevCounted = prev ? prev.counted : null;
       d.prevOut = prev ? prev.clockOut : null;
@@ -387,7 +471,7 @@ export function createLedger(data) {
     // closed (inside shifts AND in the gaps between them), against the final count.
     const first = drawers[0];
     const last = drawers[drawers.length - 1];
-    let dayTotals = { opening: null, cashIn: 0, paidOut: 0, finalCounted: null, expectedEnd: null, gap: null, shiftGaps: 0, residuals: 0, collected: 0, impliedCollection: null };
+    let dayTotals = { opening: null, cashIn: 0, paidOut: 0, returned: 0, expenses: 0, riderPay: 0, finalCounted: null, expectedEnd: null, gap: null, shiftGaps: 0, residuals: 0, collected: 0, impliedCollection: null };
     if (first && last && !first.loading) {
       const lastEnd = last.clockOut || nowIso;
       const src = poolFor(first.clockIn, lastEnd);
@@ -397,6 +481,9 @@ export function createLedger(data) {
           opening: first.opening,
           cashIn: f.cashIn,
           paidOut: f.paidOut,
+          returned: f.cashReturned,
+          expenses: f.cashExpenses,
+          riderPay: f.riderPay,
           finalCounted: last.counted,
           expectedEnd: first.opening !== null ? round2(first.opening + f.cashIn - f.paidOut) : null,
           gap: null,
@@ -411,8 +498,50 @@ export function createLedger(data) {
 
     const outside = dayCompleted.filter((r) => !coverShift(r));
     const unpaid = p.unpaid.orders;
-    return { day, collection: dayCollection, revenue: p.revenue, orders: p.orders, byMethod, discounts: { n: p.discounts.n, total: p.discounts.total }, voided: { n: voided.length, total: p.voidedTotal }, expenseTotal, drawers, dayTotals, outside, unpaid };
+    return { day, collection: dayCollection, revenue: p.revenue, orders: p.orders, byMethod, discounts: { n: p.discounts.n, total: p.discounts.total }, voided: { n: voided.length, total: p.voidedTotal }, cancelled: { n: p.cancelledOrders.length, total: round2(p.cancelledOrders.reduce((s, r) => s + r.total, 0)), orders: p.cancelledOrders }, refunded: { n: p.refundedOrders.length, total: round2(p.refundedOrders.reduce((s, r) => s + r.total, 0)) }, expenseTotal, drawers, dayTotals, outside, unpaid };
   };
 
-  return { bizDay, monthsLoaded, ordersInDays, expensesInDays, period, allShifts, shiftDayOf, shiftTotals, employeeTotals, closeDay, cashFlows };
+  // ---- delivery report: day by day, for each delivery agent ----
+  // Every completed delivery order in the period (tableId "delivery"), grouped by the agent it was assigned to and then
+  // by business day. The agent's share of a fee is the one saved when the order was settled (riderFeeShare); for an order
+  // not settled yet it is what the current setting (`shareOf(fee)`) would give. Fees are part of an order's total, so
+  // `orderAmount` is the total without them. Null until the months it needs have loaded.
+  const deliveryReport = (startDay, endDay, shareOf = () => 0) => {
+    const p = period(startDay, endDay);
+    if (!p) return null;
+    const blank = () => ({ orders: 0, orderAmount: 0, fees: 0, riderShare: 0, restaurantShare: 0, cash: 0, settled: 0 });
+    const add = (t, o) => { t.orders += 1; t.orderAmount += o.orderAmount; t.fees += o.fee; t.riderShare += o.share; t.restaurantShare += o.fee - o.share; t.cash += o.cash; if (o.settled) t.settled += 1; };
+    const fix = (t) => ({ ...t, orderAmount: round2(t.orderAmount), fees: round2(t.fees), riderShare: round2(t.riderShare), restaurantShare: round2(t.restaurantShare), cash: round2(t.cash) });
+    const agents = new Map();
+    p.completed.filter((r) => r.tableId === "delivery").forEach((r) => {
+      const fee = Number(r.deliveryFee) || 0;
+      const saved = r.riderFeeShare === undefined || r.riderFeeShare === null ? NaN : Number(r.riderFeeShare);
+      const o = {
+        r,
+        fee,
+        share: r.deliverySettled && Number.isFinite(saved) ? saved : shareOf(fee),
+        orderAmount: round2(r.total - fee),
+        cash: receiptMethodAmounts(r).filter((a) => a.method === "cash").reduce((s, a) => s + a.amount, 0),
+        settled: !!r.deliverySettled,
+      };
+      const id = r.assignedTo?.id || "none";
+      if (!agents.has(id)) agents.set(id, { id, name: r.assignedTo?.name || null, total: blank(), days: new Map() });
+      const a = agents.get(id);
+      const day = bizDay(r.timestamp);
+      if (!a.days.has(day)) a.days.set(day, { day, total: blank(), list: [] });
+      const d = a.days.get(day);
+      add(a.total, o); add(d.total, o); d.list.push(o);
+    });
+    const grand = blank();
+    const list = [...agents.values()]
+      .map((a) => {
+        Object.keys(grand).forEach((k) => { grand[k] += a.total[k]; });
+        const days = [...a.days.values()].sort((x, y) => (x.day < y.day ? -1 : 1)).map((d) => ({ day: d.day, ...fix(d.total), list: d.list.sort((x, y) => (x.r.timestamp < y.r.timestamp ? -1 : 1)) }));
+        return { id: a.id, name: a.name, ...fix(a.total), days };
+      })
+      .sort((x, y) => (x.id === "none") - (y.id === "none") || y.orders - x.orders);
+    return { startDay, endDay, agents: list, totals: fix(grand) };
+  };
+
+  return { bizDay, monthsLoaded, ordersInDays, expensesInDays, period, allShifts, shiftDayOf, closedOnDay, shiftTotals, employeeTotals, closeDay, cashFlows, deliveryReport };
 }
