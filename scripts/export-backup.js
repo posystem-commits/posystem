@@ -60,9 +60,23 @@ async function main() {
     fs.rmSync(path.join(root, old), { recursive: true, force: true });
     console.log(`Removed old backup ${old}`);
   }
+  await ping("");
 }
 
-main().catch((e) => {
+// Tells healthchecks.io the nightly backup finished (or failed), so a missed night is reported. Optional: set
+// HEALTHCHECK_BACKUP_URL in .env.local. A failed ping never fails the backup itself.
+const ping = async (suffix) => {
+  const url = process.env.HEALTHCHECK_BACKUP_URL;
+  if (!url) return;
+  try {
+    await fetch(url.replace(/\/+$/, "") + suffix, { signal: AbortSignal.timeout(15000) });
+  } catch (e) {
+    console.error("healthcheck ping failed:", e.message || e);
+  }
+};
+
+main().catch(async (e) => {
   console.error(e.message || e);
+  await ping("/fail");
   process.exit(1);
 });
