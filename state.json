@@ -89,7 +89,7 @@
    "notifiedAt": "2026-11-27T12:37:10.185Z",
    "resolvedAt": null,
    "notifiedSeverity": "red",
-   "snoozedUntil": "2026-12-04T14:14:13.433Z"
+   "snoozedUntil": null
   },
   "edd47b48-0a92-4f87-bb77-f2bb0c309ab3|UNSIGNED_DAY|2026-11-25": {
    "fp": "edd47b48-0a92-4f87-bb77-f2bb0c309ab3|UNSIGNED_DAY|2026-11-25",
@@ -195,7 +195,9 @@
   913064930,
   913064931,
   913064932,
-  913064933
+  913064933,
+  913064934,
+  913064935
  ],
  "proposals": {
   "2efbbef3": {
@@ -230,7 +232,7 @@
    "tenantName": "Food Zone",
    "title": "Doaa's drawer was over by 11830.00 EGP (2026-11-25)",
    "text": "If you already know about this, I'll stop reminding you about it for 7 days. It stays open and is still in /status and the weekly report.",
-   "status": "applied",
+   "status": "undone",
    "createdAt": "2026-11-27T14:12:30.743Z",
    "expiresAt": "2026-11-28T14:12:30.743Z",
    "appliedAt": "2026-11-27T14:14:13.433Z",
@@ -249,6 +251,15 @@
    "tenant": "edd47b48-0a92-4f87-bb77-f2bb0c309ab3",
    "title": "Doaa's drawer was over by 11830.00 EGP (2026-11-25)",
    "outcome": "applied"
+  },
+  {
+   "at": "2026-11-27T14:15:49.532Z",
+   "by": "Giovanni Ayman",
+   "type": "acknowledge",
+   "id": "fe8ea57f",
+   "tenant": "edd47b48-0a92-4f87-bb77-f2bb0c309ab3",
+   "title": "Doaa's drawer was over by 11830.00 EGP (2026-11-25)",
+   "outcome": "undone"
   }
  ]
 }
