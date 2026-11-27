@@ -1,0 +1,58 @@
+# Answers what people sent the bot on Telegram (messages and taps on Fix / Skip / Undo buttons). Started by the
+# Cloudflare Worker the moment something arrives (see monitor/worker). It runs no checks and reads no restaurant data.
+name: Relay
+
+on:
+  workflow_dispatch: {}
+
+# The same group as the hourly monitor, so only one of them touches the monitor's notes at a time. Everything waiting in
+# the Worker's queue is collected by whichever run goes next, so a run replaced while waiting loses nothing.
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # only to save the monitor's own notes on the 'monitor-state' branch
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Load the monitor's memory
+        run: |
+          git fetch origin monitor-state 2>/dev/null || true
+          if git rev-parse --verify origin/monitor-state >/dev/null 2>&1; then
+            git worktree add --detach .monitor-state origin/monitor-state
+          else
+            git worktree add --orphan -b monitor-state .monitor-state
+          fi
+
+      - name: Answer what is waiting
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+          WORKER_URL: https://pos-uptime-watch.posystem15-cac.workers.dev
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: node --no-warnings monitor/run.mjs relay --state .monitor-state/state.json
+
+      - name: Save the monitor's memory
+        if: always()
+        run: |
+          cd .monitor-state
+          printf %s '{"git":{"deploymentEnabled":false}}' > vercel.json
+          git config user.name "pos-monitor"
+          git config user.email "monitor@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "monitor state (relay)" -q
+            git push origin HEAD:monitor-state
+          fi

@@ -46,6 +46,8 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
           HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+          WORKER_URL: https://pos-uptime-watch.posystem15-cac.workers.dev
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
         run: node --no-warnings monitor/run.mjs check --state .monitor-state/state.json
 
       - name: Save the monitor's memory

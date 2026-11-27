@@ -3,7 +3,7 @@
 name = "pos-uptime-watch"
 main = "index.js"
 compatibility_date = "2025-01-01"
-workers_dev = false   # runs only on its schedule; it needs no public address
+workers_dev = true   # the public address is the Telegram webhook; every route besides the webhook needs a derived password
 
 [triggers]
 crons = ["*/3 * * * *"]
@@ -18,3 +18,6 @@ id = "0266f6a84c2c4ec78820e2f6e3c14e19"
 SITE = "https://posystem-steel.vercel.app"
 PROBE_TENANT = "1e9da9de-1e02-4376-a6cf-4433a62bedf1"   # the test restaurant: probes never touch a real one
 KAIVO_PAGE = "/t/089591ae-3a36-4432-8b78-cf2f3ad4cb87"   # read-only page load, same as a customer opening it
+WORKER_URL = "https://pos-uptime-watch.posystem15-cac.workers.dev"
+GITHUB_REPO = "posystem-commits/posystem"
+# Extra secret for the Telegram doorway (set with `wrangler secret put GH_DISPATCH_TOKEN`): a GitHub token that may only start this repository's workflows.

@@ -37,6 +37,23 @@ Thresholds live in `monitor/config.json`.
 `/invite` makes a join code · `/join <code>` · `/approve <chat>` · `/remove <chat>`.
 Messages sent to the bot are answered during the hourly round (within about an hour).
 
+## Fixes you approve from Telegram
+
+The monitor can suggest a fix and, when **you** tap its button, do it. Taps on **Fix**, **Skip** and **Undo** go to the
+Cloudflare Worker (it is the bot's webhook); it checks the tap came from an owner chat, queues it, and starts the GitHub job
+`relay.yml`, which collects the queue, applies the fix and answers on Telegram. Messages you type (/status, /explain, …) take
+the same road, so they are answered within a minute or two instead of at the next hourly round.
+
+* Only the fix types in `monitor/fixes.mjs` exist. Nothing happens until an owner taps; an offer works once and expires after 24 hours.
+* Every outcome is logged in the monitor's notes (`fixLog`), and a fix that can be undone gets an **Undo** button.
+* Today's fixes change only the monitor's own notes: **Acknowledge** (stop reminders for 7 days), **normal cash pickup**, and
+  **Redeploy the site** (on the uptime watch's "POS is down" alert; needs the `VERCEL_DEPLOY_HOOK` secret).
+* Fixes that change a restaurant's records come next. They will show before/after, refuse if the record changed, keep the old value, and verify.
+
+Extra setup for this: a GitHub token that may only start this repository's workflows, saved on the Worker as `GH_DISPATCH_TOKEN`
+(`npx.cmd wrangler secret put GH_DISPATCH_TOKEN` in `monitor/worker`). Until it exists the Worker leaves Telegram alone and the
+monitor keeps reading Telegram directly. The Worker then sets the webhook by itself.
+
 ## One-time setup (needs your accounts)
 
 1. **Telegram bot** — in Telegram open `@BotFather`, send `/newbot`, copy the token. Then message your new bot `/start` and tell me; I read your chat id.

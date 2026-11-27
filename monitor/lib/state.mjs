@@ -48,7 +48,7 @@ export function reconcile(state, current, nowIso, remindHours) {
       state.findings[f.fp] = { ...prev, ...f, first: prev.first, last: nowIso, resolvedAt: null };
       const cur = state.findings[f.fp];
       if (f.severity === "red" && !wasRed) newAlerts.push(cur); // got worse
-      else if (f.severity === "red" && cur.notifiedAt && nowMs - new Date(cur.notifiedAt).getTime() > remindHours * 3600000) reminders.push(cur);
+      else if (f.severity === "red" && cur.notifiedAt && nowMs - new Date(cur.notifiedAt).getTime() > remindHours * 3600000 && !(cur.snoozedUntil && cur.snoozedUntil > nowIso)) reminders.push(cur); // acknowledged items stay quiet until the snooze ends
       else if (f.severity === "red" && !cur.notifiedAt) newAlerts.push(cur);
     }
   });

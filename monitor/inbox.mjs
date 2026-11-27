@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import { openFindings, shortId } from "./lib/state.mjs";
 import { esc, ICON } from "./lib/format.mjs";
 import { recipientsFor } from "./lib/telegram.mjs";
+import { fetchQueue } from "./lib/worker.mjs";
+import { handleCallback } from "./fixes.mjs";
 
 // Reads what people sent the bot on Telegram and answers. Commands:
 //   /start            ask to join (the owner approves)       /help        list of commands
@@ -124,22 +126,47 @@ export function handleMessage({ state, chatId, name, text, nowIso, envOwners }) 
   return replies;
 }
 
-// Fetches new messages and answers them. Returns how many were handled.
+// Collects what people sent the bot (messages and taps on buttons) and answers it. The updates come from the
+// Worker's queue (it is the Telegram webhook); if the Worker cannot be reached, Telegram is asked directly, which works
+// while no webhook is set. Returns how many were handled and the queue entries to acknowledge once the state is saved.
 export async function processInbox({ state, dry, nowIso }) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token || dry) return 0;
+  if (!token || dry) return { handled: 0, ackKeys: [] };
   const envOwners = (process.env.TELEGRAM_CHAT_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const upd = await tg(token, "getUpdates", { offset: (state.telegramOffset || 0) + 1, timeout: 0, allowed_updates: ["message"] });
-  if (!upd.ok) return 0;
-  let handled = 0;
-  for (const u of upd.result) {
-    state.telegramOffset = u.update_id;
-    const m = u.message;
-    if (!m || !m.text || !m.chat) continue;
-    const name = [m.from?.first_name, m.from?.last_name].filter(Boolean).join(" ") || m.from?.username || "someone";
-    const replies = handleMessage({ state, chatId: m.chat.id, name, text: m.text, nowIso, envOwners });
-    for (const r of replies) await tg(token, "sendMessage", { chat_id: r.to, text: r.text, parse_mode: "HTML" });
-    handled++;
+  let items = await fetchQueue();
+  const viaWorker = items !== null;
+  if (!viaWorker) {
+    const upd = await tg(token, "getUpdates", { offset: (state.telegramOffset || 0) + 1, timeout: 0, allowed_updates: ["message", "callback_query"] });
+    if (!upd.ok) return { handled: 0, ackKeys: [] };
+    items = upd.result.map((u) => ({ key: null, update: u }));
   }
-  return handled;
+  items.sort((a, b) => a.update.update_id - b.update.update_id);
+  const seen = new Set(state.processedUpdates || []);
+  const ackKeys = [];
+  let handled = 0;
+  for (const { key, update: u } of items) {
+    if (key) ackKeys.push(key);
+    if (!viaWorker) state.telegramOffset = u.update_id;
+    if (seen.has(u.update_id)) continue; // already handled (a redelivery)
+    seen.add(u.update_id);
+    state.processedUpdates = [...(state.processedUpdates || []), u.update_id].slice(-300);
+    try {
+      if (u.callback_query) {
+        const r = await handleCallback({ state, update: u, nowIso, owners: envOwners });
+        for (const c of r.clearButtons) await tg(token, "editMessageReplyMarkup", { chat_id: c.chatId, message_id: c.messageId, reply_markup: { inline_keyboard: [] } });
+        for (const x of r.replies) await tg(token, "sendMessage", { chat_id: x.to, text: x.text, parse_mode: "HTML", ...(x.buttons ? { reply_markup: { inline_keyboard: x.buttons } } : {}) });
+        handled++;
+        continue;
+      }
+      const m = u.message;
+      if (!m || !m.text || !m.chat) continue;
+      const name = [m.from?.first_name, m.from?.last_name].filter(Boolean).join(" ") || m.from?.username || "someone";
+      const replies = handleMessage({ state, chatId: m.chat.id, name, text: m.text, nowIso, envOwners });
+      for (const r of replies) await tg(token, "sendMessage", { chat_id: r.to, text: r.text, parse_mode: "HTML" });
+      handled++;
+    } catch (e) {
+      console.error(`could not handle update ${u.update_id}: ${e.message || e}`);
+    }
+  }
+  return { handled, ackKeys };
 }

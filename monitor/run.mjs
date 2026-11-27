@@ -39,6 +39,8 @@ const { capacityChecks } = await import("./checks/capacity.mjs");
 const { securityChecks, supportWeekly } = await import("./checks/security.mjs");
 const { buildWeeklyReport } = await import("./weekly.mjs");
 const { processInbox } = await import("./inbox.mjs");
+const { proposeFixes, tidyProposals, buttonsFor, suggestionText } = await import("./fixes.mjs");
+const { ackQueue } = await import("./lib/worker.mjs");
 const L = await import(pathToFileURL(path.join(root, "src/ledger.js")).href);
 const N = await import(pathToFileURL(path.join(root, "src/numbers-check.js")).href);
 
@@ -86,8 +88,16 @@ async function main() {
   }
 
   // People may have written to the bot since the last round: answer them first (new explanations change the checks).
-  const handled = await processInbox({ state, dry, nowIso });
-  if (handled) console.log(`Handled ${handled} message(s) from Telegram.`);
+  const { handled, ackKeys } = await processInbox({ state, dry, nowIso });
+  if (handled) console.log(`Handled ${handled} message(s) or button tap(s) from Telegram.`);
+  tidyProposals(state, nowIso);
+  // "relay" only answers what people sent (messages and button taps), without running the checks: the Worker starts
+  // it the moment something arrives. The saved state is acknowledged to the Worker only after it has been written.
+  if (mode === "relay") {
+    saveState(stateFile, state);
+    if (!dry) await ackQueue(ackKeys);
+    return;
+  }
   cfg.cashPickupsExpected = Array.from(new Set([...(cfg.cashPickupsExpected || []), ...(state.cashPickupsExpected || [])]));
 
   const db = connect();
@@ -105,11 +115,20 @@ async function main() {
       result = { ...again, findings: again.findings.filter((f) => f.severity !== "red" || known(f) || stillThere.has(f.fp)) };
     }
     const { newAlerts, reminders, resolved } = reconcile(state, result.findings, nowIso, cfg.remindHours);
+    // Fixes the monitor knows for what is open now. A fix for something being announced rides on that alert as buttons;
+    // the others are offered in a message of their own. (In a dry run nothing is remembered.)
+    const savedProposals = dry ? JSON.parse(JSON.stringify(state.proposals || {})) : null;
+    const offered = proposeFixes(state, openFindings(state), nowIso);
+    const attached = new Set();
     for (const f of newAlerts) {
-      await broadcast(state, alertText(f, "new", nowMs), { roles: ["owner"], dry });
+      const mine = offered.filter((p) => p.fp === f.fp);
+      mine.forEach((p) => attached.add(p.id));
+      await broadcast(state, alertText(f, "new", nowMs), { roles: ["owner"], dry, buttons: mine.length ? mine.flatMap(buttonsFor) : null });
       f.notifiedAt = nowIso;
       f.notifiedSeverity = "red";
     }
+    for (const p of offered.filter((x) => !attached.has(x.id))) await broadcast(state, suggestionText(p), { roles: ["owner"], dry, buttons: buttonsFor(p) });
+    if (dry) state.proposals = savedProposals;
     for (const f of reminders) {
       await broadcast(state, alertText(f, "reminder", nowMs), { roles: ["owner"], dry });
       f.notifiedAt = nowIso;
@@ -139,6 +158,7 @@ async function main() {
     }
   }
   saveState(stateFile, state);
+  if (!dry) await ackQueue(ackKeys);
 }
 
 main().catch(async (e) => {

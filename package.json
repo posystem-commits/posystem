@@ -9,7 +9,7 @@
     "lint": "next lint",
     "check:numbers": "node scripts/check-numbers.js",
     "monitor": "node --no-warnings monitor/run.mjs",
-    "monitor:test": "node --no-warnings monitor/test-inbox.mjs && node --no-warnings monitor/test-security.mjs && node --no-warnings monitor/test-cash.mjs"
+    "monitor:test": "node --no-warnings monitor/test-inbox.mjs && node --no-warnings monitor/test-security.mjs && node --no-warnings monitor/test-cash.mjs && node --no-warnings monitor/test-fixes.mjs && node --no-warnings monitor/test-worker.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
