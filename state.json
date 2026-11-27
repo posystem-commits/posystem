@@ -183,5 +183,10 @@
   }
  ],
  "lastWeekly": null,
- "lastMonitorError": null
+ "lastMonitorError": null,
+ "processedUpdates": [
+  913064930,
+  913064931,
+  913064932
+ ]
 }
