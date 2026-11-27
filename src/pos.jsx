@@ -23,6 +23,8 @@ import {
   isCustomMethodId,
   platformOwed,
   receiptMethodAmounts,
+  receiptMethodOf,
+  profileAppMethodId,
   returnTimeOf,
   returnAmountsOf,
   notHeldByRider,
@@ -2692,12 +2694,7 @@ const paymentConfigFrom = (raw) => {
 // Every price list is a delivery app's menu (Talabat, Elmenus, ...): an order rung up on it is paid through that app.
 // A list named after Talabat or Elmenus uses the built-in method of that name (so its orders add up with any others paid
 // through it); any other list gets a payment type of its own, named after the list.
-const profileMethodId = (p) => {
-  const name = String(p?.name || "");
-  if (/talabat|طلبات/i.test(name)) return "talabat";
-  if (/elmenus|el menus|المنيوس|منيوس/i.test(name)) return "elmenus";
-  return `x_l${String(p?.id || "").replace(/[^a-z0-9]/gi, "").toLowerCase()}`;
-};
+const profileMethodId = profileAppMethodId;
 const customPaymentOf = (cfg, id) => (cfg?.custom || []).find((c) => c.id === id);
 const paymentMethodOn = (cfg, id) => {
   if (id === "cash") return true;
@@ -6277,7 +6274,7 @@ function POSPrototype({ tenantId }) {
         ${r.splitCount > 1 ? `<div class="row" style="font-size:12px;font-weight:700;margin-top:4px;"><span>${escapeHtml(t("splitLabel", { n: r.splitCount }))}</span><span>${escapeHtml(t("eachPays", { amount: money(r.total / r.splitCount) }))}</span></div>` : ""}
         ${r.paymentMethod === "split" && Array.isArray(r.splitPayments)
           ? r.splitPayments.map((sp) => `<div style="font-size:11px;margin-top:2px;">${escapeHtml(t("paidVia", { method: t(`payment_${sp.method}`) }))} &mdash; ${money(sp.amount)}</div>`).join("")
-          : `<div style="font-size:11px;margin-top:4px;">${escapeHtml(t("paidVia", { method: t(`payment_${r.paymentMethod}`) }))}</div>`}
+          : `<div style="font-size:11px;margin-top:4px;">${escapeHtml(t("paidVia", { method: t(`payment_${receiptMethodOf(r)}`) }))}</div>`}
       </div>
       <div class="center" style="font-size:10px;margin-top:14px;">${escapeHtml(t("thankYou"))}</div>`;
   };
@@ -6556,7 +6553,7 @@ function POSPrototype({ tenantId }) {
   // (an app's order is never drawer cash — see platformOwed). Expenses belong to the restaurant as a whole, so they and the
   // net profit are shown only for "all".
   const dashboardAppIds = allMethods.filter((m) => m.platform).map((m) => m.id);
-  const receiptSourceId = (r) => (dashboardAppIds.includes(r.paymentMethod) ? r.paymentMethod : "restaurant");
+  const receiptSourceId = (r) => (dashboardAppIds.includes(receiptMethodOf(r)) ? receiptMethodOf(r) : "restaurant");
   const dashboardSourceMatch = (r) => dashboardSource === "all" || receiptSourceId(r) === dashboardSource;
   const dashboardMonthReceiptsAll = (ledger.ordersInDays(dashboardMonthFirstDay, dashboardMonthLastDay) || []).filter((r) => r.status === "completed" && dashboardSourceMatch(r));
   const [dashboardFirstDay, dashboardLastDay] =
@@ -7028,7 +7025,7 @@ function POSPrototype({ tenantId }) {
     setEditingReceiptId(r.id);
     setEditDraftItems(r.items.map((it) => ({ ...it })));
     setEditReason("");
-    setEditPaymentMethod(r.paymentMethod || null);
+    setEditPaymentMethod(receiptMethodOf(r) || null);
     setEditZoneLabel(r.deliveryZoneLabel || "");
     setEditDraftDiscount(r.discount ? { type: r.discount.type, value: String(r.discount.value), reason: r.discount.reason || "" } : { type: "percent", value: "", reason: "" });
   };
@@ -8407,7 +8404,7 @@ function POSPrototype({ tenantId }) {
       .sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0))
       .map((r) => {
         const fee = Number(r.deliveryFee) || 0;
-        return { r, fee, amount: round2(r.total - fee), method: r.paymentMethod === "split" ? t("payment_split") : t(`payment_${r.paymentMethod}`) };
+        return { r, fee, amount: round2(r.total - fee), method: receiptMethodOf(r) === "split" ? t("payment_split") : t(`payment_${receiptMethodOf(r)}`) };
       });
   const riderReportOrdersTotalOf = (rows) => round2(rows.reduce((s, x) => s + x.amount, 0));
   const riderReportFeesTotalOf = (rows) => round2(rows.reduce((s, x) => s + x.fee, 0));
@@ -10639,7 +10636,7 @@ function POSPrototype({ tenantId }) {
                               </span>
                             )}
                             {r.assignedTo?.name && r.assignedTo.role !== "waiter" && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#2A2E3A", color: "#B0A8E3" }}>{t("assignedToBadge", { role: t("roleDelivery"), name: r.assignedTo.name })}</span>}
-                            {r.paymentMethod && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "var(--track)", color: "var(--text-muted)" }}>{t(`payment_${r.paymentMethod}`)}</span>}
+                            {r.paymentMethod && <span style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "var(--track)", color: "var(--text-muted)" }}>{t(`payment_${receiptMethodOf(r)}`)}</span>}
                             {cancelled && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#33301F", color: "#E3C98A" }}>{t("cancelledBadge")}</span>}
                             {refunded && <span style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#3A2A28", color: "#E3A79C" }}>{t("refundedBadge")}</span>}
                             {unpaid && <span title={t("unpaidOrderTooltip")} style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "#5B4F3F", color: "#F0D9A0", fontWeight: 700 }}>{t("unpaidBadge")}</span>}
@@ -11448,7 +11445,7 @@ function POSPrototype({ tenantId }) {
                                   {open && d.list.map((o) => (
                                     <tr key={o.r.id} style={{ borderTop: "1px dashed var(--border)", background: "rgba(0,0,0,0.12)" }}>
                                       <td style={{ padding: "6px 10px 6px 26px", fontSize: 11.5, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{t("ticketNumber", { n: o.r.ticketNo })}{o.r.deliveryZoneLabel ? ` · ${o.r.deliveryZoneLabel}` : ""}{!o.settled ? ` · ${t("dlvRepOpen")}` : ""}</td>
-                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{o.r.paymentMethod === "split" ? t("payment_split") : t(`payment_${o.r.paymentMethod}`)}</td>
+                                      <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{receiptMethodOf(o.r) === "split" ? t("payment_split") : t(`payment_${receiptMethodOf(o.r)}`)}</td>
                                       <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.orderAmount)}</td>
                                       <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.fee)}</td>
                                       <td style={{ ...cellStyle, fontSize: 11.5, color: "var(--text-muted)" }}>{money(o.share)}</td>
@@ -13231,7 +13228,7 @@ function POSPrototype({ tenantId }) {
             <span style={{ fontFamily: "IBM Plex Mono, monospace", whiteSpace: "nowrap" }}>{value}</span>
           </div>
         );
-        const later = allMethods.find((m) => m.platform && m.id === r.paymentMethod);
+        const later = allMethods.find((m) => m.platform && m.id === receiptMethodOf(r));
         const waiter = r.assignedTo?.role === "waiter" ? r.assignedTo.name : r.servedBy?.name;
         const section = (title, children) => (
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed #C9C2B2" }}>
@@ -13299,7 +13296,7 @@ function POSPrototype({ tenantId }) {
                 <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>
                   {r.paymentMethod === "split" && Array.isArray(r.splitPayments)
                     ? r.splitPayments.map((sp) => <div key={sp.method}>{t("paidVia", { method: t(`payment_${sp.method}`) })} — {money(sp.amount)}</div>)
-                    : <div>{t("paidVia", { method: t(`payment_${r.paymentMethod}`) })}</div>}
+                    : <div>{t("paidVia", { method: t(`payment_${receiptMethodOf(r)}`) })}</div>}
                   {r.paid === false ? <div style={{ color: "#8A6A2E", fontWeight: 600 }}>{t("receiptDetailNotPaid")}</div> : r.paidAt && <div style={{ color: COLORS.charcoalSoft }}>{t("receiptDetailPaidAt", { time: when(r.paidAt) })}</div>}
                   {later && !voided && (r.platformSettled
                     ? <div style={{ color: "#3F5B45", fontWeight: 600 }}>{t("receiptDetailPlatformReceived", { app: t(`payment_${later.id}`), time: when(r.platformSettledAt) })}{r.platformSettledMethod ? ` · ${t(`payment_${r.platformSettledMethod}`)}` : ""}</div>

@@ -96,8 +96,21 @@ export const storageMonthKeysFor = (reportingMonthKeys) => Array.from(new Set(re
 // ---- one receipt ----
 // A receipt paid across more than one method stores paymentMethod "split" plus a breakdown; every other
 // receipt effectively has one "split" of just its own total. Always read amounts through this.
+// Every price list is a delivery app's menu (Talabat, Elmenus, ...): an order rung up on it is paid through that app.
+// A list named after Talabat or Elmenus uses the built-in method of that name; any other list gets a payment type of its own.
+export const profileAppMethodId = (p) => {
+  const name = String(p?.name || "");
+  if (/talabat|طلبات/i.test(name)) return "talabat";
+  if (/elmenus|el menus|المنيوس|منيوس/i.test(name)) return "elmenus";
+  return `x_l${String(p?.id || "").replace(/[^a-z0-9]/gi, "").toLowerCase()}`;
+};
+// An order saved from a price list carries `appPayment` (how the customer paid the app). It belongs to that app even if
+// someone later edited its payment method to cash/visa/wallet — the customer paid the app, not the till.
+export const receiptMethodOf = (r) => (r.priceList && r.appPayment ? profileAppMethodId(r.priceList) : r.paymentMethod);
 export const receiptMethodAmounts = (r) =>
-  r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0
+  r.priceList && r.appPayment
+    ? [{ method: profileAppMethodId(r.priceList), amount: r.total }]
+    : r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0
     ? r.splitPayments
     : [{ method: r.paymentMethod, amount: r.total }];
 export const returnTimeOf = (r) => (r.status === "cancelled" ? r.cancelledAt : r.status === "refunded" ? r.refundedAt : null);
