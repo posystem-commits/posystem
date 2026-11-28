@@ -64,4 +64,13 @@ ok("settling an app's agent for cash held is not flagged as unusual", () => {
   assert.deepEqual(flags["2"], []);
   assert.deepEqual(flags["5"], ["old", "app", "noCash"]); // older order: unchanged
 });
+ok("correcting how the customer paid the app after saving moves the money with it", () => {
+  const was = receipts[0]; // Elmenus order, customer paid cash to the restaurant's rider
+  const switched = { ...was, appPayment: "visa" };
+  assert.equal(cash(was), 200); assert.equal(cash(switched), 0);
+  assert.equal(L.platformOwed([switched]).find((x) => x.id === "elmenus").owed, 200);
+  assert.equal(L.platformOwed([was]).find((x) => x.id === "elmenus").owed, 0);
+  const back = { ...switched, appPayment: "cash" };
+  assert.equal(cash(back), 200);
+});
 console.log(n, "checks passed");
