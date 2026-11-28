@@ -12,7 +12,7 @@
    "first": "2026-11-27T12:37:10.185Z",
    "last": "2026-11-28T03:51:14.217Z",
    "notifiedAt": null,
-   "resolvedAt": null,
+   "resolvedAt": "2026-11-28T12:53:24.600Z",
    "notifiedSeverity": null
   },
   "089591ae-3a36-4432-8b78-cf2f3ad4cb87|CASH_GAP|shift_1795618958880": {
@@ -55,7 +55,7 @@
    "title": "Ahmed's drawer was short by 280.00 EGP (2026-11-26)",
    "detail": "Counted 0.00 EGP, should have been 280.00 EGP. Delivery cash from earlier orders (#2) was marked settled into this drawer, but the count did not include it. A record-keeping gap rather than missing money.",
    "first": "2026-11-27T12:37:10.185Z",
-   "last": "2026-11-28T03:51:14.217Z",
+   "last": "2026-11-28T12:53:24.600Z",
    "notifiedAt": "2026-11-27T12:37:10.185Z",
    "resolvedAt": null,
    "notifiedSeverity": "red"
@@ -70,7 +70,7 @@
    "title": "23220.00 EGP was taken out of the drawer between Doaa's close and Ahmed's open",
    "detail": "Doaa counted 23220.00 EGP; Ahmed opened with 0.00 EGP. If this is the usual cash pickup, tell me and I will stop flagging it.",
    "first": "2026-11-27T12:37:10.185Z",
-   "last": "2026-11-28T03:51:14.217Z",
+   "last": "2026-11-28T12:53:24.600Z",
    "notifiedAt": null,
    "resolvedAt": null,
    "notifiedSeverity": null
@@ -87,7 +87,7 @@
    "first": "2026-11-27T12:37:10.185Z",
    "last": "2026-11-28T03:51:14.217Z",
    "notifiedAt": "2026-11-27T12:37:10.185Z",
-   "resolvedAt": null,
+   "resolvedAt": "2026-11-28T12:53:24.600Z",
    "notifiedSeverity": "red",
    "snoozedUntil": null
   },
@@ -103,7 +103,7 @@
    "first": "2026-11-27T12:37:10.185Z",
    "last": "2026-11-28T03:51:14.217Z",
    "notifiedAt": null,
-   "resolvedAt": null,
+   "resolvedAt": "2026-11-28T12:53:24.600Z",
    "notifiedSeverity": null
   },
   "1e9da9de-1e02-4376-a6cf-4433a62bedf1|SNAPSHOT_OLD|": {
@@ -113,10 +113,10 @@
    "code": "SNAPSHOT_OLD",
    "severity": "info",
    "topic": "backups",
-   "title": "Ember & Vine Restaurant: the latest in-database safety copy is 73 hours old",
+   "title": "Ember & Vine Restaurant: the latest in-database safety copy is 82 hours old",
    "detail": "Normal if nothing changed; otherwise check the nightly snapshot job.",
    "first": "2026-11-27T12:37:10.185Z",
-   "last": "2026-11-28T03:51:14.217Z",
+   "last": "2026-11-28T12:53:24.600Z",
    "notifiedAt": null,
    "resolvedAt": null,
    "notifiedSeverity": null
@@ -133,7 +133,7 @@
    "first": "2026-11-27T13:24:01.748Z",
    "last": "2026-11-28T03:51:14.217Z",
    "notifiedAt": null,
-   "resolvedAt": null,
+   "resolvedAt": "2026-11-28T12:53:24.600Z",
    "notifiedSeverity": null
   },
   "089591ae-3a36-4432-8b78-cf2f3ad4cb87|LONG_SHIFT|shift_1795768091744": {
@@ -146,7 +146,7 @@
    "title": "Mohamed's shift lasted 26 hours (2026-11-26T06:20 → 2026-11-27T08:28)",
    "detail": "It covers more than one day, so the cash of those days is counted together and no single day's drawer can be checked. Clock out at the end of each day.",
    "first": "2026-11-27T13:24:01.748Z",
-   "last": "2026-11-28T03:51:14.217Z",
+   "last": "2026-11-28T12:53:24.600Z",
    "notifiedAt": null,
    "resolvedAt": null,
    "notifiedSeverity": null
@@ -161,7 +161,7 @@
    "title": "Doaa's shift lasted 38 hours (2026-11-25T12:17 → 2026-11-27T02:18)",
    "detail": "It covers more than one day, so the cash of those days is counted together and no single day's drawer can be checked. Clock out at the end of each day.",
    "first": "2026-11-27T13:24:01.748Z",
-   "last": "2026-11-28T03:51:14.217Z",
+   "last": "2026-11-28T12:53:24.600Z",
    "notifiedAt": null,
    "resolvedAt": null,
    "notifiedSeverity": null
@@ -193,7 +193,7 @@
    "first": "2026-11-28T03:51:14.217Z",
    "last": "2026-11-28T03:51:14.217Z",
    "notifiedAt": null,
-   "resolvedAt": null,
+   "resolvedAt": "2026-11-28T12:53:24.600Z",
    "notifiedSeverity": null
   },
   "edd47b48-0a92-4f87-bb77-f2bb0c309ab3|CASH_PICKUP|shift_1795829353185": {
@@ -206,7 +206,37 @@
    "title": "5460.00 EGP was taken out of the drawer between Doaa's close and BAKRI's open",
    "detail": "Doaa counted 5715.00 EGP; BAKRI opened with 255.00 EGP. If this is the usual cash pickup, tell me and I will stop flagging it.",
    "first": "2026-11-28T03:51:14.217Z",
-   "last": "2026-11-28T03:51:14.217Z",
+   "last": "2026-11-28T12:53:24.600Z",
+   "notifiedAt": null,
+   "resolvedAt": null,
+   "notifiedSeverity": null
+  },
+  "089591ae-3a36-4432-8b78-cf2f3ad4cb87|CASH_PICKUP|shift_1795849488096": {
+   "fp": "089591ae-3a36-4432-8b78-cf2f3ad4cb87|CASH_PICKUP|shift_1795849488096",
+   "tenant": "089591ae-3a36-4432-8b78-cf2f3ad4cb87",
+   "tenantName": "Kaivo",
+   "code": "CASH_PICKUP",
+   "severity": "amber",
+   "topic": "cash",
+   "title": "4404.00 EGP was taken out of the drawer between Mohamed's close and Mohamed's open",
+   "detail": "Mohamed counted 4604.00 EGP; Mohamed opened with 200.00 EGP. If this is the usual cash pickup, tell me and I will stop flagging it.",
+   "first": "2026-11-28T12:53:24.600Z",
+   "last": "2026-11-28T12:53:24.600Z",
+   "notifiedAt": null,
+   "resolvedAt": null,
+   "notifiedSeverity": null
+  },
+  "edd47b48-0a92-4f87-bb77-f2bb0c309ab3|UNSIGNED_DAY|2026-11-26": {
+   "fp": "edd47b48-0a92-4f87-bb77-f2bb0c309ab3|UNSIGNED_DAY|2026-11-26",
+   "tenant": "edd47b48-0a92-4f87-bb77-f2bb0c309ab3",
+   "tenantName": "Food Zone",
+   "code": "UNSIGNED_DAY",
+   "severity": "info",
+   "topic": "cash",
+   "title": "2026-11-26 was never signed off in Close the day",
+   "detail": "",
+   "first": "2026-11-28T12:53:24.600Z",
+   "last": "2026-11-28T12:53:24.600Z",
    "notifiedAt": null,
    "resolvedAt": null,
    "notifiedSeverity": null
@@ -243,6 +273,12 @@
    "at": "2026-11-28T03:51:14.217Z",
    "dbBytes": 63060949,
    "checks": 634,
+   "failed": 0
+  },
+  {
+   "at": "2026-11-28T12:53:24.600Z",
+   "dbBytes": 63071104,
+   "checks": 653,
    "failed": 0
   }
  ],
@@ -298,6 +334,18 @@
    "undo": {
     "before": null
    }
+  },
+  "b9bf4718": {
+   "id": "b9bf4718",
+   "type": "pickups_normal",
+   "fp": "089591ae-3a36-4432-8b78-cf2f3ad4cb87|CASH_PICKUP|shift_1795849488096",
+   "tenant": "089591ae-3a36-4432-8b78-cf2f3ad4cb87",
+   "tenantName": "Kaivo",
+   "title": "4404.00 EGP was taken out of the drawer between Mohamed's close and Mohamed's open",
+   "text": "Is this the regular cash pickup, money taken out between shifts? If you say yes I'll treat pickups at Kaivo as normal: they will only be listed in the weekly report, not raised each time.",
+   "status": "proposed",
+   "createdAt": "2026-11-28T12:53:24.600Z",
+   "expiresAt": "2026-11-29T12:53:24.600Z"
   }
  },
  "fixLog": [
