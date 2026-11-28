@@ -1130,8 +1130,6 @@ const STRINGS = {
     riderReportNoRiders: "No delivery staff yet — add them in the Staff tab and their reports will appear here.",
     riderReportEmpty: "No unsettled delivery orders for {{name}}.",
     riderReportOrders: "Orders",
-    riderReportOrdersTotal: "Orders total",
-    riderReportFeesTotal: "Delivery fees",
     riderReportOrderAmount: "Order amount",
     riderReportNoName: "No name given",
     riderReportPrint: "Print report",
@@ -2213,8 +2211,6 @@ const STRINGS = {
     riderReportNoRiders: "لا يوجد عمال توصيل بعد — أضفهم من تبويب الموظفين وستظهر تقاريرهم هنا.",
     riderReportEmpty: "لا توجد طلبات توصيل غير مُسوّاة لـ {{name}}.",
     riderReportOrders: "الطلبات",
-    riderReportOrdersTotal: "إجمالي الطلبات",
-    riderReportFeesTotal: "رسوم التوصيل",
     riderReportOrderAmount: "قيمة الطلب",
     riderReportNoName: "بدون اسم",
     riderReportPrint: "طباعة التقرير",
@@ -8406,8 +8402,6 @@ function POSPrototype({ tenantId }) {
         const fee = Number(r.deliveryFee) || 0;
         return { r, fee, amount: round2(r.total - fee), method: receiptMethodOf(r) === "split" ? t("payment_split") : t(`payment_${receiptMethodOf(r)}`) };
       });
-  const riderReportOrdersTotalOf = (rows) => round2(rows.reduce((s, x) => s + x.amount, 0));
-  const riderReportFeesTotalOf = (rows) => round2(rows.reduce((s, x) => s + x.fee, 0));
   const riderReportPrintable = riderReportSelected.filter((p) => p.orders > 0);
   const printRiderReportFor = (riders) => {
     if (riders.length === 0) return;
@@ -8442,8 +8436,6 @@ function POSPrototype({ tenantId }) {
         </div>
         <div class="dashed" style="margin-top:10px;">
           ${line(t("riderReportOrders"), String(rows.length), { top: 0 })}
-          ${line(t("riderReportOrdersTotal"), money(riderReportOrdersTotalOf(rows)))}
-          ${line(t("riderReportFeesTotal"), money(riderReportFeesTotalOf(rows)))}
           <div style="border-top:1px dashed #000;margin-top:6px;"></div>
           ${line(t("deliveryReconciliationCash"), money(p.cashTotal), { top: 6 })}
           ${line(t("riderReportRiderShare"), `-${money(p.feesTotal)}`)}
@@ -12533,8 +12525,6 @@ function POSPrototype({ tenantId }) {
                             ))}
                             <div style={{ borderTop: "1px solid var(--border)", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 4, fontSize: 13, background: "rgba(176,141,87,0.07)" }}>
                               <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("riderReportOrders")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{rows.length}</span></div>
-                              <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("riderReportOrdersTotal")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(riderReportOrdersTotalOf(rows))}</span></div>
-                              <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("riderReportFeesTotal")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(riderReportFeesTotalOf(rows))}</span></div>
                               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, paddingTop: 6, borderTop: "1px dashed var(--border)" }}><span>{t("deliveryReconciliationCash")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(p.cashTotal)}</span></div>
                               <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("riderReportRiderShare")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>-{money(p.feesTotal)}</span></div>
                               <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 14.5, marginTop: 4 }}><span>{p.net < 0 ? t("deliveryReconciliationOwedToAgent") : t("deliveryReconciliationOwed")}</span><span style={{ fontFamily: "IBM Plex Mono, monospace" }}>{money(Math.abs(p.net))}</span></div>
