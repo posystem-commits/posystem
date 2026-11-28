@@ -107,8 +107,17 @@ export const profileAppMethodId = (p) => {
 // An order saved from a price list carries `appPayment` (how the customer paid the app). It belongs to that app even if
 // someone later edited its payment method to cash/visa/wallet — the customer paid the app, not the till.
 export const receiptMethodOf = (r) => (r.priceList && r.appPayment ? profileAppMethodId(r.priceList) : r.paymentMethod);
+// A delivery-app order the customer paid in CASH to the delivery agent (the restaurant's own rider or the app's own
+// agent) is cash the AGENT holds, not money the app owes: it counts as cash, belongs to that agent's delivery closing and
+// reaches the drawer when the agent settles up. Only for orders created from AGENT_CASH_FROM on, so what was closed
+// before keeps its figures; only when an agent is assigned (until then nobody holds it). The sale still belongs to the
+// app (receiptMethodOf / the Dashboard's source filter) — only where the money is differs.
+export const AGENT_CASH_FROM = "2026-11-28T18:00:00.000Z";
+export const agentHoldsCash = (r) => !!(r.priceList && r.appPayment === "cash" && r.tableId === "delivery" && r.assignedTo && r.timestamp >= AGENT_CASH_FROM);
 export const receiptMethodAmounts = (r) =>
-  r.priceList && r.appPayment
+  agentHoldsCash(r)
+    ? [{ method: "cash", amount: r.total }]
+    : r.priceList && r.appPayment
     ? [{ method: profileAppMethodId(r.priceList), amount: r.total }]
     : r.paymentMethod === "split" && Array.isArray(r.splitPayments) && r.splitPayments.length > 0
     ? r.splitPayments
@@ -407,7 +416,7 @@ export function createLedger(data) {
         if (pay && (pay.from === "cash" || pay.to === "cash")) {
           events.push({ kind: "pay", n: r.ticketNo, amount: pay.from === "cash" ? r.total : -r.total, orderTotal: r.total, from: pay.from, to: pay.to, by: pay.by, at: pay.at, paidAt: since, afterClose: !!sh.clockOut && pay.at > sh.clockOut });
         }
-        if (r.paymentMethod === "cash") {
+        if (r.paymentMethod === "cash" || agentHoldsCash(r)) {
           const ed = itemEdits(r, since, priceOf);
           if (ed && Math.abs(ed.value) >= 0.01) events.push({ kind: ed.discountOnly ? (ed.value < 0 ? "discountDown" : "discountUp") : ed.value < 0 ? "qtyDown" : "qtyUp", n: r.ticketNo, amount: round2(-ed.value), approx: !ed.exact, by: ed.by, at: ed.at, list: ed.value < 0 ? ed.down : ed.up, afterClose: !!sh.clockOut && ed.at > sh.clockOut });
         }
@@ -430,7 +439,7 @@ export function createLedger(data) {
           const orderDay = bizDay(r.timestamp);
           const flags = [];
           if (orderDay < day) flags.push("old");
-          if (rider && DELIVERY_APP_NAME.test(rider)) flags.push("app");
+          if (rider && DELIVERY_APP_NAME.test(rider) && !agentHoldsCash(r)) flags.push("app");
           if (cash === 0) flags.push("noCash");
           return { n: r.ticketNo, total: r.total, cash, share: Number(r.riderFeeShare) > 0 ? Number(r.riderFeeShare) : 0, rider, orderDay, at: r.deliverySettledAt, flags };
         })
